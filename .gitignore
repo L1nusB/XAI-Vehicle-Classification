@@ -3,6 +3,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+
+# Dataset Folders
+
+data/
+CAMModels/
+segmentation/
+
 # C extensions
 *.so
 
