@@ -175,7 +175,14 @@ def main(args):
         if TYPES[1] in args.types:
             saveImages(args, images)
 
-    return results
+    out = []
+
+    if len(results) > 0:
+        out.append(results)
+    if len(images) > 0:
+        out.append(images)
+
+    return out
 
 if __name__ == '__main__':
     import sys
