@@ -1,4 +1,4 @@
-from matplotlib.pyplot import plt
+import matplotlib.pyplot as plt
 import os
 import numpy as np
 import torchvision.transforms as transforms
@@ -6,6 +6,8 @@ import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
 import generate_segmentation
 import generate_cams
+import mmcv
+from mmcv import Config
 
 IMAGE_TRANSFORMS = {'Resize':'size', 'CenterCrop':'crop_size'}
 
@@ -40,10 +42,12 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
     for step in pipeline:
         if step['type'] in img_transforms.keys():
             transform = get_transform_instance(step['type'])
-            param = step[img_transforms[step['type']]]
-            if isinstance(param,tuple) and param[-1]==-1:
-                param = param[:-1]
-            components.append(transform(param))
+            # Make sure parameter is in component of pipeline
+            if img_transforms[step['type']] in step:
+                param = step[img_transforms[step['type']]]
+                if isinstance(param,tuple) and param[-1]==-1:
+                    param = param[:-1]
+                components.append(transform(param))
     if tensorize:
         components.append(transforms.ToTensor())
     if transpose:
@@ -82,7 +86,7 @@ def generate_single_overview(sourceImg, segmentationImg, camHeatmap, camOverlay)
     :param camOverlay: The CAM overlayed over the sourceImg
     """
     fig = plt.figure(constrained_layout=True)
-    gs = fig.add_gripspec(4,2)
+    gs = fig.add_gridspec(4,2)
     axl0 = fig.add_subplot(gs[0,0])
     axl1 = fig.add_subplot(gs[1,0])
     axl2 = fig.add_subplot(gs[2,0])
@@ -104,14 +108,15 @@ def generate_single_overview(sourceImg, segmentationImg, camHeatmap, camOverlay)
     axr.imshow(sourceImg)
     axr.axis('off')
 
-def plot_single(imgName, imgRoot, segmentationImgData=None, camData=None, 
-    segConfig=None, segCheckpoint=None, segDevice='cuda',camConfig=None, camCheckpoint=None, camDevice='cuda'):
+def plot_single(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, 
+    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cuda'):
     """
     Generates an overview and plot for a single Image. 
     The Segmentation and CAM can be provided or will be generated.
 
     :param imgName: Name of the Image.
     :param imgRoot: Path to the directory containing the image.
+    :param imgData: (np.ndarray) Array containing the image data. Must match shape (_,_,1) or (_,_,3)
     :param segmentationImgData: (Dictionary or np.ndarray) Image Data of the segmentation overlayed with the Image. If not given will be generated.
     :param camData: (Dictionary or np.ndarray) Raw CAM Data. If not given will be generated.
     :param segConfig: Path to Config file used for Segmentation. Required if no segmentationImgData is provided.
@@ -123,14 +128,20 @@ def plot_single(imgName, imgRoot, segmentationImgData=None, camData=None,
     """
     imgPath = os.path.join(imgRoot, imgName)
     assert os.path.isfile(imgPath), f'Specified Path does not yield valid file:{imgPath}'
+    if imgData is not None:
+        assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
+        assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
+        sourceImg = np.copy(imgData)
+    else:
+        sourceImg = mmcv.imread(imgPath)
     if segmentationImgData is None:
         assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
-        _, segmentationImgData = generate_segmentation.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images'])
+        _, segmentationImgData = generate_segmentation.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
     if camData is None:
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint])
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice])
     assert segmentationImgData is not None, "segmentationImgData must not be none if generate is False"
     assert camData is not None, "Cam Overlay must not be none if generate is False"
     if isinstance(segmentationImgData, dict):
@@ -141,4 +152,10 @@ def plot_single(imgName, imgRoot, segmentationImgData=None, camData=None,
         camHeatmap = camData[imgName]
     else:
         camHeatmap = np.copy(camData)
+    
+    camConfig = Config.fromfile(camConfig)
+    pipeline = get_pipeline_from_config_pipeline(camConfig.data.test.pipeline)
+
+    transformedSourceImg, transformedSegmentationImg, camOverlay = generate_image_instances(sourceImg,segmentationImg,camHeatmap, pipeline)
+    generate_single_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
     
