@@ -161,7 +161,8 @@ def main(args):
             assert os.path.isfile(img), f'Provided Path is no image file: {img}'
             result = inference_segmentor(model, img)
             if TYPES[0] in args.types:
-                results[os.path.basename(img)] = result
+                # Use Index here because return value is list(tensor) even though the result is always only one array.
+                results[os.path.basename(img)] = result[0]
             if TYPES[1] in args.types:
                 images[os.path.basename(img)] = generateImage(model, img, result, palette=palette)
             pbar.set_description(f'Results generated:{index+1}/{totalFiles}')
@@ -181,6 +182,8 @@ def main(args):
         out.append(results)
     if len(images) > 0:
         out.append(images)
+
+    out.append(palette)
 
     return out
 

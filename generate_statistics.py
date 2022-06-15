@@ -24,15 +24,18 @@ def get_transform_instance(cls):
     m = getattr(m, cls)
     return m
 
-def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORMS, tensorize=True, convertToPIL=True, transpose=True):
+def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORMS, toNumpy=True,
+                            tensorize=True, convertToPIL=True, transpose=True, scaleToInt=False):
     """
     Constructs a torchvision pipeline from a config dictionary describing the pipeline from a model.
 
     :param pipeline: Dictionary containing the pipeline components.
     :param img_transforms: Dictionary of relevant transformations that are taken over from the pipeline dictionary.
+    :param toNumpy: Convert results into a numpy ndarray. Only works if tensorize=True.
     :param tensorize: Add a ToTensor Step in the pipeline (default True)
     :param convertToPIL: Convert input to PIL image requires input to be ndarray or tensor (default True)
     :param transpose: Transpose resulting image shape from (x1,x2,x3) to (x2,x3,x1) (default True)
+    :param scaleToInt: Multiply resulting tensor object by 255 (default False)
 
     :return: Pipeline object
     """
@@ -50,9 +53,25 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
                 components.append(transform(param))
     if tensorize:
         components.append(transforms.ToTensor())
+        if toNumpy:
+            components.append(transforms.Lambda(lambda x: x.numpy()))
     if transpose:
         components.append(transforms.Lambda(lambda x: np.transpose(x,(1,2,0))))
+    if scaleToInt:
+        components.append(transforms.Lambda(lambda x:x*255))
     return transforms.Compose(components)
+
+def pipeline_transform(source, pipeline):
+    """Transforms the given source Image using the specified pipeline.
+
+    :param source: Source Image
+    :type source: np.ndarray/torch.Tensor or str
+    :param pipeline: Pipeline that is applied.
+    """
+    assert isinstance(source, np.ndarray) or isinstance(source, torch.Tensor) or isinstance(source, str), "sourceImg must be a np.ndarray, Tensor or string"
+    if isinstance(source,str):
+        source = mmcv.imread(source)
+    return pipeline(source)
 
 def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
     """
@@ -71,7 +90,9 @@ def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
     transformedSegmentationImg = pipeline(segmentationImg)
     assert transformedSourceImg.shape == transformedSegmentationImg.shape
     assert transformedSourceImg.shape[:-1] == camHeatmap.shape, "Shape of camHeatmap and transformed sourceImg after Pipeline does not match"
-    camOverlay = show_cam_on_image(transformedSourceImg.numpy(), camHeatmap, use_rgb=False)
+    if isinstance(transformedSourceImg, torch.Tensor):
+        transformedSourceImg = transformedSourceImg.numpy()
+    camOverlay = show_cam_on_image(transformedSourceImg, camHeatmap, use_rgb=False)
     return (transformedSourceImg,transformedSegmentationImg, camOverlay)
 
 
@@ -109,7 +130,7 @@ def generate_single_overview(sourceImg, segmentationImg, camHeatmap, camOverlay)
     axr.axis('off')
 
 def plot_single(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, 
-    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cuda'):
+    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
     """
     Generates an overview and plot for a single Image. 
     The Segmentation and CAM can be provided or will be generated.
@@ -137,7 +158,7 @@ def plot_single(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  i
     if segmentationImgData is None:
         assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
-        _, segmentationImgData = generate_segmentation.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
+        segmentationMasks, segmentationImgData, palette = generate_segmentation.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
     if camData is None:
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
