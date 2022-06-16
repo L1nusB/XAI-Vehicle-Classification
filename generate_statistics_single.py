@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import os
 import numpy as np
 import torch
@@ -33,13 +34,41 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     segmentedCAM = [camHeatmap*mask for mask in binaryMasks]
     totalCAMActivation = camHeatmap.sum()
     segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
+    percentualSegmentedCAMActivation = segmentedCAMActivation / totalCAMActivation
 
     dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
     defaultMask = segmentedCAMActivation < np.min(dominantSegments)
     dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
-    plt.bar(classArray[defaultMask], segmentedCAMActivation[defaultMask], color='blue')
-    plt.bar(classArray[dominantMask], segmentedCAMActivation[dominantMask], color='red')
-    plt.show()
+
+    fig = plt.figure(figsize=(15,5),constrained_layout=True)
+    grid = fig.add_gridspec(ncols=2, nrows=1)
+
+    ax0 = fig.add_subplot(grid[0,0])
+    ax1 = fig.add_subplot(grid[0,1])
+
+    bars = ax0.bar(classArray, segmentedCAMActivation)
+    ticks_loc = ax0.get_xticks()
+    ax0.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    ax0.set_xticklabels(classArray, rotation=45, ha="right")
+    for index,dominant in enumerate(dominantMask):
+        if dominant:
+            bars[index].set_color('red')
+    for bar in bars:
+        height = bar.get_height()
+        ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.0f}', ha='center', va='bottom' )
+    ax0.set_title('Absolut CAM Activations')
+
+    bars = ax1.bar(classArray, percentualSegmentedCAMActivation)
+    ticks_loc = ax1.get_xticks()
+    ax1.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    ax1.set_xticklabels(classArray, rotation=45, ha="right")
+    for index,dominant in enumerate(dominantMask):
+        if dominant:
+            bars[index].set_color('red')
+    for bar in bars:
+        height = bar.get_height()
+        ax1.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom' )
+    ax1.set_title('Percentage CAM Activations')
 
 
 def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
