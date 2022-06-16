@@ -8,6 +8,7 @@ import generate_cams
 import mmcv
 from mmcv import Config
 from visualization_seg_masks import generateUnaryMasks
+import heapq
 
 import transformations
 
@@ -15,16 +16,31 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.
 
-    :param segmentation: Raw Segmentation Mask. Must match shape (244,244) or (244,244,1)
+    :param segmentation: Raw Segmentation Mask. Must match shape (224,224) or (224,224,1)
     :type segmentation: np.ndarray
-    :param camHeatmap: Raw CAM Data. Must macht shape (244,244) or (244,244,1)
+    :param camHeatmap: Raw CAM Data. Must macht shape (224,224) or (224,224,1)
     :type camHeatmap: np.ndarray
     :param classes: Classes corresponding to the categories of the segmentation.
     :type classes: list/tuple like object.
     """
-    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
+    assert segmentation.shape[0] == segmentation.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {segmentation.shape}'
+    assert camHeatmap.shape[0] == camHeatmap.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {camHeatmap.shape}'
+    classArray = np.array(classes)
     segmentation = segmentation.squeeze()
     camHeatmap = camHeatmap.squeeze()
+    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
+
+    segmentedCAM = [camHeatmap*mask for mask in binaryMasks]
+    totalCAMActivation = camHeatmap.sum()
+    segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
+
+    dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
+    defaultMask = segmentedCAMActivation < np.min(dominantSegments)
+    dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
+    plt.bar(classArray[defaultMask], segmentedCAMActivation[defaultMask], color='blue')
+    plt.bar(classArray[dominantMask], segmentedCAMActivation[dominantMask], color='red')
+    plt.show()
+
 
 def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
     """

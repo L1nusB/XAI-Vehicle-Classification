@@ -29,7 +29,7 @@ def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     return masks
 
 
-def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segmentImageOverlay =None, scaleValues=True, width=224, height=224, palette=None):
+def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segmentImageOverlay =None, scaleValues=False, width=224, height=224, palette=None):
     """Generates plots of the segmentation Masks over the original image.
 
     :param classes: List of Classes of the segmentation.
@@ -38,7 +38,7 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
     :type segmentation: np.ndarray
     :param model: Model to be used.
     :param imgData: Path to the image.
-    :param scaleValues: Scale values by a factor of 255, defaults to 255
+    :param scaleValues: Scale values by a factor of 255, defaults to False
     :type scaleValues: bool, optional
     :param width: width of the binary masks. Must match segmentation width, defaults to 224
     :type width: int, optional
@@ -58,7 +58,7 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
         assert segmentation.shape[-1] == 1, f'Segmentation does not match expected shape: {segmentation.shape}. Expected (h,w) or (h,w,1)'
         segmentation = segmentation.squeeze()
     if scaleValues:
-        segmentation*=255
+        segmentation = 255 * segmentation
     fig = plt.figure(constrained_layout=True)
     fig.set_figheight(20)
     fig.set_figwidth(15)
@@ -93,14 +93,14 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
         ax.imshow(segmentImageOverlay)
         ax.set_title('Segmentation Overlay')
 
-def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, scaleValues=True, width=224, height=224):
+def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, scaleValues=False, width=224, height=224):
     """Generates binary plots of the segmentation Masks.
 
     :param classes: List of Classes of the segmentation.
     :type classes: tuple or list
     :param segmentation: Segmentation Data. Must match shape (h,w) or (h,w,1)
     :type segmentation: np.ndarray
-    :param scaleValues: Scale values by a factor of 255, defaults to 255
+    :param scaleValues: Scale values by a factor of 255, defaults to False
     :type scaleValues: bool, optional
     :param width: width of the binary masks. Must match segmentation width, defaults to 224
     :type width: int, optional
@@ -115,7 +115,7 @@ def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, sc
         assert segmentation.shape[-1] == 1, f'Segmentation does not match expected shape: {segmentation.shape}. Expected (h,w) or (h,w,1)'
         segmentation = segmentation.squeeze()
     if scaleValues:
-        segmentation*=255
+        segmentation = 255*segmentation
     fig = plt.figure(constrained_layout=True)
     fig.set_figheight(20)
     fig.set_figwidth(15)

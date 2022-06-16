@@ -29,7 +29,7 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
     :param tensorize: Add a ToTensor Step in the pipeline (default True)
     :param convertToPIL: Convert input to PIL image requires input to be ndarray or tensor (default True)
     :param transpose: Transpose resulting image shape from (x1,x2,x3) to (x2,x3,x1) (default True)
-    :param scaleToInt: Multiply resulting tensor object by 255 (default False)
+    :param scaleToInt: Multiply resulting tensor object by 255. If toNumpy is True type will be changed to uint8 (default False)
 
     :return: Pipeline object
     """
@@ -47,12 +47,15 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
                 components.append(transform(param))
     if tensorize:
         components.append(transforms.ToTensor())
+        if scaleToInt:
+            components.append(transforms.Lambda(lambda x:x*255))
         if toNumpy:
-            components.append(transforms.Lambda(lambda x: x.numpy()))
-    if transpose:
-        components.append(transforms.Lambda(lambda x: np.transpose(x,(1,2,0))))
-    if scaleToInt:
-        components.append(transforms.Lambda(lambda x:x*255))
+            if scaleToInt:
+                components.append(transforms.Lambda(lambda x: x.numpy().astype('uint8')))
+            else:
+                components.append(transforms.Lambda(lambda x: x.numpy()))
+        if transpose:
+            components.append(transforms.Lambda(lambda x: np.transpose(x,(1,2,0))))
     return transforms.Compose(components)
 
 
