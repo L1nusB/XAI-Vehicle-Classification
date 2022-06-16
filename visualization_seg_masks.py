@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-import heapq
 
 def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     """Generate binary segmentation masks for each segment in the given Segmentation.
@@ -30,61 +29,8 @@ def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     return masks
 
 
-def show_segmentation_Masks_Overlayed(classes, segmentation, segmentImageOverlay =None, scaleValues=True, width=224, height=224, palette=None):
-    """Generates binary plots of the segmentation Masks.
-
-    :param classes: List of Classes of the segmentation.
-    :type classes: tuple or list
-    :param segmentation: Segmentation Data. Must match shape (h,w) or (h,w,1)
-    :type segmentation: np.ndarray
-    :param scaleValues: Scale values by a factor of 255, defaults to 255
-    :type scaleValues: bool, optional
-    :param width: width of the binary masks. Must match segmentation width, defaults to 224
-    :type width: int, optional
-    :param segmentImageOverlay: Optional image overlaying the segmentation over the original image.
-    :param height: Heigt of the binary masks. Must match segmentation height, defaults to 224
-    :type height: int, optional
-    :param palette: Palette to use if not using heatmaps.
-    """
-    assert width == segmentation.shape[1], f'Specified width {width} does not match segmentation width {segmentation.shape[1]}'
-    assert height == segmentation.shape[0], f'Specified height {height} does not match segmentation height {segmentation.shape[0]}'
-    if len(segmentation.shape) == 3:
-        assert segmentation.shape[-1] == 1, f'Segmentation does not match expected shape: {segmentation.shape}. Expected (h,w) or (h,w,1)'
-        segmentation = segmentation.squeeze()
-    if scaleValues:
-        segmentation*=255
-    fig = plt.figure(constrained_layout=True)
-    fig.set_figheight(20)
-    fig.set_figwidth(15)
-    ncols = 3
-    # Add one for segmentation image
-    totalPlots = len(classes)+1
-    if segmentImageOverlay is not None:
-        totalPlots+=1
-    nrows = math.ceil(totalPlots/ncols)
-    
-    grid = fig.add_gridspec(nrows,ncols)
-
-    masks = generateUnaryMasks(segmentation=segmentation, width=width, height=height, segmentCount=len(classes))
-
-    for row in range(nrows):
-        for col in range(ncols):
-            index = row*ncols+col
-            if index < len(classes):
-                ax = fig.add_subplot(grid[row,col])
-                ax.imshow(masks[index])
-                ax.set_title(classes[index])
-    ax = fig.add_subplot(grid[len(classes)//ncols, len(classes) % ncols])
-    ax.imshow(segmentation)
-    ax.set_title('Segmentation')
-    if segmentImageOverlay is not None:
-        ax = fig.add_subplot(grid[totalPlots//ncols, (len(classes)+1) % ncols])
-        ax.imshow(segmentImageOverlay)
-        ax.set_title('Segmentation Overlay')
-
-
 def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segmentImageOverlay =None, scaleValues=True, width=224, height=224, palette=None):
-    """Generates binary plots of the segmentation Masks.
+    """Generates plots of the segmentation Masks over the original image.
 
     :param classes: List of Classes of the segmentation.
     :type classes: tuple or list
@@ -127,7 +73,7 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
 
     # Magic number of what to use for the regions that are not in the binary mask when not using Heatmaps.
     # Depends on the palette used.
-    backgroundSegmentKey = -1
+    backgroundSegmentKey = 5
 
     for row in range(nrows):
         for col in range(ncols):

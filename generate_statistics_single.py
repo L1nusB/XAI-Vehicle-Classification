@@ -1,77 +1,30 @@
 import matplotlib.pyplot as plt
 import os
 import numpy as np
-import torchvision.transforms as transforms
 import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
 import generate_segmentation
 import generate_cams
 import mmcv
 from mmcv import Config
+from visualization_seg_masks import generateUnaryMasks
 
-IMAGE_TRANSFORMS = {'Resize':'size', 'CenterCrop':'crop_size'}
+import transformations
 
-def get_transform_instance(cls):
+def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
+    """Generate a bar plot showing the intersection of each segmentation region 
+    with the given CAM.
+
+    :param segmentation: Raw Segmentation Mask. Must match shape (244,244) or (244,244,1)
+    :type segmentation: np.ndarray
+    :param camHeatmap: Raw CAM Data. Must macht shape (244,244) or (244,244,1)
+    :type camHeatmap: np.ndarray
+    :param classes: Classes corresponding to the categories of the segmentation.
+    :type classes: list/tuple like object.
     """
-    Generates an instance of the given class from torchvision.transforms.
-
-    :param cls: Class name of the torchvision.transforms object
-
-    :return: Uninstantiated Class object of specified type 
-    """
-    m = __import__('torchvision')
-    m = getattr(m, 'transforms')
-    m = getattr(m, cls)
-    return m
-
-def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORMS, toNumpy=True,
-                            tensorize=True, convertToPIL=True, transpose=True, scaleToInt=False):
-    """
-    Constructs a torchvision pipeline from a config dictionary describing the pipeline from a model.
-
-    :param pipeline: Dictionary containing the pipeline components.
-    :param img_transforms: Dictionary of relevant transformations that are taken over from the pipeline dictionary.
-    :param toNumpy: Convert results into a numpy ndarray. Only works if tensorize=True.
-    :param tensorize: Add a ToTensor Step in the pipeline (default True)
-    :param convertToPIL: Convert input to PIL image requires input to be ndarray or tensor (default True)
-    :param transpose: Transpose resulting image shape from (x1,x2,x3) to (x2,x3,x1) (default True)
-    :param scaleToInt: Multiply resulting tensor object by 255 (default False)
-
-    :return: Pipeline object
-    """
-    components = []
-    if convertToPIL:
-        components.append(transforms.ToPILImage())
-    for step in pipeline:
-        if step['type'] in img_transforms.keys():
-            transform = get_transform_instance(step['type'])
-            # Make sure parameter is in component of pipeline
-            if img_transforms[step['type']] in step:
-                param = step[img_transforms[step['type']]]
-                if isinstance(param,tuple) and param[-1]==-1:
-                    param = param[:-1]
-                components.append(transform(param))
-    if tensorize:
-        components.append(transforms.ToTensor())
-        if toNumpy:
-            components.append(transforms.Lambda(lambda x: x.numpy()))
-    if transpose:
-        components.append(transforms.Lambda(lambda x: np.transpose(x,(1,2,0))))
-    if scaleToInt:
-        components.append(transforms.Lambda(lambda x:x*255))
-    return transforms.Compose(components)
-
-def pipeline_transform(source, pipeline):
-    """Transforms the given source Image using the specified pipeline.
-
-    :param source: Source Image
-    :type source: np.ndarray/torch.Tensor or str
-    :param pipeline: Pipeline that is applied.
-    """
-    assert isinstance(source, np.ndarray) or isinstance(source, torch.Tensor) or isinstance(source, str), "sourceImg must be a np.ndarray, Tensor or string"
-    if isinstance(source,str):
-        source = mmcv.imread(source)
-    return pipeline(source)
+    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
+    segmentation = segmentation.squeeze()
+    camHeatmap = camHeatmap.squeeze()
 
 def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
     """
@@ -96,7 +49,7 @@ def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
     return (transformedSourceImg,transformedSegmentationImg, camOverlay)
 
 
-def generate_single_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
+def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     """
     Generate a visualization of the different parts that are relevant for generating statistics and 
     a corresponding bar graph showing the overlap of the CAM and the segmentation regions
@@ -129,7 +82,7 @@ def generate_single_overview(sourceImg, segmentationImg, camHeatmap, camOverlay)
     axr.imshow(sourceImg)
     axr.axis('off')
 
-def plot_single(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, 
+def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, 
     segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
     """
     Generates an overview and plot for a single Image. 
@@ -175,8 +128,8 @@ def plot_single(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  i
         camHeatmap = np.copy(camData)
     
     camConfig = Config.fromfile(camConfig)
-    pipeline = get_pipeline_from_config_pipeline(camConfig.data.test.pipeline)
+    pipeline = transformations.get_pipeline_from_config_pipeline(camConfig.data.test.pipeline)
 
     transformedSourceImg, transformedSegmentationImg, camOverlay = generate_image_instances(sourceImg,segmentationImg,camHeatmap, pipeline)
-    generate_single_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
+    generate_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
     
