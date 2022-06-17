@@ -19,7 +19,7 @@ def get_transform_instance(cls):
     return m
 
 def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORMS, toNumpy=True,
-                            tensorize=True, convertToPIL=True, transpose=True, scaleToInt=False):
+                            tensorize=True, convertToPIL=True, transpose=True, scaleToInt=False, squeeze=True):
     """
     Constructs a torchvision pipeline from a config dictionary describing the pipeline from a model.
 
@@ -30,6 +30,7 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
     :param convertToPIL: Convert input to PIL image requires input to be ndarray or tensor (default True)
     :param transpose: Transpose resulting image shape from (x1,x2,x3) to (x2,x3,x1) (default True)
     :param scaleToInt: Multiply resulting tensor object by 255. If toNumpy is True type will be changed to uint8 (default False)
+    :param squeeze: Apply a squeeze operation.
 
     :return: Pipeline object
     """
@@ -56,6 +57,8 @@ def get_pipeline_from_config_pipeline(pipeline, img_transforms = IMAGE_TRANSFORM
                 components.append(transforms.Lambda(lambda x: x.numpy()))
         if transpose:
             components.append(transforms.Lambda(lambda x: np.transpose(x,(1,2,0))))
+        if squeeze:
+            components.append(transforms.Lambda(lambda x: x.squeeze()))
     return transforms.Compose(components)
 
 
