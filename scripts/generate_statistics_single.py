@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+from matplotlib.patches import Patch
 import os
 import numpy as np
 import torch
@@ -66,6 +67,73 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
         height = bar.get_height()
         ax1.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom' )
     ax1.set_title('Percentage CAM Activations')
+
+def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, showPropPercent=False):
+    """Generate a bar plot showing the intersection of each segmentation region 
+    with the given CAM as well as the proportion of the segment to the area. 
+
+    :param segmentation: Raw Segmentation Mask. Must match shape (224,224) or (224,224,1)
+    :type segmentation: np.ndarray
+    :param camHeatmap: Raw CAM Data. Must macht shape (224,224) or (224,224,1)
+    :type camHeatmap: np.ndarray
+    :param classes: Classes corresponding to the categories of the segmentation.
+    :type classes: list/tuple like object.
+    :param showPropPercent: show Percentage values of the proportional areas. Formatting is not great so default false.
+    :type showPropPercent: bool
+    """
+    assert segmentation.shape[0] == segmentation.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {segmentation.shape}'
+    assert camHeatmap.shape[0] == camHeatmap.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {camHeatmap.shape}'
+    classArray = np.array(classes)
+    segmentation = segmentation.squeeze()
+    camHeatmap = camHeatmap.squeeze()
+    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
+
+    segmentedCAM = [camHeatmap*mask for mask in binaryMasks]
+    totalCAMActivation = camHeatmap.sum()
+    segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
+    percentualSegmentedCAMActivation = segmentedCAMActivation / totalCAMActivation
+
+    proportions = [segmentation[segmentation==c].size for c in np.arange(len(classes))] / np.prod(segmentation.shape)
+
+    dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
+    defaultMask = segmentedCAMActivation < np.min(dominantSegments)
+    dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
+
+    fig = plt.figure(figsize=(13,5),constrained_layout=True)
+
+    ax0 = fig.add_subplot()
+
+    # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
+    # reducing the width
+    barwidth = 0.4
+
+    bars = ax0.bar(np.arange(classArray.size), percentualSegmentedCAMActivation, width=barwidth, label='CAM Activations')
+    ax0.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
+    ticks_loc = ax0.get_xticks()
+    ax0.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    ax0.set_xticklabels(classArray, rotation=45, ha="right")
+    for index,dominant in enumerate(dominantMask):
+        if dominant:
+            bars[index].set_color('red')
+    for bar in bars:
+        height = bar.get_height()
+        ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom')
+    bars = ax0.bar(np.arange(classArray.size)+barwidth, proportions, width=barwidth, color='g', label='Proportional Segment Coverage')
+    if showPropPercent:
+        for bar in bars:
+            height = bar.get_height()
+            ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom', color='g')
+    ax0.set_title('Relative CAM Activations')
+
+    legendMap = {
+        'b':'CAM Activations',
+        'r':'Top CAM Activations',
+        'g':'Proportional Segment Coverage'
+    }
+    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+
+    ax0.legend(handles=handles)
+
 
 
 def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
