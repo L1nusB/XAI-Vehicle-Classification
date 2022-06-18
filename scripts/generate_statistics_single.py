@@ -4,14 +4,11 @@ import os
 import numpy as np
 import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
-import generate_segmentation
-import generate_cams
+from . import generate_segmentation, generate_cams, transformations
 import mmcv
 from mmcv import Config
-from visualization_seg_masks import generateUnaryMasks
+from .visualization_seg_masks import generateUnaryMasks
 import heapq
-
-import transformations
 
 def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 

@@ -6,7 +6,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from vis_cam_custom import getCAM, getCAM_Multiple, get_default_traget_layers, get_layer, build_reshape_transform
+from .vis_cam_custom import getCAM, getCAM_Multiple, get_default_traget_layers, get_layer, build_reshape_transform
 
 try:
     from pytorch_grad_cam import (EigenCAM, EigenGradCAM, GradCAM,

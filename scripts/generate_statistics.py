@@ -5,8 +5,8 @@ import numpy as np
 import torch
 import mmcv
 from mmcv import Config
-from visualization_seg_masks import generateUnaryMasks
-import transformations
+from .visualization_seg_masks import generateUnaryMasks
+from . import transformations
 import copy
 import heapq
 
