@@ -9,6 +9,8 @@ import mmcv
 from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
 from mmseg.core.evaluation import get_palette
 
+from . import utils
+
 TYPES=[
     'masks',
     'images',
@@ -58,24 +60,6 @@ def parse_args(args):
             raise ValueError(f'Invalid Type specified:{type},'
                          f' supports {", ".join(TYPES)}.')
     return args
-
-def getImageList(args):
-    if args.ann_file:
-        with open(args.ann_file, encoding='utf-8') as f:
-            if args.classes:
-                print(f'Generating results based on file: {args.ann_file} matching any of class: {",".join(args.classes)}')
-                imageList = [os.path.join(args.img,x.strip().rsplit(' ', 1)[0]) for x in f.readlines() if any(x.startswith(s) for s in args.classes)]
-            else:
-                print(f'Generating results based on file: {args.ann_file}')
-                imageList = [os.path.join(args.img,x.strip().rsplit(' ', 1)[0]) for x in f.readlines()]
-    else:
-        if args.classes:
-            print(f'Generating results for all files in folder: {args.img} matching any of class {",".join(args.classes)}')
-            imageList = [os.path.join(args.img,f) for f in os.listdir(args.img) if any(f.startswith(s) for s in args.classes) and os.path.isfile(os.path.join(args.img,f))]
-        else:
-            print(f'Generating results for all files in folder: {args.img}')
-            imageList = [os.path.join(args.img,f) for f in os.listdir(args.img) if os.path.isfile(os.path.join(args.img,f))]
-    return imageList
 
 def generateImage(model,
                     img,
@@ -149,11 +133,13 @@ def main(args):
     np.random.set_state(state)
 
     if os.path.isfile(args.img):
+        if args.ann_file:
+            raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
         imgList = [args.img]
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgList = getImageList(args)
+        imgList = utils.getImageList(args.img, args.ann_file, args.classes)
     
     totalFiles = len(imgList)
     with tqdm(total = totalFiles) as pbar:

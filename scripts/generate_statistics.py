@@ -6,7 +6,7 @@ import torch
 import mmcv
 from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
-from . import transformations
+from . import transformations, utils, generate_cams, generate_segmentation
 import copy
 import heapq
 
@@ -72,8 +72,8 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
     :type cams: dict
     :param segmentations: Segmentations stored in a dictionary keyed by the imgNames
     :type segmentations: dict
-    :param classes: Amount of segmentation classes. If some classes are not present in segmentation.
-    :type classes: int
+    :param classes: Segmentation classes. 
+    :type classes: tuple/list
     :param pipeline: Pipeline that is applied to the segmentations. If pipeline=None nothing is applied
     """
     segs = copy.deepcopy(segmentations)
@@ -129,4 +129,73 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
         ax1.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom' )
     ax1.set_title('Average relative CAM Activations')
 
-    return totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations
+    #return totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations
+
+def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, **kwargs):
+    """Generate statistics for average absolute and average relative Intersection of CAM with 
+    segmentation Mask. See @generate_statistics. Infers the CAMs and Segmentation from parameters
+    and calls generate_statistics with generated objects.
+
+    :param imgRoot: Root the directory of the images
+    :type imgRoot: str
+    :param camConfig: Path to the Config of the CAM Model
+    :type camConfig: str
+    :param camCheckpoint: Path to the Checkpoint of the CAM Model
+    :type camCheckpoint: str
+    :param segConfig: Path to the config of the Segmentation Model
+    :type segConfig: str
+    :param segCheckpoint: Path to the checkpoint of the Segmentation Model
+    :type segCheckpoint: str
+    :param classes: Segmentation classes.
+    :type classes: tuple/list
+    :param annfile: Path to annfile defining which images will be used from imgRoot. If None all images in 
+    imgRoot will be used, defaults to None
+    :type annfile: str, optional
+    :param genClasses: Class for which the statistic will be generated. Will match all images in imgRoot
+    containing the specified Class. Can be combined with annfile., defaults to None
+    :type genClasses: str, optional
+    :param pipeline: Pipeline that will be applied to segmentations in generate_statistics.
+
+    For kwargs:
+    getPipelineFromConfig: (bool) Load the pipeline from CAMConfig. Requires the pipeline to be located under
+    data.test.pipeline
+    scalePipelineToInt: (bool) Defines whether to scale the pipeline to Int see @transformations.get_pipeline_from_config_pipeline
+    imgNames: (list like) Preloaded list of imageNames. If specified will be passed but MUST match what is generated from other parameters.
+    cams: (dict(str,np.ndarray)) Pregenerated dict of CAMs. If specified will be passed but MUST match what is generated from other parameters.
+    segmentations: (dict(str, np.ndarray)) Pregenerated dict of Segmentations. If specified will be passed but MUST match what is generated from other parameters.
+    """
+    assert os.path.isdir(imgRoot), f'imgRoot does not lead to a directory {imgRoot}'
+
+    if 'imgNames' in kwargs:
+        imgNames = kwargs['imgNames']
+    else:
+        imgNames = utils.getImageList(imgRoot, annfile, classes=genClasses, addRoot=False)
+
+    if 'cams' in kwargs:
+        cams = kwargs['cams']
+    else:
+        assert os.path.isfile(camConfig), f'camConfig is no file {camConfig}'
+        assert os.path.isfile(camCheckpoint), f'camCheckpoint is no file {camCheckpoint}'
+        if genClasses:
+            cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile, '--classes', genClasses])
+        else:
+            cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile])
+
+    if 'segmentations' in kwargs:
+        segmentations = kwargs['segmentations']
+    else:
+        assert os.path.isfile(segConfig), f'segConfig is no file {segConfig}'
+        assert os.path.isfile(segCheckpoint), f'segCheckpoint is no file {segCheckpoint}'
+        if genClasses:
+            segmentations,_ = generate_segmentation.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile, '--classes', genClasses])
+        else:
+            segmentations,_ = generate_segmentation.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile])
+
+    if 'getPipelineFromConfig' in kwargs:
+        cfg = Config.fromfile(camConfig)
+        if 'scalePipelineToInt' in kwargs:
+            pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline, scaleToInt=True)
+        else:
+            pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline)
+
+    generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline)
