@@ -115,14 +115,30 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
     for index,dominant in enumerate(dominantMask):
         if dominant:
             bars[index].set_color('red')
-    for bar in bars:
+    for index, bar in enumerate(bars):
         height = bar.get_height()
-        ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom')
+        # Dominant columns are located in center of bar.
+        if dominantMask[index]:
+            ypos = height/2.0
+        else:
+            # Move height up a tiny bit
+            ypos = height + 0.01
+        # Rotate Text by 90° if showPropPercent
+        if showPropPercent:
+            ax0.text(bar.get_x()+bar.get_width()/2.0, ypos , f'{height:.1%}', ha='center', va='bottom', rotation=90)
+        else:
+            ax0.text(bar.get_x()+bar.get_width()/2.0, height , f'{height:.1%}', ha='center', va='bottom')
     bars = ax0.bar(np.arange(classArray.size)+barwidth, proportions, width=barwidth, color='g', label='Proportional Segment Coverage')
     if showPropPercent:
-        for bar in bars:
+        for index, bar in enumerate(bars):
             height = bar.get_height()
-            ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom', color='g')
+            # Dominant columns are located in center of bar.
+            if dominantMask[index]:
+                ypos = height/2.0
+            else:
+                # Move height up a tiny bit
+                ypos = height + 0.01
+            ax0.text(bar.get_x()+bar.get_width()/2.0, ypos , f'{height:.1%}', ha='center', va='bottom', rotation=90)
     ax0.set_title('Relative CAM Activations')
 
     legendMap = {
