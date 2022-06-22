@@ -6,10 +6,32 @@ from tqdm import tqdm
 from pathlib import Path
 import mmcv
 
-from mmseg.apis import inference_segmentor, init_segmentor, show_result_pyplot
-from mmseg.core.evaluation import get_palette
+from mmseg.apis import inference_segmentor, init_segmentor
 
-from . import utils
+#from . import utils
+from utils import getImageList
+
+PALETTES={
+    'Comp_Original_Ocrnet_Carparts_Noflip':
+    [[102, 179,  92],
+       [ 14, 106,  71],
+       [188,  20, 102],
+       [121, 210, 214],
+       [ 74, 202,  87],
+       [116,  99, 103],
+       [151, 130, 149],
+       [ 52,   1,  87],
+       [235, 157,  37],
+       [129, 191, 187],
+       [ 20, 160, 203],
+       [ 57,  21, 252],
+       [235,  88,  48],
+       [218,  58, 254],
+       [169, 219, 187],
+       [207,  14, 189],
+       [189, 174, 189],
+       [ 50, 107,  54]]
+}
 
 TYPES=[
     'masks',
@@ -40,7 +62,7 @@ def parse_args(args):
     )
     parser.add_argument(
         '--palette',
-        help='Color palette used for segmentation map'
+        help='Name of Color palette used for segmentation map See static definitions above.'
     )
     parser.add_argument(
         '--ann-file',
@@ -92,26 +114,26 @@ def generateImage(model,
     return img
 
 
-def saveResults(args, results):
-    print(f'Saving results in: {args.save}')
-    Path(os.path.dirname(args.save)).mkdir(parents=True, exist_ok=True)
-    if not os.path.basename(args.save):
-        print(f'No filename specified. Generating file "generated_segmentations.npz" in directory {args.save}')
-        path = os.path.join(args.save,"generated_segmentations.npz")
+def saveResults(savePath, results, defaultName='generated_segmentations.npz'):
+    print(f'Saving results in: {savePath}')
+    Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
+    if os.path.isdir(savePath) or not os.path.basename(savePath):
+        print(f'No filename specified. Generating file {defaultName} in directory {savePath}')
+        path = os.path.join(savePath,defaultName)
     else: 
-        if os.path.basename(args.save)[-4:] == ".npz":
-            path = args.save
+        if os.path.basename(savePath)[-4:] == ".npz":
+            path = savePath
         else:
-            path = os.path.join(os.path.dirname(args.save), os.path.basename(args.save)+".npz")
+            path = os.path.join(os.path.dirname(savePath), os.path.basename(savePath)+".npz")
     
     np.savez(path,**results)
 
-def saveImages(args, images):
-    print(f'Saving result images in: {args.save}')
-    Path(os.path.dirname(args.save)).mkdir(parents=True, exist_ok=True)
-    base = os.path.dirname(args.save)
-    if not os.path.isdir(args.save):
-        print(f'Output path is not a directory. Using base directory: {os.path.dirname(args.save)}.')
+def saveImages(savePath, images):
+    print(f'Saving result images in: {savePath}')
+    Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
+    base = os.path.dirname(savePath)
+    if not os.path.isdir(savePath):
+        print(f'Output path is not a directory. Using base directory: {os.path.dirname(savePath)}.')
     outPath = os.path.join(base, 'images')
     Path(os.path.dirname(outPath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving images into folder: {outPath}')
@@ -126,11 +148,15 @@ def main(args):
 
     model = init_segmentor(args.config, args.checkpoint, device=args.device)
 
-    state = np.random.get_state()
-    np.random.seed(42)
-    # random palette
-    palette = np.random.randint(0, 255, size=(len(model.CLASSES), 3))
-    np.random.set_state(state)
+    if args.palette is None:
+        state = np.random.get_state()
+        np.random.seed(42)
+        # random palette
+        palette = np.random.randint(0, 255, size=(len(model.CLASSES), 3))
+        np.random.set_state(state)
+    else:
+        assert args.palette in PALETTES.keys(),f'Palette {args.palette} not defined. Remove parameter to generate a random one.'
+        palette = PALETTES[args.palette]
 
     if os.path.isfile(args.img):
         if args.ann_file:
@@ -139,12 +165,29 @@ def main(args):
         imgList = [args.img]
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgList = utils.getImageList(args.img, args.ann_file, args.classes)
+        #imgList = utils.getImageList(args.img, args.ann_file, args.classes)
+        imgList = getImageList(args.img, args.ann_file, args.classes)
     
     totalFiles = len(imgList)
+
+    saveGranularity = 5000
+    saveIndex = 0
+
     with tqdm(total = totalFiles) as pbar:
         for index, img in enumerate(imgList):
             assert os.path.isfile(img), f'Provided Path is no image file: {img}'
+            # Save after saveGranuality steps to avoid crashing
+            if args.save and index % saveGranularity == 0 and index > 0:
+                intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
+                print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
+                saveIndex += 1
+                if TYPES[0] in args.types:
+                    saveResults(intermediateSavePath, results)
+                # Save image files
+                if TYPES[1] in args.types:
+                    saveImages(args.save, images)
+                results = {}
+                images = {}
             result = inference_segmentor(model, img)
             if TYPES[0] in args.types:
                 # Use Index here because return value is list(tensor) even though the result is always only one array.
@@ -155,12 +198,26 @@ def main(args):
             pbar.update(1)
 
     if args.save:
+        intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
+        print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
+        saveIndex+=1
         # Save masks array
         if TYPES[0] in args.types:
-            saveResults(args, results)
+            saveResults(intermediateSavePath, results)
         # Save image files
         if TYPES[1] in args.types:
-            saveImages(args, images)
+            saveImages(args.save, images)
+
+        dic = {}
+        # Collect and combine temporary files.
+        # for i in range(saveIndex):
+        #     with np.load('temp' + str(i) + '.npz') as temp:
+        #         dic.update(dict(temp))
+            #os.remove('temp' + str(i) + '.npz')
+        
+        # Save final File
+        # if TYPES[0] in args.types:
+        #     saveResults(args.save, dic)
 
     out = []
 
@@ -176,3 +233,5 @@ def main(args):
 if __name__ == '__main__':
     import sys
     main(sys.argv[1:])
+    print("Test")
+    os.remove('temp' + str(0) + '.npz')

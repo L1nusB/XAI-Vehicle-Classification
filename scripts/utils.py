@@ -1,6 +1,9 @@
 import os
 
 def getImageList(imgRoot, annfile=None, classes=None, addRoot=True):
+    # Convert classes into list if string is passed
+    if classes and isinstance(classes, str):
+        classes = [classes]
     if annfile:
         with open(annfile, encoding='utf-8') as f:
             if classes:

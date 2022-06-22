@@ -82,9 +82,8 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
             segs[name] = transformations.pipeline_transform(segs[name],pipeline)
 
     classArray = np.array(classes)
-    numClasses = classArray.size
     numSamples = len(imgNames)
-    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames, cams, segs, numClasses)
+    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames, cams, segs, classArray.size)
     totalActivation = totalCAMActivations.sum()
 
     summarizedSegmentedCAMActivations = segmentedCAMActivations.mean(axis=0)
@@ -114,6 +113,7 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
     for bar in bars:
         height = bar.get_height()
         ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height*numSamples/totalActivation:.1%}', ha='center', va='bottom' )
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
     ax0.set_title('Average absolut CAM Activations')
 
     # For the relative we immediately take the percentage activations of each sample and average them afterwards.
@@ -127,9 +127,10 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
     for bar in bars:
         height = bar.get_height()
         ax1.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom' )
+    ax1.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax1.transAxes)
     ax1.set_title('Average relative CAM Activations')
 
-    #return totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations
+    return ax0, ax1
 
 def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, **kwargs):
     """Generate statistics for average absolute and average relative Intersection of CAM with 
@@ -161,8 +162,8 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
     data.test.pipeline
     scalePipelineToInt: (bool) Defines whether to scale the pipeline to Int see @transformations.get_pipeline_from_config_pipeline
     imgNames: (list like) Preloaded list of imageNames. If specified will be passed but MUST match what is generated from other parameters.
-    cams: (dict(str,np.ndarray)) Pregenerated dict of CAMs. If specified will be passed but MUST match what is generated from other parameters.
-    segmentations: (dict(str, np.ndarray)) Pregenerated dict of Segmentations. If specified will be passed but MUST match what is generated from other parameters.
+    cams: (dict(str,np.ndarray)) Pregenerated dict of CAMs. If specified will be passed but MUST contain what is generated from other parameters.
+    segmentations: (dict(str, np.ndarray)) Pregenerated dict of Segmentations. If specified will be passed but MUST contain what is generated from other parameters.
     """
     assert os.path.isdir(imgRoot), f'imgRoot does not lead to a directory {imgRoot}'
 
@@ -171,7 +172,11 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
     else:
         imgNames = utils.getImageList(imgRoot, annfile, classes=genClasses, addRoot=False)
 
+    if len(imgNames) == 0:
+        raise ValueError('Given parameters do not yield any images.')
+
     if 'cams' in kwargs:
+        assert set(imgNames).issubset(set(kwargs['cams'].keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
         cams = kwargs['cams']
     else:
         assert os.path.isfile(camConfig), f'camConfig is no file {camConfig}'
@@ -179,6 +184,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile, '--classes', genClasses])
 
     if 'segmentations' in kwargs:
+        assert set(imgNames).issubset(set(kwargs['segmentations'].keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
         segmentations = kwargs['segmentations']
     else:
         assert os.path.isfile(segConfig), f'segConfig is no file {segConfig}'
@@ -195,4 +201,8 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         else:
             pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline)
 
-    generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline)
+    ax0,ax1 = generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline)
+
+    if genClasses is not None:
+        ax0.set_xlabel(genClasses, fontsize='x-large')
+        ax1.set_xlabel(genClasses, fontsize='x-large')

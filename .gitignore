@@ -10,6 +10,11 @@ data/
 CAMModels/
 segmentation/
 out/
+cams/
+segmentations/
+images/
+
+*.npz
 
 # C extensions
 *.so
