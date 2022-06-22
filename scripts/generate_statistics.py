@@ -87,8 +87,8 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
     totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames, cams, segs, numClasses)
     totalActivation = totalCAMActivations.sum()
 
-    summarizedSegmentedCAMActivations = segmentedCAMActivations.sum(axis=0)/numSamples
-    summarizedPercSegmentedCAMActivations = percentualSegmentedCAMActivations.sum(axis=0)/numSamples
+    summarizedSegmentedCAMActivations = segmentedCAMActivations.mean(axis=0)
+    summarizedPercSegmentedCAMActivations = percentualSegmentedCAMActivations.mean(axis=0)
 
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMaskRaw = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
@@ -176,10 +176,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
     else:
         assert os.path.isfile(camConfig), f'camConfig is no file {camConfig}'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint is no file {camCheckpoint}'
-        if genClasses:
-            cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile, '--classes', genClasses])
-        else:
-            cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile])
+        cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile, '--classes', genClasses])
 
     if 'segmentations' in kwargs:
         segmentations = kwargs['segmentations']

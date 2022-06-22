@@ -163,13 +163,13 @@ def getCAMConfig(args):
 
 def generateDir(args):
     assert os.path.isdir(args.img)
-    if args.classes:
+    if args.classes and ('None' not in args.classes):
         print("Generating CAMs for all files in folder:" + args.img + " matching any of class: " + ",".join(args.classes))
     else:
         print("Generating CAMs for all files in folder:" + args.img)
     cams = {}
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
-    if args.classes:
+    if args.classes and ('None' not in args.classes):
         pathiter = [os.path.join(args.img,f) for f in os.listdir(args.img) if any(f.startswith(s) for s in args.classes) and os.path.isfile(os.path.join(args.img,f))]
         totalFiles = len(pathiter)
     else:
@@ -189,7 +189,7 @@ def generateDir(args):
     return cams
 
 def generateDefined(args):
-    if args.classes:
+    if args.classes and ('None' not in args.classes):
         print("Generating CAMs for all files specified by file: "+args.ann_file+ " matching any of class: " + ",".join(args.classes))
     else:
         print("Generating CAMs for all files specified by file: " + args.ann_file)
@@ -199,7 +199,7 @@ def generateDefined(args):
     if not os.path.isdir(args.img):
         raise ValueError(f'img Parameter does not specify a directory {args.img}')
     with open(args.ann_file, encoding='utf-8') as f:
-        if args.classes:
+        if args.classes and ('None' not in args.classes):
             samples = [x.strip().rsplit(' ', 1) for x in f.readlines() if any(x.startswith(s) for s in args.classes)]
         else:
             samples = [x.strip().rsplit(' ', 1) for x in f.readlines()]
