@@ -7,6 +7,7 @@ from pathlib import Path
 import mmcv
 from torch.utils.data import DataLoader
 from mmcv import Config
+import warnings
 
 from mmseg.apis import inference_segmentor, init_segmentor
 
@@ -95,7 +96,7 @@ def parse_args(args):
         '--batch-size',
         type=int,
         default=1,
-        help='Batch size used in dataloader. Only applied when -p is specified.'
+        help='NOT SUPPORTED (YET) Batch size used in dataloader. Only applied when -p is specified.'
     )
     args = parser.parse_args(args)
     for type in args.types:
@@ -181,10 +182,12 @@ def main(args):
 
     pipeline = None
     batch_size=1
+    if args.batch_size != 1:
+        warnings.warn('Batch Size Argument is currently not supported. Size of 1 will be used.')
+    
     if args.pipeline:
         cfg = Config.fromfile(args.pipeline)
         pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline, scaleToInt=args.pipelineScale)
-        batch_size = args.batch_size
 
     if os.path.isfile(args.img):
         if args.ann_file:
@@ -220,12 +223,16 @@ def main(args):
                 results[item['name'][0]] = result[0]
             if TYPES[1] in args.types:
                 images[item['name'][0]] = generateImage(model, item['img'][0].numpy(), result, palette=palette)
-            pbar.set_description(f'Results generated:{index+1}/{totalFiles}')
-            pbar.update(1)
+            if pbar.n + batch_size <= pbar.total:
+                pbar.set_description(f'Results generated:{index*batch_size+batch_size}/{totalFiles}')
+                pbar.update(batch_size)
+            else:
+                pbar.set_description(f'Results generated:{index*batch_size+1}/{totalFiles}')
+                pbar.update(1)
 
     if args.save:
         intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
-        print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
+        print(f'Saving intermediate file at {intermediateSavePath}')
         # Save masks array
         if TYPES[0] in args.types:
             saveResults(intermediateSavePath, results)
