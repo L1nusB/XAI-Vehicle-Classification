@@ -164,20 +164,18 @@ def main(args):
         if args.ann_file:
             raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
-        imgList = [args.img]
+        imgData = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)])
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        #imgList = utils.getImageList(args.img, args.ann_file, args.classes)
-        imgList = getImageList(args.img, args.ann_file, args.classes)
-    
-    totalFiles = len(imgList)
+        imgData = ImageDataset(args.img, annfile=args.ann_file, classes=args.classes)
 
+    totalFiles = len(imgData)
     saveGranularity = 5000
     saveIndex = 0
+    imgLoader = DataLoader(imgData)
 
     with tqdm(total = totalFiles) as pbar:
-        for index, img in enumerate(imgList):
-            assert os.path.isfile(img), f'Provided Path is no image file: {img}'
+        for index, item in enumerate(imgLoader):
             # Save after saveGranuality steps to avoid crashing
             if args.save and index % saveGranularity == 0 and index > 0:
                 intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
@@ -190,12 +188,12 @@ def main(args):
                 saveIndex += 1
                 results = {}
                 images = {}
-            result = inference_segmentor(model, img)
+            result = inference_segmentor(model, item['img'][0].numpy())
             if TYPES[0] in args.types:
                 # Use Index here because return value is list(tensor) even though the result is always only one array.
-                results[os.path.basename(img)] = result[0]
+                results[item['name'][0]] = result[0]
             if TYPES[1] in args.types:
-                images[os.path.basename(img)] = generateImage(model, img, result, palette=palette)
+                images[item['name'][0]] = generateImage(model, item['img'][0].numpy(), result, palette=palette)
             pbar.set_description(f'Results generated:{index+1}/{totalFiles}')
             pbar.update(1)
 

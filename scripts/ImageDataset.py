@@ -38,4 +38,6 @@ class ImageDataset(Dataset):
         if self.pipeline:
             imgArray = self.pipeline(imgArray)
 
-        return imgArray
+        item = {'img':imgArray, 'name':os.path.basename(self.imgNames[idx])}
+
+        return item
