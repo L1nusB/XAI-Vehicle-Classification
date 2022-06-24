@@ -6,11 +6,12 @@ from tqdm import tqdm
 from pathlib import Path
 import mmcv
 from torch.utils.data import DataLoader
+from mmcv import Config
 
 from mmseg.apis import inference_segmentor, init_segmentor
 
 #from . import utils
-from .utils import getImageList
+from . import transformations
 from .ImageDataset import ImageDataset
 
 PALETTES={
@@ -77,6 +78,24 @@ def parse_args(args):
         type=str,
         nargs='+',
         help='Specifies of classes for which results are generated.'
+    )
+    parser.add_argument(
+        '--pipeline', '-p',
+        type=Path,
+        help='Path to config File from which a pipeline will be extracated based on'
+        ' .data.test.pipeline'
+    )
+    parser.add_argument(
+        '--pipelineScale',
+        type=bool,
+        default=False,
+        help='Use the scaleToInt option for the pipeline. Only relevant if -p is specified.'
+    )
+    parser.add_argument(
+        '--batch-size',
+        type=int,
+        default=1,
+        help='Batch size used in dataloader. Only applied when -p is specified.'
     )
     args = parser.parse_args(args)
     for type in args.types:
@@ -160,19 +179,26 @@ def main(args):
         assert args.palette in PALETTES.keys(),f'Palette {args.palette} not defined. Remove parameter to generate a random one.'
         palette = PALETTES[args.palette]
 
+    pipeline = None
+    batch_size=1
+    if args.pipeline:
+        cfg = Config.fromfile(args.pipeline)
+        pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline, scaleToInt=args.pipelineScale)
+        batch_size = args.batch_size
+
     if os.path.isfile(args.img):
         if args.ann_file:
             raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
-        imgData = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)])
+        imgData = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], pipeline=pipeline)
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgData = ImageDataset(args.img, annfile=args.ann_file, classes=args.classes)
+        imgData = ImageDataset(args.img, annfile=args.ann_file, classes=args.classes, pipeline=pipeline)
 
     totalFiles = len(imgData)
-    saveGranularity = 5000
+    saveGranularity = 5000 / batch_size
     saveIndex = 0
-    imgLoader = DataLoader(imgData)
+    imgLoader = DataLoader(imgData, batch_size=batch_size)
 
     with tqdm(total = totalFiles) as pbar:
         for index, item in enumerate(imgLoader):
@@ -213,11 +239,12 @@ def main(args):
         # for i in range(saveIndex):
         #     with np.load('temp' + str(i) + '.npz') as temp:
         #         dic.update(dict(temp))
-            #os.remove('temp' + str(i) + '.npz')
         
         # Save final File
         # if TYPES[0] in args.types:
         #     saveResults(args.save, dic)
+        # for i in range(saveIndex):
+        #     os.remove('temp' + str(i) + '.npz')
 
     out = []
 

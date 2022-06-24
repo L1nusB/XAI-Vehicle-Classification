@@ -11,9 +11,9 @@ class ImageDataset(Dataset):
         self.imgRoot = imgRoot
         if imgNames:
             if classes:
-                self.imgNames = np.array([os.path.join(imgRoot, name) for name in imgNames if any(name.startswith(s) for s in classes)])
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if any(name.startswith(s) for s in classes)])
             else:
-                self.imgNames = np.array([os.path.join(imgRoot, name) for name in imgNames])
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames])
         elif annfile:
             assert os.path.isfile(annfile), f'annfile {annfile} is no file.'
             with open(annfile) as f:
@@ -21,23 +21,23 @@ class ImageDataset(Dataset):
                     names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines() if any(x.startswith(s) for s in classes)]
                 else:
                     names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines()]
-            self.imgNames = np.array(names)
+            self.imgPaths = np.array(names)
         else:
-            self.imgNames = np.array([f for f in os.listdir(imgRoot) if os.path.isfile(os.path.join(imgRoot,f))])
+            self.imgPaths = np.array([os.path.join(imgRoot, f) for f in os.listdir(imgRoot) if os.path.isfile(os.path.join(imgRoot,f))])
         self.pipeline = pipeline
 
     def __len__(self):
-        return self.imgNames.size
+        return self.imgPaths.size
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        imgArray = mmcv.imread(self.imgNames[idx])
+        imgArray = mmcv.imread(self.imgPaths[idx])
 
         if self.pipeline:
             imgArray = self.pipeline(imgArray)
 
-        item = {'img':imgArray, 'name':os.path.basename(self.imgNames[idx])}
+        item = {'img':imgArray, 'name':os.path.basename(self.imgPaths[idx])}
 
         return item
