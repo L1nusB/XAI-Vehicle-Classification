@@ -203,14 +203,22 @@ def main(args):
     saveIndex = 0
     imgLoader = DataLoader(imgData, batch_size=batch_size)
 
+    if args.save:
+        if os.path.isdir(args.save):
+            saveFolder = args.save
+            savePrefix = 'generated_segmentation'
+        else:
+            saveFolder = os.path.dirname(args.save)
+            savePrefix = os.path.basename(args.save) if os.path.basename(args.save) else 'generated_segmentation'
+
     with tqdm(total = totalFiles) as pbar:
         for index, item in enumerate(imgLoader):
             # Save after saveGranuality steps to avoid crashing
             if args.save and index % saveGranularity == 0 and index > 0:
-                intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
-                print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
+                savePath = os.path.join(saveFolder,  savePrefix + str(saveIndex) + '.npz')
+                print(f'Saving intermediate file after {index*batch_size} samples at {savePath}')
                 if TYPES[0] in args.types:
-                    saveResults(intermediateSavePath, results)
+                    saveResults(savePath, results)
                 # Save image files
                 if TYPES[1] in args.types:
                     saveImages(args.save, images)
@@ -231,17 +239,17 @@ def main(args):
                 pbar.update(1)
 
     if args.save:
-        intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
-        print(f'Saving intermediate file at {intermediateSavePath}')
+        savePath = os.path.join(saveFolder,  savePrefix + str(saveIndex) + '.npz')
+        print(f'Saving intermediate file at {savePath}')
         # Save masks array
         if TYPES[0] in args.types:
-            saveResults(intermediateSavePath, results)
+            saveResults(savePath, results)
         # Save image files
         if TYPES[1] in args.types:
             saveImages(args.save, images)
         saveIndex+=1
 
-        dic = {}
+        #dic = {}
         # Collect and combine temporary files.
         # for i in range(saveIndex):
         #     with np.load('temp' + str(i) + '.npz') as temp:
