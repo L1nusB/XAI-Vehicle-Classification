@@ -5,11 +5,13 @@ import os
 from tqdm import tqdm
 from pathlib import Path
 import mmcv
+from torch.utils.data import DataLoader
 
 from mmseg.apis import inference_segmentor, init_segmentor
 
 #from . import utils
-from utils import getImageList
+from .utils import getImageList
+from .ImageDataset import ImageDataset
 
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
@@ -180,12 +182,12 @@ def main(args):
             if args.save and index % saveGranularity == 0 and index > 0:
                 intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
                 print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
-                saveIndex += 1
                 if TYPES[0] in args.types:
                     saveResults(intermediateSavePath, results)
                 # Save image files
                 if TYPES[1] in args.types:
                     saveImages(args.save, images)
+                saveIndex += 1
                 results = {}
                 images = {}
             result = inference_segmentor(model, img)
@@ -200,13 +202,13 @@ def main(args):
     if args.save:
         intermediateSavePath = 'temp' + str(saveIndex) + '.npz'
         print(f'Saving intermediate file after {index} samples at {intermediateSavePath}')
-        saveIndex+=1
         # Save masks array
         if TYPES[0] in args.types:
             saveResults(intermediateSavePath, results)
         # Save image files
         if TYPES[1] in args.types:
             saveImages(args.save, images)
+        saveIndex+=1
 
         dic = {}
         # Collect and combine temporary files.
@@ -233,5 +235,3 @@ def main(args):
 if __name__ == '__main__':
     import sys
     main(sys.argv[1:])
-    print("Test")
-    os.remove('temp' + str(0) + '.npz')
