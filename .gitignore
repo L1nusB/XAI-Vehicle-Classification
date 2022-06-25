@@ -13,8 +13,11 @@ out/
 cams/
 segmentations/
 images/
+statsResults/
 
 *.npz
+*.jpg
+*.png
 
 # C extensions
 *.so

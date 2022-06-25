@@ -63,7 +63,7 @@ def accumulate_statistics(imgNames, cams, segmentations, segmentCount):
     
     return np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)
 
-def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, forceAll=False):
+def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, forceAll=False, saveResults=None):
     """Accumulates all intersections for the given imgNames.
     Returns both absolut and percentual statistics.
 
@@ -78,22 +78,26 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, fo
     :param pipeline: Pipeline that is applied to the segmentations. If pipeline=None nothing is applied
     :param forceAll: Forces function to take average over all objects without batching. Only relevant for large sample amounts.(default False)
     :type forceAll: boolean
+    :param saveResults: Save the results in array form and the plots at the given Path. Only relevant if not None.
     """
     segs = {}
     if pipeline is not None:
         for name in imgNames:
             segs[name] = transformations.pipeline_transform(segmentations[name],pipeline)
+    else:
+        segs = segmentations
+
 
     accumulateLimit = 10000
     classArray = np.array(classes)
     numSamples = len(imgNames)
     numSplits = numSamples // accumulateLimit + 1
-    totalCAMActivations = []
-    segmentedCAMActivations = []
-    percentualSegmentedCAMActivations = []
     # Decrease by one if exact match
     if numSplits*accumulateLimit == numSamples:
         numSplits-=1
+    totalCAMActivations = np.zeros((numSplits,accumulateLimit))
+    segmentedCAMActivations = np.zeros((numSplits,accumulateLimit, classArray.size))
+    percentualSegmentedCAMActivations = np.zeros((numSplits,accumulateLimit, classArray.size))
     if numSamples > accumulateLimit:
         warnings.warn(f'Statistics computed over {numSamples} items. Reverting to using batches of size {accumulateLimit} '
         'to avoid overflows. Can be overriden by using forceAll=True')
@@ -103,10 +107,13 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, fo
         if forceAll:
             totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames, cams, segs, classArray.size)
         else:
+            print(f'Generating data for Batch {batch+1}')
             totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames[lower:higher], cams, segs, classArray.size)
-        totalCAMActivations.append(totalCAMActivation)
-        segmentedCAMActivations.append(segmentedCAMActivation)
-        percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
+        totalCAMActivations[batch] = np.pad(totalCAMActivation, pad_width=(0,totalCAMActivations.shape[1]-totalCAMActivation.shape[0]), mode='constant')
+        segmentedCAMActivations[batch] = np.pad(segmentedCAMActivation, pad_width=((0,segmentedCAMActivations.shape[1]-segmentedCAMActivation.shape[0]),(0,0)), mode='constant')
+        percentualSegmentedCAMActivations[batch] = np.pad(percentualSegmentedCAMActivation, pad_width=((0,percentualSegmentedCAMActivations.shape[1]-percentualSegmentedCAMActivation.shape[0]),(0,0)), mode='constant')
+    
+    print('Data generated.')
 
     totalCAMActivations = np.array(totalCAMActivations)
     segmentedCAMActivations = np.array(segmentedCAMActivations)
@@ -157,9 +164,13 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, fo
     ax1.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax1.transAxes)
     ax1.set_title('Average relative CAM Activations')
 
+    if saveResults:
+        utils.saveResults(saveResults, totalActivation=totalActivation, segmentedCAMActivations=summarizedSegmentedCAMActivations, percSegmentedCAMActivations=summarizedPercSegmentedCAMActivations)
+        utils.saveFigure(saveResults, fig)
+
     return ax0, ax1
 
-def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, forceAll=False, **kwargs):
+def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, forceAll=False, saveResults=None, **kwargs):
     """Generate statistics for average absolute and average relative Intersection of CAM with 
     segmentation Mask. See @generate_statistics. Infers the CAMs and Segmentation from parameters
     and calls generate_statistics with generated objects.
@@ -203,7 +214,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
 
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
-    
+
     if 'cams' in kwargs:
         assert set(imgNames).issubset(set(kwargs['cams'].keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
         cams = kwargs['cams']
@@ -214,8 +225,6 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
     if 'segmentations' in kwargs:
         assert set(imgNames).issubset(set(kwargs['segmentations'].keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
         segmentations = kwargs['segmentations']
-        # if isinstance(segmentations, np.lib.npyio.NpzFile):
-        #     segmentations = dict(segmentations)
     else:
         assert os.path.isfile(segConfig), f'segConfig is no file {segConfig}'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint is no file {segCheckpoint}'
@@ -231,7 +240,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         else:
             pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline)
 
-    ax0,ax1 = generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline, forceAll=forceAll)
+    ax0,ax1 = generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline, forceAll=forceAll, saveResults=saveResults)
 
     if genClasses is not None:
         ax0.set_xlabel(genClasses, fontsize='x-large')

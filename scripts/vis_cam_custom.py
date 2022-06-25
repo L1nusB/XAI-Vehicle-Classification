@@ -228,7 +228,7 @@ def get_default_traget_layers(model, args):
     return target_layers
 
 
-def getCAM_Multiple(img, pipeline, method, model, target_layers, use_cuda, reshape_transform, eigen_smooth, aug_smooth, target_category):
+def getCAM_without_build(img, pipeline, method, model, target_layers, use_cuda, reshape_transform, eigen_smooth, aug_smooth, target_category):
     data, _ = apply_transforms(img, pipeline)
     cam = init_cam(method, model, target_layers, use_cuda, reshape_transform)
     targets = None
