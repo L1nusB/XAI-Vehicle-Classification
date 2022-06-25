@@ -98,6 +98,13 @@ def parse_args(args):
         default=1,
         help='NOT SUPPORTED (YET) Batch size used in dataloader. Only applied when -p is specified.'
     )
+    parser.add_argument(
+        '--consolidate-out',
+        type=bool,
+        default=False,
+        help='WILL CAUSE CRASHES WHEN RESULT IS TOO LARGE. Tries to consolidate the output files '
+        ' into one.'
+    )
     args = parser.parse_args(args)
     for type in args.types:
         if not type in TYPES:
@@ -249,17 +256,20 @@ def main(args):
             saveImages(args.save, images)
         saveIndex+=1
 
-        #dic = {}
-        # Collect and combine temporary files.
-        # for i in range(saveIndex):
-        #     with np.load('temp' + str(i) + '.npz') as temp:
-        #         dic.update(dict(temp))
-        
-        # Save final File
-        # if TYPES[0] in args.types:
-        #     saveResults(args.save, dic)
-        # for i in range(saveIndex):
-        #     os.remove('temp' + str(i) + '.npz')
+        if args.consolidate_out:
+            warnings.warn('Using Consolidate Out will cause crashed if total file Size exceeds RAM Threshold.')
+
+            dic = {}
+            #Collect and combine temporary files.
+            for i in range(saveIndex):
+                with np.load('temp' + str(i) + '.npz') as temp:
+                    dic.update(dict(temp))
+            
+            #Save final File
+            if TYPES[0] in args.types:
+                saveResults(args.save, dic)
+            for i in range(saveIndex):
+                os.remove('temp' + str(i) + '.npz')
 
     out = []
 

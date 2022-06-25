@@ -22,5 +22,5 @@ def getImageList(imgRoot, annfile=None, classes=None, addRoot=True):
 
     if addRoot:
         imageList = [os.path.join(imgRoot, img) for img in imageList]
-    # Return Set to avoid accidental duplicates
-    return set(imageList)
+    # Set to avoid accidental duplicates
+    return list(set(imageList))

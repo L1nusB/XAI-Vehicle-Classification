@@ -1,3 +1,4 @@
+import warnings
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import os
@@ -62,7 +63,7 @@ def accumulate_statistics(imgNames, cams, segmentations, segmentCount):
     
     return np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)
 
-def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
+def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, forceAll=False):
     """Accumulates all intersections for the given imgNames.
     Returns both absolut and percentual statistics.
 
@@ -71,23 +72,46 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None):
     :param cams: CAMs stored in a dictionary keyed by the imgNames
     :type cams: dict
     :param segmentations: Segmentations stored in a dictionary keyed by the imgNames
-    :type segmentations: dict
+    :type segmentations: dict like
     :param classes: Segmentation classes. 
     :type classes: tuple/list
     :param pipeline: Pipeline that is applied to the segmentations. If pipeline=None nothing is applied
+    :param forceAll: Forces function to take average over all objects without batching. Only relevant for large sample amounts.(default False)
+    :type forceAll: boolean
     """
-    segs = copy.deepcopy(segmentations)
+    segs = {}
     if pipeline is not None:
         for name in imgNames:
-            segs[name] = transformations.pipeline_transform(segs[name],pipeline)
+            segs[name] = transformations.pipeline_transform(segmentations[name],pipeline)
 
+    accumulateLimit = 10000
     classArray = np.array(classes)
     numSamples = len(imgNames)
-    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames, cams, segs, classArray.size)
-    totalActivation = totalCAMActivations.sum()
+    numSplits = numSamples // accumulateLimit + 1
+    totalCAMActivations = []
+    segmentedCAMActivations = []
+    percentualSegmentedCAMActivations = []
+    # Decrease by one if exact match
+    if numSplits*accumulateLimit == numSamples:
+        numSplits-=1
+    if numSamples > accumulateLimit:
+        warnings.warn(f'Statistics computed over {numSamples} items. Reverting to using batches of size {accumulateLimit} '
+        'to avoid overflows. Can be overriden by using forceAll=True')
+    for batch in range(numSplits):
+        lower = accumulateLimit*batch
+        higher = accumulateLimit*(batch+1)
+        totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames[lower:higher], cams, segs, classArray.size)
+        totalCAMActivations.append(totalCAMActivation)
+        segmentedCAMActivations.append(segmentedCAMActivation)
+        percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
 
-    summarizedSegmentedCAMActivations = segmentedCAMActivations.mean(axis=0)
-    summarizedPercSegmentedCAMActivations = percentualSegmentedCAMActivations.mean(axis=0)
+    totalCAMActivations = np.array(totalCAMActivations)
+    segmentedCAMActivations = np.array(segmentedCAMActivations)
+    percentualSegmentedCAMActivations = np.array(percentualSegmentedCAMActivations)
+
+    totalActivation = totalCAMActivations.sum()
+    summarizedSegmentedCAMActivations = segmentedCAMActivations.mean(axis=1).mean(axis=0)
+    summarizedPercSegmentedCAMActivations = percentualSegmentedCAMActivations.mean(axis=1).mean(axis=0)
 
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMaskRaw = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
@@ -174,7 +198,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
 
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
-
+    
     if 'cams' in kwargs:
         assert set(imgNames).issubset(set(kwargs['cams'].keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
         cams = kwargs['cams']
@@ -182,10 +206,11 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         assert os.path.isfile(camConfig), f'camConfig is no file {camConfig}'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint is no file {camCheckpoint}'
         cams = generate_cams.main([imgRoot, camConfig, camCheckpoint, '--ann-file', annfile, '--classes', genClasses])
-
     if 'segmentations' in kwargs:
         assert set(imgNames).issubset(set(kwargs['segmentations'].keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
         segmentations = kwargs['segmentations']
+        # if isinstance(segmentations, np.lib.npyio.NpzFile):
+        #     segmentations = dict(segmentations)
     else:
         assert os.path.isfile(segConfig), f'segConfig is no file {segConfig}'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint is no file {segCheckpoint}'

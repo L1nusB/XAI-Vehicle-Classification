@@ -226,7 +226,7 @@ def generateDefined(args):
 def saveCAMs(args, cams):
     print("Save generated CAMs to " + args.save_path)
     Path(os.path.dirname(args.save_path)).mkdir(parents=True, exist_ok=True)
-    if not os.path.basename(args.save_path):
+    if os.path.isdir(args.save_path) or not os.path.basename(args.save_path):
         print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save_path}')
         path = os.path.join(args.save_path,"generated_cams.npz")
     else: 
