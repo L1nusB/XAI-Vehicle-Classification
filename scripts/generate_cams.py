@@ -6,7 +6,10 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from .vis_cam_custom import getCAM, getCAM_Multiple, get_default_traget_layers, get_layer, build_reshape_transform
+from .vis_cam_custom import getCAM, getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
+from . import transformations
+from .ImageDataset import ImageDataset
+from torch.utils.data import DataLoader
 
 try:
     from pytorch_grad_cam import (EigenCAM, EigenGradCAM, GradCAM,
@@ -116,34 +119,6 @@ def parse_args(args):
 
     return args
 
-def printProgess(iteration, total, prefix='', suffix='', decimals = 1, length = 50, fill = '█', printEnd = "\r"):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
-    # Print New Line on Complete
-    if iteration == total: 
-        print()
-
-def getFileCount(args):
-    folder = args.img
-    pathiter = (os.path.join(root, filename)
-        for root, _, filenames in os.walk(folder)
-        for filename in filenames
-    )
-    return len(list(pathiter))
 
 def getCAMConfig(args):
     cfg = Config.fromfile(args.config)
@@ -161,67 +136,24 @@ def getCAMConfig(args):
 
     return cfg,model,use_cuda,target_layers,reshape_transform
 
-def generateDir(args):
-    assert os.path.isdir(args.img)
-    if args.classes and ('None' not in args.classes):
-        print("Generating CAMs for all files in folder:" + args.img + " matching any of class: " + ",".join(args.classes))
-    else:
-        print("Generating CAMs for all files in folder:" + args.img)
-    cams = {}
+def generateDataset(dataset, args):
+    print(f'Generate Results for specified files')
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
-    if args.classes and ('None' not in args.classes):
-        pathiter = [os.path.join(args.img,f) for f in os.listdir(args.img) if any(f.startswith(s) for s in args.classes) and os.path.isfile(os.path.join(args.img,f))]
-        totalFiles = len(pathiter)
-    else:
-        pathiter = (os.path.join(root, filename)
-            for root, _, filenames in os.walk(args.img)
-            for filename in filenames
-        )
-        totalFiles = getFileCount(args)
-    with tqdm(total=totalFiles) as pbar:
-        for index,path in enumerate(pathiter):
-            cam = getCAM_Multiple(path, cfg.data.test.pipeline, args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, args.target_category)
-            cams[os.path.basename(path)] = cam.squeeze()
+    imgLoader = DataLoader(dataset)
+    totalFiles = len(dataset)
+
+    cams={}
+
+    with tqdm(total = totalFiles) as pbar:
+        for index, item in enumerate(imgLoader):
+            path = args.img if os.path.isfile(args.img) else os.path.join(args.img, item['name'][0])
+            cam = getCAM_without_build(path, cfg.data.test.pipeline,
+             args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, args.target_category)
+            cams[item['name'][0]] = cam.squeeze()
             pbar.set_description(f'CAMs generated:{index+1}/{totalFiles}')
             pbar.update(1)
-            #printProgess(iteration=index+1, total=totalFiles, prefix=f'CAMs generated:{index+1}/{totalFiles}')
-            #print(f'CAMs generated:{index+1}/{totalFiles}')
     return cams
 
-def generateDefined(args):
-    if args.classes and ('None' not in args.classes):
-        print("Generating CAMs for all files specified by file: "+args.ann_file+ " matching any of class: " + ",".join(args.classes))
-    else:
-        print("Generating CAMs for all files specified by file: " + args.ann_file)
-    if args.use_ann_labels:
-        print("Use target categories provided by annotation file.")
-    cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
-    if not os.path.isdir(args.img):
-        raise ValueError(f'img Parameter does not specify a directory {args.img}')
-    with open(args.ann_file, encoding='utf-8') as f:
-        if args.classes and ('None' not in args.classes):
-            samples = [x.strip().rsplit(' ', 1) for x in f.readlines() if any(x.startswith(s) for s in args.classes)]
-        else:
-            samples = [x.strip().rsplit(' ', 1) for x in f.readlines()]
-
-    cams = {}
-    totalFiles = len(samples)
-    with tqdm(total=totalFiles) as pbar:
-        for index, sample in enumerate(samples):
-            path = os.path.join(args.img, sample[0])
-            targets = args.target_category
-            if args.use_ann_labels:
-                if len(sample)<2:
-                    print(f'No target category in annotation file for {sample[0]} using model result.')
-                else:
-                    targets = [(int)(sample[1].split("_")[0])]
-            cam = getCAM_Multiple(path, cfg.data.test.pipeline, args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, targets)
-            cams[os.path.basename(path)] = cam.squeeze()
-            pbar.set_description(f'CAMs generated:{index+1}/{totalFiles}')
-            pbar.update(1)
-            #print(f'CAMs generated:{index+1}/{totalFiles}')
-            #printProgess(iteration=index+1, total=totalFiles, prefix=f'CAMs generated:{index+1}/{totalFiles}')
-    return cams
 
 def saveCAMs(args, cams):
     print("Save generated CAMs to " + args.save_path)
@@ -242,6 +174,7 @@ def saveCAMs(args, cams):
 
 def main(args):
     args = parse_args(args)
+    cams = {}
     if args.preview_model:
         cfg = Config.fromfile(args.config)
         model = init_model(cfg, args.checkpoint, device=args.device)
@@ -249,14 +182,16 @@ def main(args):
         print('\n Please remove `--preview-model` to get the CAM.')
         return
 
-    if args.ann_file:
-        cams = generateDefined(args) 
-    elif os.path.isdir(args.img):
-        cams = generateDir(args) 
+    if os.path.isfile(args.img):
+        if args.ann_file:
+            raise ValueError(f'img Parameter does not specify a directory {args.img}')
+        print(f'Generate Results for file: {args.img}')
+        imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)])
     else:
-        print("Generating CAM for file:" + args.img)
-        cam = getCAM(args)
-        cams = {os.path.basename(args.img): cam.squeeze()}
+        assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
+        imgDataset = ImageDataset(args.img, annfile=args.ann_file, classes=args.classes)
+
+    cams = generateDataset(imgDataset, args)
 
     if args.save_path:
         saveCAMs(args, cams)

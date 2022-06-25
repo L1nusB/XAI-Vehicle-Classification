@@ -23,7 +23,10 @@ class ImageDataset(Dataset):
                     names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines()]
             self.imgPaths = np.array(names)
         else:
-            self.imgPaths = np.array([os.path.join(imgRoot, f) for f in os.listdir(imgRoot) if os.path.isfile(os.path.join(imgRoot,f))])
+            if classes:
+                self.imgPaths = np.array([os.path.join(imgRoot, f) for f in os.listdir(imgRoot) if any(f.startswith(s) for s in classes) and os.path.isfile(os.path.join(imgRoot,f))])
+            else:
+                self.imgPaths = np.array([os.path.join(imgRoot, f) for f in os.listdir(imgRoot) if os.path.isfile(os.path.join(imgRoot,f))])
         self.pipeline = pipeline
 
     def __len__(self):
