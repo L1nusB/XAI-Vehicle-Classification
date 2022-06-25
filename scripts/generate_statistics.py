@@ -100,7 +100,10 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, fo
     for batch in range(numSplits):
         lower = accumulateLimit*batch
         higher = accumulateLimit*(batch+1)
-        totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames[lower:higher], cams, segs, classArray.size)
+        if forceAll:
+            totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames, cams, segs, classArray.size)
+        else:
+            totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames[lower:higher], cams, segs, classArray.size)
         totalCAMActivations.append(totalCAMActivation)
         segmentedCAMActivations.append(segmentedCAMActivation)
         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
@@ -156,7 +159,7 @@ def generate_statistic(imgNames, cams, segmentations, classes, pipeline=None, fo
 
     return ax0, ax1
 
-def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, **kwargs):
+def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=None, segConfig=None, segCheckpoint=None, annfile=None, genClasses=None, pipeline=None, forceAll=False, **kwargs):
     """Generate statistics for average absolute and average relative Intersection of CAM with 
     segmentation Mask. See @generate_statistics. Infers the CAMs and Segmentation from parameters
     and calls generate_statistics with generated objects.
@@ -180,6 +183,8 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
     containing the specified Class. Can be combined with annfile., defaults to None
     :type genClasses: str, optional
     :param pipeline: Pipeline that will be applied to segmentations in generate_statistics.
+    :param forceAll: Forces function to take average over all objects without batching. Only relevant for large sample amounts.(default False)
+    :type forceAll: boolean
 
     For kwargs:
     getPipelineFromConfig: (bool) Load the pipeline from CAMConfig. Requires the pipeline to be located under
@@ -226,7 +231,7 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         else:
             pipeline = transformations.get_pipeline_from_config_pipeline(cfg.data.test.pipeline)
 
-    ax0,ax1 = generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline)
+    ax0,ax1 = generate_statistic(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, pipeline=pipeline, forceAll=forceAll)
 
     if genClasses is not None:
         ax0.set_xlabel(genClasses, fontsize='x-large')
