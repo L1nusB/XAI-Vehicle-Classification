@@ -146,6 +146,25 @@ def set_dataset_fields(cfg, args,  classes, palette):
     cfg.palette = palette # Again set custom Palette based on palettes variable.
     return cfg
 
+def get_sample_count(args):
+    fc = mmcv.FileClient.infer_client(dict(backend='disk'))
+    if args.ann_file:
+        sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
+    else:
+        sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
+    return sample_size
+
+def batch_data(cfg, args, batch_size=5000):
+    import copy
+    sample_count = get_sample_count(args)
+    batch_count = sample_count//batch_size
+    if batch_count*batch_size != sample_count:
+        batch_count += 1 # Add one if not even division
+    subsets = [None] * batch_count
+    for i in range(batch_count):
+        subsets[i] = copy.copy(cfg)
+    pass
+
 def main(args):
     args = parse_args(args)
     cfg = mmcv.Config.fromfile(args.config)
@@ -204,9 +223,9 @@ def main(args):
     # IF THIS DOES NOT WORK YOU NEED TO COPY
     # THE RESIZE FROM MMCLS INTO mmseg.datasets.pipelines.transforms 
     # AS RESIZECLS CLASS
-    for step in cfg.data.test.pipeline:
-        if step.type=='MultiScaleFlipAug':
-            step.transforms.insert(0,ResizeCls(size=(224,224)))
+    # for step in cfg.data.test.pipeline:
+    #     if step.type=='MultiScaleFlipAug':
+    #         step.transforms.insert(0,ResizeCls(size=(224,224)))
 
 
     # If I Want to use a pipeline beforehand (apply model to rescaled images etc.)
@@ -214,6 +233,9 @@ def main(args):
     # correct pipeline.
 
     dataset = build_dataset(cfg.data.test)
+
+    print(get_sample_size(args))
+    raise ValueError()
 
     if args.worker_size:
         workers_per_gpu = args.worker_size
