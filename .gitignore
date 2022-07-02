@@ -13,6 +13,7 @@ out/
 cams/
 segmentations/
 images/
+images_old/
 statsResults/
 
 *.npz

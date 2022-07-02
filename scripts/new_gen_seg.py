@@ -11,6 +11,8 @@ from mmcv.parallel import MMDataParallel
 from mmseg.apis import single_gpu_test, init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
+from mmseg.datasets.pipelines.transforms import ResizeCls
+
 
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
@@ -48,10 +50,11 @@ def parse_args(args):
         type=str, 
         default='./',
         help='Path to image/root folder.')
-    parser.add_argument('--sample-size',
+    parser.add_argument('--batch-size',
     type=int,
     default=1,
-    help='Number of samples each batch is processing.')
+    help='Number of samples each batch is processing. Only appliable if pipeline is given '
+    'in order to ensure all samples have same dimensions')
     parser.add_argument('--worker-size',
     type=int,
     help='Number of workers per GPU.')
@@ -157,11 +160,17 @@ def main(args):
     cfg.data.test.test_mode = True
     cfg.gpu_ids = [0]
 
+    # Save folder for image saving if specified. (Outside since it is referenced later
+    # regardless of args.save)
+    img_dir = None
     if args.save:
         work_dir, result_file = get_dir_and_file_path(args.save)
         # If images specified create folder for images
+        if TYPES[0] in args.types:
+            print(f'Saving resulting masks in {work_dir}')
         if TYPES[1] in args.types:
             img_dir = osp.join(work_dir, 'images')
+            print(f'Saving result images in {img_dir}')
             # Only use one mkdir here since it is recursive and generates work_dir
             mmcv.mkdir_or_exist(osp.abspath(img_dir))
         else:
@@ -191,6 +200,15 @@ def main(args):
     cfg.data.test = set_dataset_fields(cfg.data.test, args, classes, palette)
 
 
+    # Insert a Resize Step
+    # IF THIS DOES NOT WORK YOU NEED TO COPY
+    # THE RESIZE FROM MMCLS INTO mmseg.datasets.pipelines.transforms 
+    # AS RESIZECLS CLASS
+    for step in cfg.data.test.pipeline:
+        if step.type=='MultiScaleFlipAug':
+            step.transforms.insert(0,ResizeCls(size=(224,224)))
+
+
     # If I Want to use a pipeline beforehand (apply model to rescaled images etc.)
     # I need to modify cfg.data.test.pipeline here so the dataset gets built with the
     # correct pipeline.
@@ -202,9 +220,12 @@ def main(args):
     else:
         workers_per_gpu = cfg.data.workers_per_gpu
 
+    if args.batch_size != 1:
+        assert args.pipeline, 'Batch Size can ONLY be used if pipeline is given. See --batch-size'
+
     data_loader = build_dataloader(
         dataset,
-        samples_per_gpu=args.sample_size,
+        samples_per_gpu=args.batch_size,
         workers_per_gpu=workers_per_gpu,
         shuffle=False,
         dist=False
@@ -218,7 +239,8 @@ def main(args):
     # (maybe besides out_dir which could be used for saving images?)
     results = single_gpu_test(
         model=model,
-        data_loader=data_loader
+        data_loader=data_loader,
+        out_dir=img_dir
     )
 
     return results
