@@ -13,5 +13,5 @@ class GenerationDataset(CustomDataset):
     """
 
     # Ensure that it uses .png and not .jpg
-    def __init__(self, img_suffix='.png', **kwargs):
+    def __init__(self, img_suffix='.jpg', **kwargs):
         super(GenerationDataset, self).__init__(img_suffix=img_suffix, **kwargs)
