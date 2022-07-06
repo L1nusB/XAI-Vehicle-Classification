@@ -1,6 +1,7 @@
 from email.generator import Generator
 from fileinput import filename
 from typing import Iterable
+import warnings
 import numpy as np
 import torch
 import argparse
@@ -104,8 +105,9 @@ def parse_args(args):
     )
     parser.add_argument(
         '--consolidate-out',
+        nargs='?',
         type=bool,
-        default=False,
+        const=True,
         help='WILL CAUSE CRASHES WHEN RESULT IS TOO LARGE. Tries to consolidate the output files '
         ' into one.'
     )
@@ -168,6 +170,10 @@ def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, cla
     sample_list = list(sample_iterator)
     if len(classes)>0:
         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in classes)]
+    if batch_size == -1:
+        with open(osp.join(work_dir, f'split{0}.txt'),'w') as f:
+            f.write('\n'.join(sample_list))
+        return
     for i in range(batch_count):
         with open(osp.join(work_dir, f'split{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
@@ -185,6 +191,10 @@ def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
     else:
         generate_split_files(fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True), batch_count, batch_size, work_dir, classes)
 
+    if batch_size == -1:
+        subset_cfgs = copy.copy(cfg)
+        subset_cfgs.split = osp.abspath(osp.join(work_dir, f'split{0}.txt'))  # Set split from generated Files
+        return [subset_cfgs]
     for i in range(batch_count):
         subset_cfgs[i] = copy.copy(cfg)
         subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split{i}.txt'))  # Set split from generated Files
@@ -258,7 +268,11 @@ def main(args):
     # I need to modify cfg.data.test.pipeline here so the dataset gets built with the
     # correct pipeline.
 
-    subset_cfgs = batch_data(cfg.data.test,args, work_dir, classes=args.classes)
+    if args.consolidate_out:
+        warnings.warn('Using Consolidate-out will cause crashes if the amount of samples exceeds memory capacity.')
+        subset_cfgs = batch_data(cfg.data.test,args, work_dir, classes=args.classes, batch_size=-1) # Using batch_size -1 causes no limit
+    else:
+        subset_cfgs = batch_data(cfg.data.test,args, work_dir, classes=args.classes)
 
     if args.worker_size:
         workers_per_gpu = args.worker_size
