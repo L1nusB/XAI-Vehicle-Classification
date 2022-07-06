@@ -288,7 +288,7 @@ def main(args):
 
         if args.save:
             print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"))
-            filenames = [i['filename'].rsplit('.')[0].strip() for i in dataset.img_infos]
+            filenames = [i['filename'].strip() for i in dataset.img_infos]
             np.savez(osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"), **dict(zip(filenames, results)))
 
 if __name__ == '__main__':
