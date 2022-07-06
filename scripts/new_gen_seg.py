@@ -15,7 +15,7 @@ from mmcv.parallel import MMDataParallel
 from mmseg.apis import single_gpu_test, init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
-from mmseg.datasets.pipelines.transforms import ResizeCls
+from mmseg.datasets.pipelines.transformsCls import ResizeCls
 
 
 PALETTES={
@@ -39,6 +39,41 @@ PALETTES={
        [189, 174, 189],
        [ 50, 107,  54]]
 }
+
+PIPELINES={
+    'Resize224':[
+        {'type': 'LoadImageFromFile'},
+        {'type': 'ResizeCls', 'size': (224,224)},
+        {'type': 'Normalize',
+            'mean': [123.675, 116.28, 103.53],
+            'std': [58.395, 57.12, 57.375],
+            'to_rgb': True},
+        {'type': 'ImageToTensor', 'keys': ['img']},
+        {'type': 'Collect', 'keys': ['img']}],
+    'Resize224CenterCrop':[
+        {'type': 'LoadImageFromFile'},
+        {'type': 'ResizeCls', 'size': (256, -1)},
+        {'type': 'CenterCropCls', 'crop_size': 224},
+        {'type': 'Normalize',
+            'mean': [123.675, 116.28, 103.53],
+            'std': [58.395, 57.12, 57.375],
+            'to_rgb': True},
+        {'type': 'ImageToTensor', 'keys': ['img']},
+        {'type': 'Collect', 'keys': ['img']}]
+}
+
+PIPELINEMAPS={
+    'cls':
+    {
+        'Resize':'ResizeCls',
+        'CenterCrop':'CenterCropCls',
+        'RandomCrop':'RandomCropCls'
+    },
+}
+
+PIPELINETRANSFORMS=[
+    'Resize','CenterCrop','RandomCrop','ResizeCls','CenterCropCls','RandomCropCls'
+]
 
 TYPES=[
     'masks',
@@ -99,9 +134,13 @@ def parse_args(args):
     )
     parser.add_argument(
         '--pipeline', '-p',
-        type=Path,
-        help='Path to config File from which a pipeline will be extracated based on'
-        ' .data.test.pipeline'
+        nargs='+',
+        default=[],
+        type=str,
+        help='Specify whether to apply a pipeline transformation before calculating '
+        'the segmentations or afterwards. The second part specifies what pipeline is applied '
+        'either by passing a configPath or a predefined Pipeline Mapping. Additionally it can be '
+        'specified if a given pipeline will be compared to a translation table for the components.'
     )
     parser.add_argument(
         '--consolidate-out',
@@ -200,6 +239,45 @@ def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
         subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split{i}.txt'))  # Set split from generated Files
     return subset_cfgs
 
+def get_pipeline(args):
+    prePipeline = None
+    postPipeline = None
+    if len(args.pipeline)>0:
+        posSpecifier = [specifier for specifier in args.pipeline if (specifier.lower() == 'pre' or specifier.lower() == 'post')]
+        assert len(posSpecifier)==1,'Either pre or post must be specified when using pipeline.'
+        posSpecifier = posSpecifier[0]
+        predefined = [specifier for specifier in args.pipeline if specifier in PIPELINES]
+        assert len(predefined) < 2, 'Only one predefined Pipeline can be specified.'
+        if len(predefined)>0:
+            pipeline = PIPELINES[predefined[0]]
+            print(f'Using predefined pipeline: {predefined[0]}')
+        else:
+            configPath = [specifier for specifier in args.pipeline if osp.isfile(specifier)]
+            assert len(configPath)==1, 'Exactly one config Path must be specified when using pipeline.'
+            pipeline = mmcv.Config.fromfile(configPath[0]).data.test.pipeline
+            print(f'Loading Pipeline from Config {configPath[0]}')
+
+            mapSpecifier = [specifier for specifier in args.pipeline if specifier in PIPELINEMAPS]
+            if len(mapSpecifier)>0:
+                assert len(mapSpecifier)==1,'Only one Map Specifier can be applied.'
+                mapping = PIPELINEMAPS[mapSpecifier[0]]
+                for step in pipeline:
+                    if step['type'] in mapping:
+                        step['type'] = mapping[step['type']]
+            
+
+        if posSpecifier.lower() == 'pre':
+            prePipeline = []
+            # Remove 'Pre/Postprocessing' steps like Loading, Collect, Normalize,...
+            for step in pipeline:
+                if step['type'] in PIPELINETRANSFORMS:
+                    prePipeline.append(step)
+            postPipeline = None
+        else:
+            prePipeline = None
+            postPipeline = pipeline
+    return prePipeline, postPipeline
+
 def main(args):
     args = parse_args(args)
     cfg = mmcv.Config.fromfile(args.config)
@@ -254,6 +332,13 @@ def main(args):
 
     cfg.data.test = set_dataset_fields(cfg.data.test, args, classes, palette)
 
+    prePipeline, postPipeline = get_pipeline(args)
+
+    if prePipeline:
+        print('Adding Pipeline steps into preprocessing.')
+        for step in cfg.data.test.pipeline:
+            if step.type=='MultiScaleFlipAug':
+                step.transforms = prePipeline + step.transforms
 
     # Insert a Resize Step
     # IF THIS DOES NOT WORK YOU NEED TO COPY
