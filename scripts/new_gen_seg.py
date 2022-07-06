@@ -1,6 +1,3 @@
-from email.generator import Generator
-from fileinput import filename
-from typing import Iterable
 import warnings
 import numpy as np
 import torch
@@ -15,8 +12,7 @@ from mmcv.parallel import MMDataParallel
 from mmseg.apis import single_gpu_test, init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
-from mmseg.datasets.pipelines.transformsCls import ResizeCls
-
+from . import postTransform
 
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
@@ -41,25 +37,58 @@ PALETTES={
 }
 
 PIPELINES={
-    'Resize224':[
-        {'type': 'LoadImageFromFile'},
-        {'type': 'ResizeCls', 'size': (224,224)},
-        {'type': 'Normalize',
-            'mean': [123.675, 116.28, 103.53],
-            'std': [58.395, 57.12, 57.375],
-            'to_rgb': True},
-        {'type': 'ImageToTensor', 'keys': ['img']},
-        {'type': 'Collect', 'keys': ['img']}],
-    'Resize224CenterCrop':[
-        {'type': 'LoadImageFromFile'},
-        {'type': 'ResizeCls', 'size': (256, -1)},
-        {'type': 'CenterCropCls', 'crop_size': 224},
-        {'type': 'Normalize',
-            'mean': [123.675, 116.28, 103.53],
-            'std': [58.395, 57.12, 57.375],
-            'to_rgb': True},
-        {'type': 'ImageToTensor', 'keys': ['img']},
-        {'type': 'Collect', 'keys': ['img']}]
+    'Resize224':
+    {
+        'pre':
+        [
+            {'type': 'LoadImageFromFile'},
+            {'type': 'ResizeCls', 'size': (224,224)},
+            {'type': 'Normalize',
+                'mean': [123.675, 116.28, 103.53],
+                'std': [58.395, 57.12, 57.375],
+                'to_rgb': True},
+            {'type': 'ImageToTensor', 'keys': ['img']},
+            {'type': 'Collect', 'keys': ['img']}
+        ],
+        'post':
+        [
+            {'type': 'LoadImageFromFile'},
+            {'type': 'Resize', 'size': (224,224)},
+            {'type': 'Normalize',
+                'mean': [123.675, 116.28, 103.53],
+                'std': [58.395, 57.12, 57.375],
+                'to_rgb': True},
+            {'type': 'ImageToTensor', 'keys': ['img']},
+            {'type': 'Collect', 'keys': ['img']}
+        ],
+    },
+    'Resize224CenterCrop':
+    {
+        'pre':
+        [
+            {'type': 'LoadImageFromFile'},
+            {'type': 'ResizeCls', 'size': (256, -1)},
+            {'type': 'CenterCropCls', 'crop_size': 224},
+            {'type': 'Normalize',
+                'mean': [123.675, 116.28, 103.53],
+                'std': [58.395, 57.12, 57.375],
+                'to_rgb': True},
+            {'type': 'ImageToTensor', 'keys': ['img']},
+            {'type': 'Collect', 'keys': ['img']}
+        ],
+        'post':
+        [
+            {'type': 'LoadImageFromFile'},
+            {'type': 'Resize', 'size': (256, -1)},
+            {'type': 'CenterCrop', 'crop_size': 224},
+            {'type': 'Normalize',
+                'mean': [123.675, 116.28, 103.53],
+                'std': [58.395, 57.12, 57.375],
+                'to_rgb': True},
+            {'type': 'ImageToTensor', 'keys': ['img']},
+            {'type': 'Collect', 'keys': ['img']}
+        ],
+    }
 }
 
 PIPELINEMAPS={
@@ -249,7 +278,7 @@ def get_pipeline(args):
         predefined = [specifier for specifier in args.pipeline if specifier in PIPELINES]
         assert len(predefined) < 2, 'Only one predefined Pipeline can be specified.'
         if len(predefined)>0:
-            pipeline = PIPELINES[predefined[0]]
+            pipeline = PIPELINES[predefined[0]][posSpecifier]
             print(f'Using predefined pipeline: {predefined[0]}')
         else:
             configPath = [specifier for specifier in args.pipeline if osp.isfile(specifier)]
@@ -260,22 +289,25 @@ def get_pipeline(args):
             mapSpecifier = [specifier for specifier in args.pipeline if specifier in PIPELINEMAPS]
             if len(mapSpecifier)>0:
                 assert len(mapSpecifier)==1,'Only one Map Specifier can be applied.'
+                if posSpecifier.lower()=='post':
+                    print("ASDASD")
+                    warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
                 mapping = PIPELINEMAPS[mapSpecifier[0]]
                 for step in pipeline:
                     if step['type'] in mapping:
                         step['type'] = mapping[step['type']]
             
 
-        if posSpecifier.lower() == 'pre':
-            prePipeline = []
-            # Remove 'Pre/Postprocessing' steps like Loading, Collect, Normalize,...
-            for step in pipeline:
+        transformPipeline = []
+        for step in pipeline:
                 if step['type'] in PIPELINETRANSFORMS:
-                    prePipeline.append(step)
+                    transformPipeline.append(step)
+        if posSpecifier.lower() == 'pre':
+            prePipeline = transformPipeline
             postPipeline = None
         else:
             prePipeline = None
-            postPipeline = pipeline
+            postPipeline = postTransform.get_pipeline(transformPipeline)
     return prePipeline, postPipeline
 
 def main(args):
@@ -340,19 +372,6 @@ def main(args):
             if step.type=='MultiScaleFlipAug':
                 step.transforms = prePipeline + step.transforms
 
-    # Insert a Resize Step
-    # IF THIS DOES NOT WORK YOU NEED TO COPY
-    # THE RESIZE FROM MMCLS INTO mmseg.datasets.pipelines.transforms 
-    # AS RESIZECLS CLASS
-    # for step in cfg.data.test.pipeline:
-    #     if step.type=='MultiScaleFlipAug':
-    #         step.transforms.insert(0,ResizeCls(size=(224,224)))
-
-
-    # If I Want to use a pipeline beforehand (apply model to rescaled images etc.)
-    # I need to modify cfg.data.test.pipeline here so the dataset gets built with the
-    # correct pipeline.
-
     if args.consolidate_out:
         warnings.warn('Using Consolidate-out will cause crashes if the amount of samples exceeds memory capacity.')
         subset_cfgs = batch_data(cfg.data.test,args, work_dir, classes=args.classes, batch_size=-1) # Using batch_size -1 causes no limit
@@ -384,13 +403,18 @@ def main(args):
             dist=False
         )
 
-        # All other params can be omitted 
-        # (maybe besides out_dir which could be used for saving images?)
         results = single_gpu_test(
             model=model,
             data_loader=data_loader,
             out_dir=img_dir
         )
+
+        if postPipeline:
+            transformedResults = []
+            for result in results:
+                transformedResult = postPipeline(result)
+                transformedResults.append(transformedResult)
+            results = transformedResults
 
         if args.save:
             print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"))
