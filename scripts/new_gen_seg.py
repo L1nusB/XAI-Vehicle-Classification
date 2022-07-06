@@ -149,33 +149,41 @@ def set_dataset_fields(cfg, args,  classes, palette):
     cfg.palette = palette # Again set custom Palette based on palettes variable.
     return cfg
 
-def get_sample_count(args, fc=None):
+def get_sample_count(args, fc=None, classes=[]):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
     if args.ann_file:
-        sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
+        if len(classes)>0:
+            sample_size = sum(1 for i in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes))
+        else:
+            sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
     else:
-        sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
+        if classes:
+            sample_size = sum(1 for i in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True)if any(i.startswith(c) for c in classes))
+        else:
+            sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
     return sample_size
 
-def generate_split_files(sample_iterator, batch_count, batch_size, work_dir):
+def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, classes=[]):
     sample_list = list(sample_iterator)
+    if len(classes)>0:
+        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in classes)]
     for i in range(batch_count):
         with open(osp.join(work_dir, f'split{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
-def batch_data(cfg, args, work_dir, batch_size=5000):
+def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
     import copy
     fc = mmcv.FileClient.infer_client(dict(backend='disk'))
-    sample_count = get_sample_count(args, fc)
+    sample_count = get_sample_count(args, fc, classes)
     batch_count = sample_count//batch_size
     if batch_count*batch_size != sample_count:
         batch_count += 1 # Add one if not even division
     subset_cfgs = [None] * batch_count
     if args.ann_file:
-        generate_split_files(mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')), batch_count, batch_size, work_dir)
+        generate_split_files(mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')), batch_count, batch_size, work_dir, classes)
     else:
-        generate_split_files(fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True), batch_count, batch_size, work_dir)
+        generate_split_files(fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True), batch_count, batch_size, work_dir, classes)
 
     for i in range(batch_count):
         subset_cfgs[i] = copy.copy(cfg)
@@ -250,8 +258,7 @@ def main(args):
     # I need to modify cfg.data.test.pipeline here so the dataset gets built with the
     # correct pipeline.
 
-    #dataset = build_dataset(cfg.data.test)
-    subset_cfgs = batch_data(cfg.data.test,args, work_dir)
+    subset_cfgs = batch_data(cfg.data.test,args, work_dir, classes=args.classes)
 
     if args.worker_size:
         workers_per_gpu = args.worker_size
