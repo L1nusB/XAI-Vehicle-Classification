@@ -19,6 +19,7 @@ statsResults/
 *.npz
 *.jpg
 *.png
+split*
 
 # C extensions
 *.so

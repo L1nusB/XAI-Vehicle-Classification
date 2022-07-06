@@ -1,3 +1,6 @@
+from email.generator import Generator
+from fileinput import filename
+from typing import Iterable
 import numpy as np
 import torch
 import argparse
@@ -146,24 +149,38 @@ def set_dataset_fields(cfg, args,  classes, palette):
     cfg.palette = palette # Again set custom Palette based on palettes variable.
     return cfg
 
-def get_sample_count(args):
-    fc = mmcv.FileClient.infer_client(dict(backend='disk'))
+def get_sample_count(args, fc=None):
+    if fc is None:
+        fc = mmcv.FileClient.infer_client(dict(backend='disk'))
     if args.ann_file:
         sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
     else:
         sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
     return sample_size
 
-def batch_data(cfg, args, batch_size=5000):
+def generate_split_files(sample_iterator, batch_count, batch_size, work_dir):
+    sample_list = list(sample_iterator)
+    for i in range(batch_count):
+        with open(osp.join(work_dir, f'split{i}.txt'),'w') as f:
+            f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
+
+def batch_data(cfg, args, work_dir, batch_size=5000):
     import copy
-    sample_count = get_sample_count(args)
+    fc = mmcv.FileClient.infer_client(dict(backend='disk'))
+    sample_count = get_sample_count(args, fc)
     batch_count = sample_count//batch_size
     if batch_count*batch_size != sample_count:
         batch_count += 1 # Add one if not even division
-    subsets = [None] * batch_count
+    subset_cfgs = [None] * batch_count
+    if args.ann_file:
+        generate_split_files(mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')), batch_count, batch_size, work_dir)
+    else:
+        generate_split_files(fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True), batch_count, batch_size, work_dir)
+
     for i in range(batch_count):
-        subsets[i] = copy.copy(cfg)
-    pass
+        subset_cfgs[i] = copy.copy(cfg)
+        subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split{i}.txt'))  # Set split from generated Files
+    return subset_cfgs
 
 def main(args):
     args = parse_args(args)
@@ -182,6 +199,7 @@ def main(args):
     # Save folder for image saving if specified. (Outside since it is referenced later
     # regardless of args.save)
     img_dir = None
+    work_dir = './'
     if args.save:
         work_dir, result_file = get_dir_and_file_path(args.save)
         # If images specified create folder for images
@@ -232,10 +250,8 @@ def main(args):
     # I need to modify cfg.data.test.pipeline here so the dataset gets built with the
     # correct pipeline.
 
-    dataset = build_dataset(cfg.data.test)
-
-    print(get_sample_size(args))
-    raise ValueError()
+    #dataset = build_dataset(cfg.data.test)
+    subset_cfgs = batch_data(cfg.data.test,args, work_dir)
 
     if args.worker_size:
         workers_per_gpu = args.worker_size
@@ -245,27 +261,35 @@ def main(args):
     if args.batch_size != 1:
         assert args.pipeline, 'Batch Size can ONLY be used if pipeline is given. See --batch-size'
 
-    data_loader = build_dataloader(
-        dataset,
-        samples_per_gpu=args.batch_size,
-        workers_per_gpu=workers_per_gpu,
-        shuffle=False,
-        dist=False
-    )
-
     torch.cuda.empty_cache()
 
     model = MMDataParallel(model, device_ids=cfg.gpu_ids)
 
-    # All other params can be omitted 
-    # (maybe besides out_dir which could be used for saving images?)
-    results = single_gpu_test(
-        model=model,
-        data_loader=data_loader,
-        out_dir=img_dir
-    )
+    for index, subset in enumerate(subset_cfgs):
+        print(f'Calculating results for batch {index}')
 
-    return results
+        dataset = build_dataset(subset)
+
+        data_loader = build_dataloader(
+            dataset,
+            samples_per_gpu=args.batch_size,
+            workers_per_gpu=workers_per_gpu,
+            shuffle=False,
+            dist=False
+        )
+
+        # All other params can be omitted 
+        # (maybe besides out_dir which could be used for saving images?)
+        results = single_gpu_test(
+            model=model,
+            data_loader=data_loader,
+            out_dir=img_dir
+        )
+
+        if args.save:
+            print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"))
+            filenames = [i['filename'].rsplit('.')[0].strip() for i in dataset.img_infos]
+            np.savez(osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"), **dict(zip(filenames, results)))
 
 if __name__ == '__main__':
     import sys
