@@ -2,7 +2,6 @@ import warnings
 import numpy as np
 import torch
 import argparse
-from pathlib import Path
 import os.path as osp
 
 
@@ -10,12 +9,13 @@ import mmcv
 from mmcv.runner import load_checkpoint
 from mmcv.parallel import MMDataParallel
 
-from mmseg.apis import single_gpu_test, init_segmentor
+from mmseg.apis import init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
 from .utils.pipeline import get_pipeline
 from .utils.constants import PALETTES, TYPES
 from .utils.io import generate_split_files, get_dir_and_file_path, get_sample_count
+from .utils.model import single_gpu_test_thresh
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -171,6 +171,8 @@ def main(args):
 
     assert 'CLASSES' in checkpoint.get('meta', {}), f'No CLASSES specified in the checkpoint of the model.'
     classes = checkpoint['meta']['CLASSES']
+    # Add Background class
+    classes = add_background_class(classes, background='background')
 
     if args.palette is None:
         if 'PALETTE' in checkpoint.get('meta', {}):
@@ -228,10 +230,12 @@ def main(args):
             dist=False
         )
 
-        results = single_gpu_test(
+        results = single_gpu_test_thresh(
             model=model,
             data_loader=data_loader,
-            out_dir=img_dir
+            out_dir=img_dir,
+            threshold=0.1,
+            background='background'
         )
 
         if postPipeline:
