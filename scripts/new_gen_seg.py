@@ -96,6 +96,13 @@ def parse_args(args):
                          f' supports {", ".join(TYPES)}.')
     return args
 
+def add_background_class(classes, background='background'):
+    if background in classes:
+        return classes
+    classes = classes + (background,)
+    return classes
+
+
 def set_dataset_fields(cfg, args,  classes, palette):
     cfg.type = "GenerationDataset"   # Set type of the Dataset --> Needs to match the custom Datset type in mmseg.datasets
     cfg.img_dir = args.imgDir # Path to the Data that should be converted --> somewhere/data/val

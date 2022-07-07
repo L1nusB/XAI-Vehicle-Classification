@@ -3,6 +3,7 @@ import numpy as np
 import warnings
 import mmcv
 import torch
+import os.path as osp
 
 IMAGE_TRANSFORMS = {
 'Resize':'size', 
