@@ -3,7 +3,9 @@ COPY THIS INTO mmseg.datasets.pipelines.transforms
 And add
 ResizeCls, RandomCropCls, CenterCropCls into __init__
 """
+import numpy as np
 
+from ..builder import PIPELINES
 
 @PIPELINES.register_module()
 class LoadImageFromArray(object):

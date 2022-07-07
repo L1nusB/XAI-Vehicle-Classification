@@ -12,6 +12,6 @@ class GenerationDataset(CustomDataset):
     Testing
     """
 
-    # Ensure that it uses .png and not .jpg
-    def __init__(self, img_suffix='.jpg', **kwargs):
+    # Here one could set the img_suffix
+    def __init__(self, img_suffix='', **kwargs):
         super(GenerationDataset, self).__init__(img_suffix=img_suffix, **kwargs)
