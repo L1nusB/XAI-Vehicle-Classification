@@ -5,6 +5,7 @@ import argparse
 from pathlib import Path
 import os.path as osp
 
+
 import mmcv
 from mmcv.runner import load_checkpoint
 from mmcv.parallel import MMDataParallel
@@ -12,102 +13,9 @@ from mmcv.parallel import MMDataParallel
 from mmseg.apis import single_gpu_test, init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
-from . import postTransform
-
-PALETTES={
-    'Comp_Original_Ocrnet_Carparts_Noflip':
-    [[102, 179,  92],
-       [ 14, 106,  71],
-       [188,  20, 102],
-       [121, 210, 214],
-       [ 74, 202,  87],
-       [116,  99, 103],
-       [151, 130, 149],
-       [ 52,   1,  87],
-       [235, 157,  37],
-       [129, 191, 187],
-       [ 20, 160, 203],
-       [ 57,  21, 252],
-       [235,  88,  48],
-       [218,  58, 254],
-       [169, 219, 187],
-       [207,  14, 189],
-       [189, 174, 189],
-       [ 50, 107,  54]]
-}
-
-PIPELINES={
-    'Resize224':
-    {
-        'pre':
-        [
-            {'type': 'LoadImageFromFile'},
-            {'type': 'ResizeCls', 'size': (224,224)},
-            {'type': 'Normalize',
-                'mean': [123.675, 116.28, 103.53],
-                'std': [58.395, 57.12, 57.375],
-                'to_rgb': True},
-            {'type': 'ImageToTensor', 'keys': ['img']},
-            {'type': 'Collect', 'keys': ['img']}
-        ],
-        'post':
-        [
-            {'type': 'LoadImageFromFile'},
-            {'type': 'Resize', 'size': (224,224)},
-            {'type': 'Normalize',
-                'mean': [123.675, 116.28, 103.53],
-                'std': [58.395, 57.12, 57.375],
-                'to_rgb': True},
-            {'type': 'ImageToTensor', 'keys': ['img']},
-            {'type': 'Collect', 'keys': ['img']}
-        ],
-    },
-    'Resize224CenterCrop':
-    {
-        'pre':
-        [
-            {'type': 'LoadImageFromFile'},
-            {'type': 'ResizeCls', 'size': (256, -1)},
-            {'type': 'CenterCropCls', 'crop_size': 224},
-            {'type': 'Normalize',
-                'mean': [123.675, 116.28, 103.53],
-                'std': [58.395, 57.12, 57.375],
-                'to_rgb': True},
-            {'type': 'ImageToTensor', 'keys': ['img']},
-            {'type': 'Collect', 'keys': ['img']}
-        ],
-        'post':
-        [
-            {'type': 'LoadImageFromFile'},
-            {'type': 'Resize', 'size': (256, -1)},
-            {'type': 'CenterCrop', 'crop_size': 224},
-            {'type': 'Normalize',
-                'mean': [123.675, 116.28, 103.53],
-                'std': [58.395, 57.12, 57.375],
-                'to_rgb': True},
-            {'type': 'ImageToTensor', 'keys': ['img']},
-            {'type': 'Collect', 'keys': ['img']}
-        ],
-    }
-}
-
-PIPELINEMAPS={
-    'cls':
-    {
-        'Resize':'ResizeCls',
-        'CenterCrop':'CenterCropCls',
-        'RandomCrop':'RandomCropCls'
-    },
-}
-
-PIPELINETRANSFORMS=[
-    'Resize','CenterCrop','RandomCrop','ResizeCls','CenterCropCls','RandomCropCls'
-]
-
-TYPES=[
-    'masks',
-    'images',
-]
+from .utils.pipeline import get_pipeline
+from .utils.constants import PALETTES, TYPES
+from .utils.io import generate_split_files, get_dir_and_file_path, get_sample_count
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -188,27 +96,6 @@ def parse_args(args):
                          f' supports {", ".join(TYPES)}.')
     return args
 
-def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/'):
-    directory = defaultDir
-    fileName = defaultName
-    if osp.isdir(path):
-        # Path is a directory
-        # Just use default Name
-        directory = path
-    elif osp.dirname(path):
-        # Base Directory Specified
-        # Override default Dir
-        directory = osp.dirname(path)
-    # No else since otherwise default Dir is used
-
-    if osp.basename(path):
-        fileName = osp.basename(path)
-        if osp.basename(path)[:-4] != '.npz':
-            # Change file extension to .npz
-            fileName = fileName + ".npz"
-    # Again no else needed since default is used otherwise
-    return directory, fileName
-
 def set_dataset_fields(cfg, args,  classes, palette):
     cfg.type = "GenerationDataset"   # Set type of the Dataset --> Needs to match the custom Datset type in mmseg.datasets
     cfg.img_dir = args.imgDir # Path to the Data that should be converted --> somewhere/data/val
@@ -218,33 +105,6 @@ def set_dataset_fields(cfg, args,  classes, palette):
     cfg.classes = classes    # Set custom Classes from Config since i can not encode it into the Dataset
     cfg.palette = palette # Again set custom Palette based on palettes variable.
     return cfg
-
-def get_sample_count(args, fc=None, classes=[]):
-    if fc is None:
-        fc = mmcv.FileClient.infer_client(dict(backend='disk'))
-    if args.ann_file:
-        if len(classes)>0:
-            sample_size = sum(1 for i in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes))
-        else:
-            sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
-    else:
-        if classes:
-            sample_size = sum(1 for i in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True)if any(i.startswith(c) for c in classes))
-        else:
-            sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
-    return sample_size
-
-def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, classes=[]):
-    sample_list = list(sample_iterator)
-    if len(classes)>0:
-        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in classes)]
-    if batch_size == -1:
-        with open(osp.join(work_dir, f'split{0}.txt'),'w') as f:
-            f.write('\n'.join(sample_list))
-        return
-    for i in range(batch_count):
-        with open(osp.join(work_dir, f'split{i}.txt'),'w') as f:
-            f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
 def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
     import copy
@@ -267,48 +127,6 @@ def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
         subset_cfgs[i] = copy.copy(cfg)
         subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split{i}.txt'))  # Set split from generated Files
     return subset_cfgs
-
-def get_pipeline(args):
-    prePipeline = None
-    postPipeline = None
-    if len(args.pipeline)>0:
-        posSpecifier = [specifier for specifier in args.pipeline if (specifier.lower() == 'pre' or specifier.lower() == 'post')]
-        assert len(posSpecifier)==1,'Either pre or post must be specified when using pipeline.'
-        posSpecifier = posSpecifier[0]
-        predefined = [specifier for specifier in args.pipeline if specifier in PIPELINES]
-        assert len(predefined) < 2, 'Only one predefined Pipeline can be specified.'
-        if len(predefined)>0:
-            pipeline = PIPELINES[predefined[0]][posSpecifier]
-            print(f'Using predefined pipeline: {predefined[0]}')
-        else:
-            configPath = [specifier for specifier in args.pipeline if osp.isfile(specifier)]
-            assert len(configPath)==1, 'Exactly one config Path must be specified when using pipeline.'
-            pipeline = mmcv.Config.fromfile(configPath[0]).data.test.pipeline
-            print(f'Loading Pipeline from Config {configPath[0]}')
-
-            mapSpecifier = [specifier for specifier in args.pipeline if specifier in PIPELINEMAPS]
-            if len(mapSpecifier)>0:
-                assert len(mapSpecifier)==1,'Only one Map Specifier can be applied.'
-                if posSpecifier.lower()=='post':
-                    print("ASDASD")
-                    warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
-                mapping = PIPELINEMAPS[mapSpecifier[0]]
-                for step in pipeline:
-                    if step['type'] in mapping:
-                        step['type'] = mapping[step['type']]
-            
-
-        transformPipeline = []
-        for step in pipeline:
-                if step['type'] in PIPELINETRANSFORMS:
-                    transformPipeline.append(step)
-        if posSpecifier.lower() == 'pre':
-            prePipeline = transformPipeline
-            postPipeline = None
-        else:
-            prePipeline = None
-            postPipeline = postTransform.get_pipeline(transformPipeline)
-    return prePipeline, postPipeline
 
 def main(args):
     args = parse_args(args)
