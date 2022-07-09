@@ -5,6 +5,7 @@ from mmcls.apis import init_model
 from pathlib import Path
 import numpy as np
 from tqdm import tqdm
+import mmcv
 
 from .vis_cam_custom import getCAM, getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .ImageDataset import ImageDataset
@@ -139,18 +140,16 @@ def generateDataset(dataset, args):
     print(f'Generate Results for specified files')
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
     imgLoader = DataLoader(dataset)
-    totalFiles = len(dataset)
 
     cams={}
+    prog_bar = mmcv.ProgressBar(len(dataset))
 
-    with tqdm(total = totalFiles) as pbar:
-        for index, item in enumerate(imgLoader):
-            path = args.img if os.path.isfile(args.img) else os.path.join(args.img, item['name'][0])
-            cam = getCAM_without_build(path, cfg.data.test.pipeline,
-             args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, args.target_category)
-            cams[item['name'][0]] = cam.squeeze()
-            pbar.set_description(f'CAMs generated:{index+1}/{totalFiles}')
-            pbar.update(1)
+    for item in imgLoader:
+        path = args.img if os.path.isfile(args.img) else os.path.join(args.img, item['name'][0])
+        cam = getCAM_without_build(path, cfg.data.test.pipeline,
+            args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, args.target_category)
+        cams[item['name'][0]] = cam.squeeze()
+        prog_bar.update()
     return cams
 
 
