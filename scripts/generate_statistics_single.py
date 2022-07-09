@@ -5,7 +5,7 @@ import os
 import numpy as np
 import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
-from . import generate_segmentation, generate_cams, transformations
+from . import new_gen_seg, generate_cams, transformations
 import mmcv
 from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
@@ -35,7 +35,6 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     percentualSegmentedCAMActivation = segmentedCAMActivation / totalCAMActivation
 
     dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
-    defaultMask = segmentedCAMActivation < np.min(dominantSegments)
     dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
@@ -96,7 +95,6 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
     proportions = [segmentation[segmentation==c].size for c in np.arange(len(classes))] / np.prod(segmentation.shape)
 
     dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
-    defaultMask = segmentedCAMActivation < np.min(dominantSegments)
     dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
 
     fig = plt.figure(figsize=(13,5),constrained_layout=True)
@@ -237,7 +235,12 @@ def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=
     if segmentationImgData is None:
         assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
-        segmentationMasks, segmentationImgData, palette = generate_segmentation.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
+        temp_filePath = 'temp_ann.txt'
+        with open(temp_filePath,'w') as tmp:
+            tmp.write(imgName)
+        #segmentationMasks, segmentationImgData, palette = new_gen_seg.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
+        segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
+        os.remove(temp_filePath)
     if camData is None:
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'

@@ -7,7 +7,7 @@ import torch
 import mmcv
 from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
-from . import transformations, utils, generate_cams, generate_segmentation
+from . import transformations, utils, generate_cams, new_gen_seg
 import copy
 import heapq
 
@@ -229,9 +229,9 @@ def generate_statistics_infer(imgRoot, classes, camConfig=None, camCheckpoint=No
         assert os.path.isfile(segConfig), f'segConfig is no file {segConfig}'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint is no file {segCheckpoint}'
         if genClasses:
-            segmentations,_ = generate_segmentation.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile, '--classes', genClasses])
+            segmentations,_ = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile, '--classes', genClasses])
         else:
-            segmentations,_ = generate_segmentation.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile])
+            segmentations,_ = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--types', 'masks', '--ann-file', annfile])
 
     if 'getPipelineFromConfig' in kwargs:
         cfg = Config.fromfile(camConfig)

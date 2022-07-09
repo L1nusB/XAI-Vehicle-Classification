@@ -82,6 +82,7 @@ PIPELINEMAPS={
         'CenterCrop':'CenterCropCls',
         'RandomCrop':'RandomCropCls'
     },
+    'none':{},
 }
 
 PIPELINETRANSFORMS=[

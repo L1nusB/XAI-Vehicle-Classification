@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 import numpy as np
-import mmcv
 
 def getImageList(imgRoot, annfile=None, classes=None, addRoot=True):
     # Convert classes into list if string is passed

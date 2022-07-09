@@ -7,7 +7,6 @@ import numpy as np
 from tqdm import tqdm
 
 from .vis_cam_custom import getCAM, getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
-from . import transformations
 from .ImageDataset import ImageDataset
 from torch.utils.data import DataLoader
 

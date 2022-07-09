@@ -1,3 +1,4 @@
+from tkinter.tix import IMAGE
 import torchvision.transforms as transforms
 import numpy as np
 import warnings
@@ -26,9 +27,12 @@ def get_transform_instance(cls):
     m = getattr(m, cls)
     return m
 
-def get_pipeline_torchvision(pipeline):
+def get_pipeline_torchvision(pipeline, convertToUnitInterval=True, keepRatio=True):
     components = []
-    components.append(transforms.Lambda(lambda x:torch.from_numpy(np.expand_dims(x/255,(0,1)))))  # Rescale into [0,1] interval for Tensor Arithmetic and add two dimensions
+    divident = 255 if convertToUnitInterval else 1
+    rescaleFactor = divident if keepRatio else 1
+    expansion_dims = lambda x:tuple(range(4-len(x.shape)))  # This ensures that input is always of shape [NxCxHxW]
+    components.append(transforms.Lambda(lambda x:torch.from_numpy(np.expand_dims(x/divident,expansion_dims(x)))))  # Rescale into [0,1] interval for Tensor Arithmetic and add two dimensions
     for step in pipeline:
         if step['type'] in IMAGE_TRANSFORMS:
             transform = get_transform_instance(step['type'])
@@ -39,10 +43,10 @@ def get_pipeline_torchvision(pipeline):
                 components.append(transform(param))
             else:
                 warnings.warn(f"Required key {IMAGE_TRANSFORMS[step['type']]} not in pipeline step {step}!")
-    components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*255))  # Remove extra dims and scale up before translating to numpy array.
+    components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*rescaleFactor))  # Remove extra dims and scale up before translating to numpy array.
     return transforms.Compose(components)
 
-def get_pipeline(args):
+def get_pipeline_pre_post(args, default_mapping='cls'):
     prePipeline = None
     postPipeline = None
     if len(args.pipeline)>0:
@@ -66,9 +70,12 @@ def get_pipeline(args):
                 if posSpecifier.lower()=='post':
                     warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
                 mapping = PIPELINEMAPS[mapSpecifier[0]]
-                for step in pipeline:
-                    if step['type'] in mapping:
-                        step['type'] = mapping[step['type']]
+            else:
+                print(f'No pipeline map specified. Using default {default_mapping}. Specify None if non is desired.')
+                mapping = PIPELINEMAPS[default_mapping]
+            for step in pipeline:
+                if step['type'] in mapping:
+                    step['type'] = mapping[step['type']]
             
         transformPipelineSteps = []
         for step in pipeline:
