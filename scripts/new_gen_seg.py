@@ -210,7 +210,6 @@ def main(args):
     cfg.data.test = set_dataset_fields(cfg.data.test, args, classes, palette)
 
     prePipeline, postPipeline = get_pipeline(args)
-
     if prePipeline:
         print('Adding Pipeline steps into preprocessing.')
         for step in cfg.data.test.pipeline:
@@ -230,7 +229,6 @@ def main(args):
 
     if args.batch_size != 1:
         assert args.pipeline, 'Batch Size can ONLY be used if pipeline is given. See --batch-size'
-
     torch.cuda.empty_cache()
 
 

@@ -64,14 +64,12 @@ def get_pipeline(args):
             if len(mapSpecifier)>0:
                 assert len(mapSpecifier)==1,'Only one Map Specifier can be applied.'
                 if posSpecifier.lower()=='post':
-                    print("ASDASD")
                     warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
                 mapping = PIPELINEMAPS[mapSpecifier[0]]
                 for step in pipeline:
                     if step['type'] in mapping:
                         step['type'] = mapping[step['type']]
             
-
         transformPipelineSteps = []
         for step in pipeline:
                 if step['type'] in PIPELINETRANSFORMS:
