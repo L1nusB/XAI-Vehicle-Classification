@@ -17,7 +17,7 @@ def single_gpu_test_thresh(model,
                     format_only=False,
                     format_args={},
                     threshold=0.1,
-                    background='background'):
+                    backgroundIndex=-1):
     """Test with single GPU by progressive mode.
     Uses inference method and assigns pixel responses under
     threshold to specified 'background' category.
@@ -43,7 +43,7 @@ def single_gpu_test_thresh(model,
             Default: False.
         format_args (dict): The args for format_results. Default: {}.
         threshold (float): Threshold until response is categorised as background.
-        background (str): Name of background category.
+        backgroundIndex (int): Index of background category.
     Returns:
         list: list of evaluation pre-results or list of save file names.
     """
@@ -58,9 +58,6 @@ def single_gpu_test_thresh(model,
         '``efficient_test``, ``pre_eval`` and ``format_only`` are mutually ' \
         'exclusive, only one of them could be true .'
 
-    assert background in model.CLASSES, f'Category {background} not in model.CLASSES.'
-    backgroundIndex = model.CLASSES.index(background)   # Get numerical index
-
     model.eval()
     results = []
     dataset = data_loader.dataset
@@ -74,8 +71,9 @@ def single_gpu_test_thresh(model,
 
     for batch_indices, data in zip(loader_indices, data_loader):
         with torch.no_grad():
-            result = forward_test_thres(model=model, threshold=threshold, background=backgroundIndex, **data)
-            background = result < threshold
+            _,scattered_data = model.scatter(None, data, model.device_ids)
+            result = forward_test_thres(model=model.module, threshold=threshold, background=backgroundIndex, **scattered_data[0])
+            #result = model(return_loss=False, **data)
 
         if show or out_dir:
             img_tensor = data['img'][0]
@@ -150,24 +148,24 @@ These methods apply a cutoff for the given threshold and assign those
 below the threshold to the given background class.
 """
 
-def forward_test_thres(model, imgs, img_metas, threshold, background, **kwargs):
+def forward_test_thres(model, img, img_metas, threshold, background, **kwargs):
         """
         Args:
-            imgs (List[Tensor]): the outer list indicates test-time
+            img (List[Tensor]): the outer list indicates test-time
                 augmentations and inner Tensor should have a shape NxCxHxW,
                 which contains all images in the batch.
             img_metas (List[List[dict]]): the outer list indicates test-time
                 augs (multiscale, flip, etc.) and the inner list indicates
                 images in a batch.
         """
-        for var, name in [(imgs, 'imgs'), (img_metas, 'img_metas')]:
+        for var, name in [(img, 'imgs'), (img_metas, 'img_metas')]:
             if not isinstance(var, list):
                 raise TypeError(f'{name} must be a list, but got '
                                 f'{type(var)}')
 
-        num_augs = len(imgs)
+        num_augs = len(img)
         if num_augs != len(img_metas):
-            raise ValueError(f'num of augmentations ({len(imgs)}) != '
+            raise ValueError(f'num of augmentations ({len(img)}) != '
                              f'num of image meta ({len(img_metas)})')
         # all images in the same aug batch all of the same ori_shape and pad
         # shape
@@ -180,9 +178,9 @@ def forward_test_thres(model, imgs, img_metas, threshold, background, **kwargs):
             assert all(shape == pad_shapes[0] for shape in pad_shapes)
 
         if num_augs == 1:
-            return simple_test_thres(model, imgs[0], img_metas[0], threshold, background, **kwargs)
+            return simple_test_thres(model, img[0], img_metas[0], threshold, background, **kwargs)
         else:
-            return aug_test_thres(model, imgs, img_metas, threshold, background, **kwargs)
+            return aug_test_thres(model, img, img_metas, threshold, background, **kwargs)
 
 def simple_test_thres(model, img, img_meta, threshold, background, rescale=True):
     """Simple test with single image."""

@@ -87,6 +87,20 @@ def parse_args(args):
         help='WILL CAUSE CRASHES WHEN RESULT IS TOO LARGE. Tries to consolidate the output files '
         ' into one.'
     )
+    parser.add_argument(
+        '--threshold',
+        type=float,
+        default=.7,
+        help='Threshold value which pixels will be segmented into an additional '
+        'background category.'
+    )
+    parser.add_argument(
+        '--background',
+        type=str,
+        default='background',
+        help='Name of the background category that uncertain areas will be assigned to. '
+        'If this category is not in model.CLASSES it will be added.'
+    )
     args = parser.parse_args(args)
     if args.types is None:
         args.types = ['masks']
@@ -128,11 +142,11 @@ def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
 
     if batch_size == -1:
         subset_cfgs = copy.copy(cfg)
-        subset_cfgs.split = osp.abspath(osp.join(work_dir, f'split{0}.txt'))  # Set split from generated Files
+        subset_cfgs.split = osp.abspath(osp.join(work_dir, f'split_{0}.txt'))  # Set split from generated Files
         return [subset_cfgs]
     for i in range(batch_count):
         subset_cfgs[i] = copy.copy(cfg)
-        subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split{i}.txt'))  # Set split from generated Files
+        subset_cfgs[i].split = osp.abspath(osp.join(work_dir, f'split_{i}.txt'))  # Set split from generated Files
     return subset_cfgs
 
 def main(args):
@@ -169,10 +183,14 @@ def main(args):
     model = init_segmentor(args.config, args.checkpoint, device=args.device)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
 
+    model.CLASSES = model.CLASSES + (args.background,)  # Add background class so show_results throws no error
+
     assert 'CLASSES' in checkpoint.get('meta', {}), f'No CLASSES specified in the checkpoint of the model.'
     classes = checkpoint['meta']['CLASSES']
     # Add Background class
-    classes = add_background_class(classes, background='background')
+    classes = add_background_class(classes, background=args.background)
+
+
 
     if args.palette is None:
         if 'PALETTE' in checkpoint.get('meta', {}):
@@ -215,12 +233,15 @@ def main(args):
 
     torch.cuda.empty_cache()
 
+
     model = MMDataParallel(model, device_ids=cfg.gpu_ids)
 
     for index, subset in enumerate(subset_cfgs):
         print(f'Calculating results for batch {index}')
 
         dataset = build_dataset(subset)
+        assert args.background in dataset.CLASSES, f'Category {args.background} not in dataset.CLASSES.'
+        backgroundIndex = dataset.CLASSES.index(args.background)   # Get numerical index
 
         data_loader = build_dataloader(
             dataset,
@@ -234,8 +255,8 @@ def main(args):
             model=model,
             data_loader=data_loader,
             out_dir=img_dir,
-            threshold=0.1,
-            background='background'
+            threshold=args.threshold,
+            backgroundIndex=backgroundIndex
         )
 
         if postPipeline:
@@ -246,9 +267,9 @@ def main(args):
             results = transformedResults
 
         if args.save:
-            print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"))
+            print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + '_' + str(index) + ".npz"))
             filenames = [i['filename'].strip() for i in dataset.img_infos]
-            np.savez(osp.join(work_dir, result_file.split('.')[0] + str(index) + ".npz"), **dict(zip(filenames, results)))
+            np.savez(osp.join(work_dir, result_file.split('.')[0] + '_' + str(index) + ".npz"), **dict(zip(filenames, results)))
 
 if __name__ == '__main__':
     import sys

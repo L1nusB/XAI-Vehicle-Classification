@@ -42,9 +42,9 @@ def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, cla
     if len(classes)>0:
         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in classes)]
     if batch_size == -1:
-        with open(osp.join(work_dir, f'split{0}.txt'),'w') as f:
+        with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
             f.write('\n'.join(sample_list))
         return
     for i in range(batch_count):
-        with open(osp.join(work_dir, f'split{i}.txt'),'w') as f:
+        with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
