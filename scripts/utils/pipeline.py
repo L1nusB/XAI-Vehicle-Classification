@@ -27,12 +27,16 @@ def get_transform_instance(cls):
     m = getattr(m, cls)
     return m
 
-def get_pipeline_torchvision(pipeline, convertToUnitInterval=True, keepRatio=True):
+def get_pipeline_torchvision(pipeline,scaleToInt=True, workPIL=False):
     components = []
-    divident = 255 if convertToUnitInterval else 1
-    rescaleFactor = divident if keepRatio else 1
+    rescaleFactor = 255 if scaleToInt else 1
+    resultType = 'uint8' if scaleToInt else 'float'
     expansion_dims = lambda x:tuple(range(4-len(x.shape)))  # This ensures that input is always of shape [NxCxHxW]
-    components.append(transforms.Lambda(lambda x:torch.from_numpy(np.expand_dims(x/divident,expansion_dims(x)))))  # Rescale into [0,1] interval for Tensor Arithmetic and add two dimensions
+    if workPIL:
+        components.append(transforms.Lambda(lambda x:x.astype('uint8')))
+        components.append(transforms.ToPILImage())
+    else:
+        components.append(transforms.Lambda(lambda x:torch.from_numpy(np.expand_dims(x/255,expansion_dims(x)))))  # Rescale into [0,1] interval for Tensor Arithmetic and add two dimensions
     for step in pipeline:
         if step['type'] in IMAGE_TRANSFORMS:
             transform = get_transform_instance(step['type'])
@@ -43,7 +47,14 @@ def get_pipeline_torchvision(pipeline, convertToUnitInterval=True, keepRatio=Tru
                 components.append(transform(param))
             else:
                 warnings.warn(f"Required key {IMAGE_TRANSFORMS[step['type']]} not in pipeline step {step}!")
-    components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*rescaleFactor))  # Remove extra dims and scale up before translating to numpy array.
+    if workPIL:
+        # Convert PIL back to Tensor
+        components.append(transforms.ToTensor())
+        # Remove extra dims, Convert to Numpy, switch axes, Rescale to [0,255] and then set type to uint8 
+        components.append(lambda x:(x.squeeze().numpy()*rescaleFactor))
+        components.append(lambda x: (x.transpose(1,2,0) if len(x.shape)==3 else x).astype(resultType))
+    else:
+        components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*rescaleFactor))  # Remove extra dims and scale up before translating to numpy array.
     return transforms.Compose(components)
 
 def get_pipeline_pre_post(args, default_mapping='cls'):

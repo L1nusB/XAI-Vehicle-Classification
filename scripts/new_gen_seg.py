@@ -285,8 +285,6 @@ def main(args):
     if args.results:
         imgs = {}
         for result in filenames:
-            print(result)
-            print(img_dir)
             imgs[result] = mmcv.imread(osp.join(img_dir, result))
         if not args.save:
             shutil.rmtree(img_dir)
