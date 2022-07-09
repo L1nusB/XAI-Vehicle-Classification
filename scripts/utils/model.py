@@ -193,7 +193,7 @@ def simple_test_thres(model, img, img_meta, threshold, background, rescale=True)
         # our inference backend only support 4D output
         seg_pred = seg_pred.unsqueeze(0)
         return seg_pred
-    seg_pred = seg_pred.cpu().numpy()
+    seg_pred = seg_pred.cpu().numpy().astype('uint8')
     # unravel batch dim
     seg_pred = list(seg_pred)
     return seg_pred
@@ -214,7 +214,7 @@ def aug_test_thres(model, imgs, img_metas, threshold, background, rescale=True):
     seg_maxima = seg_logit.max(dim=1)
     seg_maxima.indices[seg_maxima.values < threshold] = background
     seg_pred = seg_maxima.indices
-    seg_pred = seg_pred.cpu().numpy()
+    seg_pred = seg_pred.cpu().numpy().astype('uint8')
     # unravel batch dim
     seg_pred = list(seg_pred)
     return seg_pred
