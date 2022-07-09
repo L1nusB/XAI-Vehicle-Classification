@@ -5,11 +5,13 @@ import os
 import numpy as np
 import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
-from . import new_gen_seg, generate_cams, transformations
 import mmcv
 from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
 import heapq
+
+from . import new_gen_seg, generate_cams, transformations
+from .utils.pipeline import get_pipeline_torchvision
 
 def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -240,6 +242,7 @@ def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=
             tmp.write(imgName)
         #segmentationMasks, segmentationImgData, palette = new_gen_seg.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
         segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
+        print(segmentationImgData)
         os.remove(temp_filePath)
     if camData is None:
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
@@ -257,7 +260,12 @@ def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=
         camHeatmap = np.copy(camData)
     
     camConfig = Config.fromfile(camConfig)
-    pipeline = transformations.get_pipeline_from_config_pipeline(camConfig.data.test.pipeline)
+    #pipeline = transformations.get_pipeline_from_config_pipeline(camConfig.data.test.pipeline)
+    pipeline = get_pipeline_torchvision(camConfig.data.test.pipeline)
+    print(sourceImg)
+    print(segmentationImg)
+
+    raise ValueError()
 
     transformedSourceImg, transformedSegmentationImg, camOverlay = generate_image_instances(sourceImg,segmentationImg,camHeatmap, pipeline)
     generate_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)

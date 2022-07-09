@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import argparse
 import os.path as osp
+import shutil
 
 
 import mmcv
@@ -12,7 +13,7 @@ from mmcv.parallel import MMDataParallel
 from mmseg.apis import init_segmentor
 from mmseg.datasets import build_dataloader, build_dataset
 
-from .utils.pipeline import get_pipeline
+from .utils.pipeline import get_pipeline_pre_post
 from .utils.constants import PALETTES, TYPES
 from .utils.io import generate_split_files, get_dir_and_file_path, get_sample_count
 from .utils.model import single_gpu_test_thresh
@@ -50,6 +51,13 @@ def parse_args(args):
         nargs='?',
         const='./output/',
         help='Save generated masks/images.'
+    )
+    parser.add_argument(
+        '--results','-r',
+        type=bool,
+        nargs='?',
+        const=True,
+        help='Return the results from ONLY the last batch.'
     )
     parser.add_argument(
         '--palette',
@@ -179,6 +187,10 @@ def main(args):
             mmcv.mkdir_or_exist(osp.abspath(img_dir))
         else:
             mmcv.mkdir_or_exist(osp.abspath(work_dir))
+    elif args.results and TYPES[1] in args.types:   
+        # Temporary create images as output to be read afterwards. Will be deleted after completion.
+        img_dir = osp.join(work_dir, 'images')
+        mmcv.mkdir_or_exist(osp.abspath(img_dir))
 
     model = init_segmentor(args.config, args.checkpoint, device=args.device)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
@@ -209,7 +221,7 @@ def main(args):
 
     cfg.data.test = set_dataset_fields(cfg.data.test, args, classes, palette)
 
-    prePipeline, postPipeline = get_pipeline(args)
+    prePipeline, postPipeline = get_pipeline_pre_post(args)
     if prePipeline:
         print('Adding Pipeline steps into preprocessing.')
         for step in cfg.data.test.pipeline:
@@ -264,10 +276,21 @@ def main(args):
                 transformedResults.append(transformedResult)
             results = transformedResults
 
+        if args.save or args.results:
+            filenames = [i['filename'].strip() for i in dataset.img_infos]
         if args.save:
             print(f'\nSaving results for batch {index} at ' + osp.join(work_dir, result_file.split('.')[0] + '_' + str(index) + ".npz"))
-            filenames = [i['filename'].strip() for i in dataset.img_infos]
             np.savez(osp.join(work_dir, result_file.split('.')[0] + '_' + str(index) + ".npz"), **dict(zip(filenames, results)))
+
+    if args.results:
+        imgs = {}
+        for result in filenames:
+            print(result)
+            print(img_dir)
+            imgs[result] = mmcv.imread(osp.join(img_dir, result))
+        if not args.save:
+            shutil.rmtree(img_dir)
+        return dict(zip(filenames, results)),imgs
 
 if __name__ == '__main__':
     import sys
