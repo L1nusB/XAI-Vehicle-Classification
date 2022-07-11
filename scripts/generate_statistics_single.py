@@ -4,14 +4,11 @@ from matplotlib.patches import Patch
 import os
 import numpy as np
 from .generate_cams import generate_cam_overlay
-from pytorch_grad_cam.utils.image import show_cam_on_image
 from mmcv import Config
-from .visualization_seg_masks import generateUnaryMasks
-import heapq
 
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput
-from .utils.plot import generate_stats_single
+from .utils.plot import generate_stats_single, plot_bar
 
 def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -30,31 +27,14 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     grid = fig.add_gridspec(ncols=2, nrows=1)
 
     ax0 = fig.add_subplot(grid[0,0])
-    ax1 = fig.add_subplot(grid[0,1])
-
-    bars = ax0.bar(classArray, segmentedCAMActivation)
-    ticks_loc = ax0.get_xticks()
-    ax0.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
-    ax0.set_xticklabels(classArray, rotation=45, ha="right")
-    for index,dominant in enumerate(dominantMask):
-        if dominant:
-            bars[index].set_color('red')
-    for bar in bars:
-        height = bar.get_height()
-        ax0.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.0f}', ha='center', va='bottom' )
     ax0.set_title('Absolut CAM Activations')
-
-    bars = ax1.bar(classArray, percentualSegmentedCAMActivation)
-    ticks_loc = ax1.get_xticks()
-    ax1.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
-    ax1.set_xticklabels(classArray, rotation=45, ha="right")
-    for index,dominant in enumerate(dominantMask):
-        if dominant:
-            bars[index].set_color('red')
-    for bar in bars:
-        height = bar.get_height()
-        ax1.text(bar.get_x()+bar.get_width()/2.0, bar.get_height() , f'{height:.1%}', ha='center', va='bottom' )
+    ax1 = fig.add_subplot(grid[0,1])
     ax1.set_title('Percentage CAM Activations')
+
+    # Plot Absolute CAM Activations
+    plot_bar(ax=ax0, x_ticks=classArray, data=segmentedCAMActivation, dominantMask=dominantMask, format='.0f')
+    # Plot Relative CAM Activations
+    plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
 
 def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, showPropPercent=False):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -74,6 +54,7 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
     fig = plt.figure(figsize=(13,5),constrained_layout=True)
 
     ax0 = fig.add_subplot()
+    ax0.set_title('Relative CAM Activations')
 
     # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
     # reducing the width
@@ -81,37 +62,16 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
 
     bars = ax0.bar(np.arange(classArray.size), percentualSegmentedCAMActivation, width=barwidth, label='CAM Activations')
     ax0.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
-    ticks_loc = ax0.get_xticks()
-    ax0.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
-    ax0.set_xticklabels(classArray, rotation=45, ha="right")
-    for index,dominant in enumerate(dominantMask):
-        if dominant:
-            bars[index].set_color('red')
-    for index, bar in enumerate(bars):
-        height = bar.get_height()
-        # Dominant columns are located in center of bar.
-        if dominantMask[index]:
-            ypos = height/2.0
-        else:
-            # Move height up a tiny bit
-            ypos = height + 0.01
-        # Rotate Text by 90° if showPropPercent
-        if showPropPercent:
-            ax0.text(bar.get_x()+bar.get_width()/2.0, ypos , f'{height:.1%}', ha='center', va='bottom', rotation=90)
-        else:
-            ax0.text(bar.get_x()+bar.get_width()/2.0, height , f'{height:.1%}', ha='center', va='bottom')
-    bars = ax0.bar(np.arange(classArray.size)+barwidth, proportions, width=barwidth, color='g', label='Proportional Segment Coverage')
-    if showPropPercent:
-        for index, bar in enumerate(bars):
-            height = bar.get_height()
-            # Dominant columns are located in center of bar.
-            if dominantMask[index]:
-                ypos = height/2.0
-            else:
-                # Move height up a tiny bit
-                ypos = height + 0.01
-            ax0.text(bar.get_x()+bar.get_width()/2.0, ypos , f'{height:.1%}', ha='center', va='bottom', rotation=90)
-    ax0.set_title('Relative CAM Activations')
+
+    rotation = 90 if showPropPercent else 0
+    # Format main Data with generated bar graph
+    plot_bar(ax=ax0, bars=bars, dominantMask=dominantMask, x_tick_labels=classArray, format='.1%', textadjust_ypos=True,
+        textrotation=rotation)
+
+    # Plot proportion Data next to main Data
+    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, data=proportions, barwidth=barwidth, barcolor='g',
+        barlabel='Proportional Segment Coverage', dominantMask=dominantMask, addText=showPropPercent, hightlightDominant=False,
+        textadjust_ypos=True, format='.1%', textrotation=rotation)
 
     legendMap = {
         'b':'CAM Activations',

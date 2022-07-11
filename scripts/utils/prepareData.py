@@ -35,7 +35,7 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camImgData=None, cam
     assert (camConfig and camCheckpoint) or camImgData, 'Either config + checkpoint or data must be provided for CAM generation.'
     if camImgData:
         return np.copy(camImgData)
-    if os.path.isfile(imgPath)
+    if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
         camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice])
