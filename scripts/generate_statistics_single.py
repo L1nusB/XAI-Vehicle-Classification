@@ -3,6 +3,7 @@ import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
 import os
 import numpy as np
+from scripts.generate_cams import generate_cam_overlay
 import torch
 from pytorch_grad_cam.utils.image import show_cam_on_image
 import mmcv
@@ -10,8 +11,8 @@ from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
 import heapq
 
-from . import new_gen_seg, generate_cams
-from .utils.pipeline import get_pipeline_torchvision
+from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
+from .utils.prepareData import prepareInput
 
 def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -208,8 +209,9 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     axr.imshow(sourceImg)
     axr.axis('off')
 
-def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, 
-    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
+#def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, annfile='', method='gradcam', 
+#    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
+def plot(imgName, pipelineCfg=None,**kwargs):
     """
     Generates an overview and plot for a single Image. 
     The Segmentation and CAM can be provided or will be generated.
@@ -226,27 +228,7 @@ def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=
     :param camCheckpoint: Path tot Checkpoint File used for generating the CAM. Required if no camData is provided.
     :param camDevice: Device used for generating the CAM. (default 'cuda')
     """
-    imgPath = os.path.join(imgRoot, imgName)
-    assert os.path.isfile(imgPath), f'Specified Path does not yield valid file:{imgPath}'
-    if imgData is not None:
-        assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
-        assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
-        sourceImg = np.copy(imgData)
-    else:
-        sourceImg = mmcv.imread(imgPath)
-    if segmentationImgData is None:
-        assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
-        assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
-        temp_filePath = 'temp_ann.txt'
-        with open(temp_filePath,'w') as tmp:
-            tmp.write(imgName)
-        #segmentationMasks, segmentationImgData, palette = new_gen_seg.main([imgPath, segConfig, segCheckpoint,'--types', 'masks', 'images','--device',segDevice])
-        segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
-        os.remove(temp_filePath)
-    if camData is None:
-        assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
-        assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice])
+    sourceImg, _, segmentationImgData, camData = prepareInput(**kwargs)
     assert segmentationImgData is not None, "segmentationImgData must not be none if generate is False"
     assert camData is not None, "Cam Overlay must not be none if generate is False"
     if isinstance(segmentationImgData, dict):
@@ -257,10 +239,15 @@ def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=
         camHeatmap = camData[imgName]
     else:
         camHeatmap = np.copy(camData)
-    
-    camConfig = Config.fromfile(camConfig)
-    pipeline = get_pipeline_torchvision(camConfig.data.test.pipeline, scaleToInt=False , workPIL=True)
 
-    transformedSourceImg, transformedSegmentationImg, camOverlay = generate_image_instances(sourceImg,segmentationImg,camHeatmap, pipeline)
+    if pipelineCfg and os.path.isfile(pipelineCfg):
+        cfg = Config.fromfile(pipelineCfg)
+    else:
+        assert 'camConfig' in kwargs,'camConfig must be specified if pipelineCfg is not given.'
+        cfg = Config.fromfile(kwargs['camConfig'])
+    pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
+
+    transformedSourceImg, transformedSegmentationImg = apply_pipeline(pipeline, sourceImg, segmentationImg)
+    camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
     generate_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
     

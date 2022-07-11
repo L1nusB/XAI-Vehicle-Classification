@@ -6,6 +6,7 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 import mmcv
+from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM, getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .ImageDataset import ImageDataset
@@ -168,7 +169,11 @@ def saveCAMs(args, cams):
     
     np.savez(path,**cams)
 
-    
+
+def generate_cam_overlay(sourceImg, camHeatmap):
+    assert sourceImg.shape[:-1] == camHeatmap.shape, f"Shape of camHeatmap {camHeatmap.shape} and sourceImg (heightxwidth) {sourceImg.shape} do not match"
+    return show_cam_on_image(sourceImg, camHeatmap, use_rgb=False)
+
 
 def main(args):
     args = parse_args(args)
