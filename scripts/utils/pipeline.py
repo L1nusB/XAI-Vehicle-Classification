@@ -99,3 +99,14 @@ def get_pipeline_pre_post(args, default_mapping='cls'):
             prePipeline = None
             postPipeline = get_pipeline_torchvision(transformPipelineSteps)
     return prePipeline, postPipeline
+
+def apply_pipeline(pipeline, *args):
+    """
+    Applies the given pipeline to all objects passed in args and returns them 
+    in the same order.
+    """
+    results = []
+    for obj in args:
+        assert isinstance(obj, np.ndarray) or isinstance(obj, torch.Tensor), f"object {obj} must be a np.ndarray or Tensor"
+        results.append(pipeline(obj))
+    return results

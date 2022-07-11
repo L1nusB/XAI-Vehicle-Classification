@@ -45,9 +45,11 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camImgData=None, cam
     
     
 
-def prepareInput(prepImg=False, prepSeg=False, prepCam=False, **kwargs):
+def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
     if 'imgName' in kwargs:
-        kwargs['imgPath'] = os.path.join(kwargs['imgRoot'], kwargs['imgName'])
+        imgPath = os.path.join(kwargs['imgRoot'], kwargs['imgName'])
+        kwargs['imgPath'] = imgPath
+        assert os.path.isfile(imgPath), f'Specified Path does not yield valid file:{imgPath}'
     results = []
     if prepImg:
         imgData = prepImg(**kwargs)
