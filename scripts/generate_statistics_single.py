@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
 import os
 import numpy as np
@@ -10,17 +9,15 @@ from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput
 from .utils.plot import generate_stats_single, plot_bar
 
-def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
+def generate_bar_cam_intersection(classes, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.
-
-    :param segmentation: Raw Segmentation Mask. Must match shape (224,224) or (224,224,1)
-    :type segmentation: np.ndarray
-    :param camHeatmap: Raw CAM Data. Must macht shape (224,224) or (224,224,1)
-    :type camHeatmap: np.ndarray
     :param classes: Classes corresponding to the categories of the segmentation.
     :type classes: list/tuple like object.
+
+    for kwargs see :func:`prepareInput`
     """
+    segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
     classArray, segmentedCAMActivation, percentualSegmentedCAMActivation, dominantMask = generate_stats_single(segmentation, camHeatmap, classes)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
@@ -36,19 +33,18 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     # Plot Relative CAM Activations
     plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
 
-def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, showPropPercent=False):
+def generate_bar_cam_intersection_prop_area(classes, showPropPercent=False, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM as well as the proportion of the segment to the area. 
 
-    :param segmentation: Raw Segmentation Mask. Must match shape (224,224) or (224,224,1)
-    :type segmentation: np.ndarray
-    :param camHeatmap: Raw CAM Data. Must macht shape (224,224) or (224,224,1)
-    :type camHeatmap: np.ndarray
     :param classes: Classes corresponding to the categories of the segmentation.
     :type classes: list/tuple like object.
     :param showPropPercent: show Percentage values of the proportional areas. Formatting is not great so default false.
     :type showPropPercent: bool
+
+    for kwargs see :func:`prepareInput`
     """
+    segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
     classArray, _, percentualSegmentedCAMActivation, dominantMask, proportions = generate_stats_single(segmentation, camHeatmap, classes, proportions=True)
 
     fig = plt.figure(figsize=(13,5),constrained_layout=True)
@@ -92,7 +88,10 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     :param segmentationImg: The segmentation Mask overlayed over the sourceImg
     :param camHeatmap: The raw values of the CAM
     :param camOverlay: The CAM overlayed over the sourceImg
+
     """
+
+
     fig = plt.figure(constrained_layout=True)
     gs = fig.add_gridspec(4,2)
     axl0 = fig.add_subplot(gs[0,0])
@@ -126,7 +125,7 @@ def plot(imgName, pipelineCfg=None,**kwargs):
     :param imgName: Name of the Image.
     :param imgRoot: Path to the directory containing the image.
     :param imgData: (np.ndarray) Array containing the image data. Must match shape (_,_,1) or (_,_,3)
-    :param segmentationImgData: (Dictionary or np.ndarray) Image Data of the segmentation overlayed with the Image. If not given will be generated.
+    :param segmentationData: (Dictionary or np.ndarray) Image Data of the segmentation overlayed with the Image. If not given will be generated.
     :param camData: (Dictionary or np.ndarray) Raw CAM Data. If not given will be generated.
     :param segConfig: Path to Config file used for Segmentation. Required if no segmentationImgData is provided.
     :param segCheckpoint: Path to Checkpoint file used for Segmentation. Required if no segmentationImgData is provided.
@@ -135,6 +134,7 @@ def plot(imgName, pipelineCfg=None,**kwargs):
     :param camCheckpoint: Path tot Checkpoint File used for generating the CAM. Required if no camData is provided.
     :param camDevice: Device used for generating the CAM. (default 'cuda')
     """
+    kwargs['imgName'] = imgName # Add imgName to kwargs for consolidation in input.
     sourceImg, _, segmentationImgData, camData = prepareInput(**kwargs)
     assert segmentationImgData is not None, "segmentationImgData must not be none if generate is False"
     assert camData is not None, "Cam Overlay must not be none if generate is False"

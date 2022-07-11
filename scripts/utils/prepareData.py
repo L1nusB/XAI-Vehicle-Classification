@@ -2,13 +2,17 @@ import mmcv
 import os
 import numpy as np
 
+from mmcv import Config
+
 from .. import new_gen_seg, generate_cams
+from ..generate_cams import generate_cam_overlay
+from .pipeline import get_pipeline_torchvision, apply_pipeline
 
 
-def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segImgData=None, segDevice='cuda', annfile='', **kwargs):
-    assert (segConfig and segCheckpoint) or segImgData, 'Either config + checkpoint or data must be provided for segmentation.'
-    if segImgData:
-        return np.copy(segImgData)
+def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None, segDevice='cuda', annfile='', **kwargs):
+    assert (segConfig and segCheckpoint) or segData, 'Either config + checkpoint or data must be provided for segmentation.'
+    if segData:
+        return np.copy(segData)
     if 'imgName' in kwargs:
         assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
         assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
@@ -31,10 +35,10 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
     else:
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
-def prepareCams(imgPath='', camConfig='', camCheckpoint='', camImgData=None, camDevice='cpu', method='gradcam', **kwargs):
-    assert (camConfig and camCheckpoint) or camImgData, 'Either config + checkpoint or data must be provided for CAM generation.'
-    if camImgData:
-        return np.copy(camImgData)
+def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', **kwargs):
+    assert (camConfig and camCheckpoint) or camData, 'Either config + checkpoint or data must be provided for CAM generation.'
+    if camData:
+        return np.copy(camData)
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
@@ -46,6 +50,26 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camImgData=None, cam
     
 
 def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
+    """
+    Prepares the input data for the given parameter options for sourceImg, Segmentation and Cams.
+
+    Potential kwargs are:
+    imgRoot: Root to img Folder
+    imgName: Name of the single image file
+    imgData: Preloaded img Data of source image
+    segConfig: Path to Config for segmentation
+    segCheckpoint: Path to Checkpoint for segmentation
+    segData: Already loaded object containing segmentation
+    segDevice: (default cuda) Device used for segmentation
+    annfile: Path to annfile to be used when generating segmentations
+    camConfig: Path to Config for CAMs
+    camCheckpoint: Path to Checkpoint for CAMs
+    camData: Already loaded object containing CAMs
+    camDevice: (default cpu) Device used for CAMs
+    method: (default gradcam) Method by which the CAMs are generated
+
+    :return List of specified data objects. [sourceImg, segmentationsMasks, segmentationsImages, cam]
+    """
     if 'imgName' in kwargs:
         imgPath = os.path.join(kwargs['imgRoot'], kwargs['imgName'])
         kwargs['imgPath'] = imgPath
