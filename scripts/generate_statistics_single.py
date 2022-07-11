@@ -3,16 +3,15 @@ import matplotlib.ticker as mticker
 from matplotlib.patches import Patch
 import os
 import numpy as np
-from scripts.generate_cams import generate_cam_overlay
-import torch
+from .generate_cams import generate_cam_overlay
 from pytorch_grad_cam.utils.image import show_cam_on_image
-import mmcv
 from mmcv import Config
 from .visualization_seg_masks import generateUnaryMasks
 import heapq
 
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput
+from .utils.plot import generate_stats_single
 
 def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -25,20 +24,7 @@ def generate_bar_cam_intersection(segmentation, camHeatmap, classes):
     :param classes: Classes corresponding to the categories of the segmentation.
     :type classes: list/tuple like object.
     """
-    assert segmentation.shape[0] == segmentation.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {segmentation.shape}'
-    assert camHeatmap.shape[0] == camHeatmap.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {camHeatmap.shape}'
-    classArray = np.array(classes)
-    segmentation = segmentation.squeeze()
-    camHeatmap = camHeatmap.squeeze()
-    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
-
-    segmentedCAM = [camHeatmap*mask for mask in binaryMasks]
-    totalCAMActivation = camHeatmap.sum()
-    segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
-    percentualSegmentedCAMActivation = segmentedCAMActivation / totalCAMActivation
-
-    dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
-    dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
+    classArray, segmentedCAMActivation, percentualSegmentedCAMActivation, dominantMask = generate_stats_single(segmentation, camHeatmap, classes)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
     grid = fig.add_gridspec(ncols=2, nrows=1)
@@ -83,22 +69,7 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
     :param showPropPercent: show Percentage values of the proportional areas. Formatting is not great so default false.
     :type showPropPercent: bool
     """
-    assert segmentation.shape[0] == segmentation.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {segmentation.shape}'
-    assert camHeatmap.shape[0] == camHeatmap.shape[1] == 224, f'Expected Shape (224,224) or (224,224,1) but got {camHeatmap.shape}'
-    classArray = np.array(classes)
-    segmentation = segmentation.squeeze()
-    camHeatmap = camHeatmap.squeeze()
-    binaryMasks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
-
-    segmentedCAM = [camHeatmap*mask for mask in binaryMasks]
-    totalCAMActivation = camHeatmap.sum()
-    segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
-    percentualSegmentedCAMActivation = segmentedCAMActivation / totalCAMActivation
-
-    proportions = [segmentation[segmentation==c].size for c in np.arange(len(classes))] / np.prod(segmentation.shape)
-
-    dominantSegments = heapq.nlargest(3,segmentedCAMActivation)
-    dominantMask = segmentedCAMActivation >= np.min(dominantSegments)
+    classArray, _, percentualSegmentedCAMActivation, dominantMask, proportions = generate_stats_single(segmentation, camHeatmap, classes, proportions=True)
 
     fig = plt.figure(figsize=(13,5),constrained_layout=True)
 
@@ -150,30 +121,6 @@ def generate_bar_cam_intersection_prop_area(segmentation, camHeatmap, classes, s
     handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
 
     ax0.legend(handles=handles)
-
-
-
-def generate_image_instances(sourceImg, segmentationImg, camHeatmap, pipeline):
-    """
-    Transforms the given images to match the shape of the CAM and creates the CAM Overlay
-
-    :param sourceImg: Original Imgae
-    :param segmentationImg: Original segmentation Mask overlayed with source Image
-    :param camHeatmap: The raw values of the CAM
-    :param pipeline: The pipeline to be used for the transformations
-
-    :return: Tuple (transformedSourceImg, transformedSegmentationImg, camOverlay) with same shapes
-    """
-    assert isinstance(sourceImg, np.ndarray) or isinstance(sourceImg, torch.Tensor), "sourceImg must be a np.ndarray or Tensor"
-    assert isinstance(segmentationImg, np.ndarray) or isinstance(segmentationImg, torch.Tensor), "segmentationImg mus be a np.ndarray or Tensor"
-    transformedSourceImg = pipeline(sourceImg)
-    transformedSegmentationImg = pipeline(segmentationImg)
-    assert transformedSourceImg.shape == transformedSegmentationImg.shape
-    assert transformedSourceImg.shape[:-1] == camHeatmap.shape, "Shape of camHeatmap and transformed sourceImg after Pipeline does not match"
-    if isinstance(transformedSourceImg, torch.Tensor):
-        transformedSourceImg = transformedSourceImg.numpy()
-    camOverlay = show_cam_on_image(transformedSourceImg, camHeatmap, use_rgb=False)
-    return (transformedSourceImg,transformedSegmentationImg, camOverlay)
 
 
 def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
