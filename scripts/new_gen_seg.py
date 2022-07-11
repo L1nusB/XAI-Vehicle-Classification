@@ -130,7 +130,7 @@ def set_dataset_fields(cfg, args,  classes, palette):
     cfg.img_dir = args.imgDir # Path to the Data that should be converted --> somewhere/data/val
     cfg.data_root = args.root # Path to root folder. Default is ./
     cfg.ann_dir = None # Reset ann_dir so it does try to look for something that does not exist. (Not really necessary)
-    cfg.split = osp.abspath(args.ann_file) if args.ann_file else None # Path to the Ann-file that will be used to determine the relevant files. (Like annfile in mmclas)
+    cfg.split = osp.abspath(args.ann_file) if (args.ann_file and osp.isfile(args.ann_file)) else None # Path to the Ann-file that will be used to determine the relevant files. (Like annfile in mmclas)
     cfg.classes = classes    # Set custom Classes from Config since i can not encode it into the Dataset
     cfg.palette = palette # Again set custom Palette based on palettes variable.
     return cfg
@@ -143,7 +143,7 @@ def batch_data(cfg, args, work_dir, classes=[], batch_size=5000):
     if batch_count*batch_size != sample_count:
         batch_count += 1 # Add one if not even division
     subset_cfgs = [None] * batch_count
-    if args.ann_file:
+    if args.ann_file and osp.isfile(args.ann_file):
         generate_split_files(mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')), batch_count, batch_size, work_dir, classes)
     else:
         generate_split_files(fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True), batch_count, batch_size, work_dir, classes)
