@@ -22,20 +22,23 @@ def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/
     # Again no else needed since default is used otherwise
     return directory, fileName
 
-def get_sample_count(args, fc=None, classes=[]):
+def get_samples(ann_file=None, imgRoot=None, imgDir=None, fc=None, classes=[], **kwargs):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
-    if args.ann_file:
+    if ann_file:
         if len(classes)>0:
-            sample_size = sum(1 for i in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes))
+            samples = [i for i in mmcv.list_from_file(ann_file, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes)]
         else:
-            sample_size = sum(1 for _ in mmcv.list_from_file(args.ann_file, file_client_args=dict(backend='disk')))
+            samples = [i for i in mmcv.list_from_file(ann_file, file_client_args=dict(backend='disk'))]
     else:
         if classes:
-            sample_size = sum(1 for i in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True)if any(i.startswith(c) for c in classes))
+            samples = [i for i in fc.list_dir_or_file(dir_path=osp.join(imgRoot, imgDir), list_dir=False, recursive=True)if any(i.startswith(c) for c in classes)]
         else:
-            sample_size = sum(1 for _ in fc.list_dir_or_file(dir_path=osp.join(args.root, args.imgDir), list_dir=False, recursive=True))
-    return sample_size
+            samples = [i for i in fc.list_dir_or_file(dir_path=osp.join(imgRoot, imgDir), list_dir=False, recursive=True)]
+    return samples
+
+def get_sample_count(args, fc=None, classes=[]):
+    return len(get_samples(ann_file=args.ann_file, imgRoot=args.root, imgDir=args.imgDir, fc=fc, classes=classes))
 
 def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, classes=[]):
     sample_list = list(sample_iterator)
