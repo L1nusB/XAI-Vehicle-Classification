@@ -64,7 +64,7 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
         bars = ax.bar(x_ticks, data, **barkwargs)
     ticks_loc = ax.get_xticks()
     ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
-    if x_tick_labels:
+    if x_tick_labels is not None:
         ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")
     else:
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")

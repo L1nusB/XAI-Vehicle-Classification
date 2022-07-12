@@ -4,36 +4,34 @@ from matplotlib.patches import Patch
 import os
 import numpy as np
 from .generate_cams import generate_cam_overlay
-from mmcv import Config
+from mmcv import Config       
+from mmseg.apis import init_segmentor
 
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
-from .utils.prepareData import prepareInput
+from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.plot import generate_stats_single, plot_bar
 
-def generate_bar_cam_intersection(classes, pipelineCfg=None, **kwargs):
+def generate_bar_cam_intersection(classes=None, pipelineCfg=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.
-    :param classes: Classes corresponding to the categories of the segmentation.
+    :param classes: Classes corresponding to the categories of the segmentation. If not specified loaded from segConfig, segCheckpoint in kwargs.
     :type classes: list/tuple like object.
+    :param pipelineCfg: Path to Config for Pipeline. If not given and no segData in kwargs pipeline will be loaded from camConfig.
+    :type pipelineCfg: str
 
     for kwargs see :func:`prepareInput`
     """
-    segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
-    cfg = None
-    if pipelineCfg and os.path.isfile(pipelineCfg):
-        cfg = Config.fromfile(pipelineCfg)
-    elif 'camConfig' in kwargs:
-        if 'segData' in kwargs:
-            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
-            'by pipelineCfg parameter.')
-        else:
-            cfg = Config.fromfile(kwargs['camConfig'])
+    if classes is None:
+        assert 'segConfig' in kwargs and 'segCheckpoint' in kwargs, 'Required segConfig and segCheckpoint if classes are not specified.'
+        model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
+        classes = model.CLASSES
+    if 'addBackground' in kwargs:
+        classes = classes + ('background',) if kwargs['addBackground']==True else classes
     else:
-        if not 'segData' in kwargs:
-            warnings.warn('No Pipeline specified and segData parameter not given. Shape must match automatically.')
-        else:
-            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
-            'by pipelineCfg parameter.')
+        classes = classes + ('background',)
+    
+    segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
+    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
     if cfg:
         pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
         segmentation = pipelineScale(segmentation)
@@ -52,18 +50,35 @@ def generate_bar_cam_intersection(classes, pipelineCfg=None, **kwargs):
     # Plot Relative CAM Activations
     plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
 
-def generate_bar_cam_intersection_prop_area(classes, showPropPercent=False, **kwargs):
+def generate_bar_cam_intersection_prop_area(classes=None, pipelineCfg=None, showPropPercent=False, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM as well as the proportion of the segment to the area. 
 
-    :param classes: Classes corresponding to the categories of the segmentation.
+    :param classes: Classes corresponding to the categories of the segmentation.  If not specified loaded from segConfig, segCheckpoint in kwargs.
     :type classes: list/tuple like object.
     :param showPropPercent: show Percentage values of the proportional areas. Formatting is not great so default false.
     :type showPropPercent: bool
+    :param pipelineCfg: Path to Config for Pipeline. If not given and no segData in kwargs pipeline will be loaded from camConfig.
+    :type pipelineCfg: str
 
     for kwargs see :func:`prepareInput`
     """
+    if classes is None:
+        assert 'segConfig' in kwargs and 'segCheckpoint' in kwargs, 'Required segConfig and segCheckpoint if classes are not specified.'
+        model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
+        classes = model.CLASSES
+    if 'addBackground' in kwargs:
+        classes = classes + ('background',) if kwargs['addBackground']==True else classes
+    else:
+        classes = classes + ('background',)
+
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
+
+    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
+    if cfg:
+        pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
+        segmentation = pipelineScale(segmentation)
+
     classArray, _, percentualSegmentedCAMActivation, dominantMask, proportions = generate_stats_single(segmentation, camHeatmap, classes, proportions=True)
 
     fig = plt.figure(figsize=(13,5),constrained_layout=True)
@@ -80,13 +95,13 @@ def generate_bar_cam_intersection_prop_area(classes, showPropPercent=False, **kw
 
     rotation = 90 if showPropPercent else 0
     # Format main Data with generated bar graph
-    plot_bar(ax=ax0, bars=bars, dominantMask=dominantMask, x_tick_labels=classArray, format='.1%', textadjust_ypos=True,
+    plot_bar(ax=ax0, bars=bars, dominantMask=dominantMask, x_tick_labels=classArray, format='.1%', textadjust_ypos=showPropPercent,
         textrotation=rotation)
 
     # Plot proportion Data next to main Data
     plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, data=proportions, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMask, addText=showPropPercent, hightlightDominant=False,
-        textadjust_ypos=True, format='.1%', textrotation=rotation)
+        textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
 
     legendMap = {
         'b':'CAM Activations',

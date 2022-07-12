@@ -1,6 +1,9 @@
 import mmcv
 import os
 import numpy as np
+import warnings
+
+from mmcv import Config
 
 
 from .. import new_gen_seg, generate_cams
@@ -46,7 +49,25 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
     else:
         raise ValueError('imgName must be specified if no camData is provided.')
     return camData
-    
+
+
+def get_pipeline_cfg(pipelineCfg=None, **kwargs):
+    cfg = None
+    if pipelineCfg and os.path.isfile(pipelineCfg):
+        cfg = Config.fromfile(pipelineCfg)
+    elif 'camConfig' in kwargs:
+        if 'segData' in kwargs:
+            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
+            'by pipelineCfg parameter.')
+        else:
+            cfg = Config.fromfile(kwargs['camConfig'])
+    else:
+        if not 'segData' in kwargs:
+            warnings.warn('No Pipeline specified and segData parameter not given. Shape must match automatically.')
+        else:
+            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
+            'by pipelineCfg parameter.')
+    return cfg
     
 
 def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
