@@ -38,6 +38,36 @@ def generate_stats_single(segmentation, camHeatmap, classes, proportions=False):
     
     return results
 
+def generate_stats(segmendtedActivations, percentualActivations, totalCAM, classes):
+    """
+    Creates arrays containing values for plotting of a single instance.
+    :param segmendtedActivations: CAM Activations per Segment
+    :type segmendtedActivations: np.ndarray(np.ndarray(float))
+    :param percentualActivations: Percentual CAM Activations per Segment
+    :type percentualActivations: np.ndarray(np.ndarray(float))
+    :param totalCAM: Total CAM Activations (per batch)
+    :type totalCAM: np.ndarray(np.ndarray(float))
+    :param classes: Classes corresponding to the categories of the segmentations.
+    :type classes: list/tuple like object.
+
+    :return list of [classArray, totalActivation, summarizedSegmentedCAMActivations, summarizedPercSegmentedCAMActivations, dominantMask, dominantMaskPercentual]
+    """
+    classArray = np.array(classes)
+    totalActivation = np.sum(totalCAM)
+    summarizedSegmentedCAMActivations = segmendtedActivations.mean(axis=1).mean(axis=0)
+    summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
+
+    dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
+    dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
+
+    dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
+    dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
+
+
+    results = [classArray, totalActivation, summarizedSegmentedCAMActivations, summarizedPercSegmentedCAMActivations, dominantMask, dominantMaskPercentual]
+    
+    return results
+
 
 def highlight_dominants(bars, dominantMask, color='red'):
     for index,dominant in enumerate(dominantMask):
@@ -45,7 +75,7 @@ def highlight_dominants(bars, dominantMask, color='red'):
             bars[index].set_color(color)
 
 
-def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, **kwargs):
+def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, valueModifier=1, **kwargs):
     for index, bar in enumerate(bars):
         height = bar.get_height()
         ypos = height
@@ -54,7 +84,7 @@ def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, **kwargs):
                 ypos /= 2
             else:
                 ypos += 0.01
-        ax.text(bar.get_x()+bar.get_width()/2.0, ypos, f'{height:{format}}', ha='center', va='bottom' , **kwargs)
+        ax.text(bar.get_x()+bar.get_width()/2.0, ypos, f'{height*valueModifier:{format}}', ha='center', va='bottom' , **kwargs)
 
 
 def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=True, x_tick_labels=None, 

@@ -181,11 +181,8 @@ def plot(imgName, pipelineCfg=None,**kwargs):
     else:
         camHeatmap = np.copy(camData)
 
-    if pipelineCfg and os.path.isfile(pipelineCfg):
-        cfg = Config.fromfile(pipelineCfg)
-    else:
-        assert 'camConfig' in kwargs,'camConfig must be specified if pipelineCfg is not given.'
-        cfg = Config.fromfile(kwargs['camConfig'])
+    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
+
     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
 
     transformedSourceImg, transformedSegmentationImg = apply_pipeline(pipeline, sourceImg, segmentationImg)

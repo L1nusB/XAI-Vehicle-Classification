@@ -1,5 +1,8 @@
 import os.path as osp
 import mmcv
+from pathlib import Path
+import os
+import numpy as np
 
 def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/'):
     directory = defaultDir
@@ -51,3 +54,35 @@ def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, cla
     for i in range(batch_count):
         with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
+
+def saveResults(savePath, defaultName='generated_result.npz', **results):
+    print(f'Saving results in: {savePath}')
+    Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
+    if os.path.isdir(savePath) or not os.path.basename(savePath):
+        print(f'No filename specified. Generating file {defaultName} in directory {savePath}')
+        path = os.path.join(savePath,defaultName)
+    else: 
+        if os.path.basename(savePath)[-4:] == ".npz":
+            path = savePath
+        else:
+            path = os.path.join(os.path.dirname(savePath), os.path.basename(savePath)+".npz")
+    
+    np.savez(path,**results)
+
+def saveFigure(savePath, figure, defaultName='figure.jpg'):
+    print(f'Saving figure in: {savePath}')
+    Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
+    base = os.path.dirname(savePath)
+    if not os.path.isdir(savePath):
+        print(f'Output path is not a directory. Using base directory: {os.path.dirname(savePath)}.')
+        if os.path.basename(savePath):
+            if os.path.basename(savePath)[-4:] == ".jpg" or os.path.basename(savePath)[-4:] == ".png":
+                outPath = savePath
+            else:
+                outPath = savePath + ".jpg"
+        else:
+            outPath = os.path.join(base, defaultName)
+            
+    Path(os.path.dirname(outPath)).mkdir(parents=True, exist_ok=True)
+    print(f'Saving images to: {outPath}')
+    figure.savefig(outPath)

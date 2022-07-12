@@ -66,7 +66,7 @@ def parse_args(args):
     parser.add_argument(
         '--ann-file',
         help='Path to a txt file specifying a set of images for which'
-        ' results arae generated.'
+        ' results are generated.'
     )
     parser.add_argument(
         '--aug-test', action='store_true', help='Use Flip and Multi scale aug')
