@@ -179,10 +179,10 @@ def main(args):
         work_dir, result_file = get_dir_and_file_path(args.save)
         # If images specified create folder for images
         if TYPES[0] in args.types:
-            print(f'Saving resulting masks in {work_dir}')
+            print(f'Saving resulting segmentation masks in {work_dir}')
         if TYPES[1] in args.types:
             img_dir = osp.join(work_dir, 'images')
-            print(f'Saving result images in {img_dir}')
+            print(f'Saving result segmentation images in {img_dir}')
             # Only use one mkdir here since it is recursive and generates work_dir
             mmcv.mkdir_or_exist(osp.abspath(img_dir))
         else:
@@ -247,7 +247,7 @@ def main(args):
     model = MMDataParallel(model, device_ids=cfg.gpu_ids)
 
     for index, subset in enumerate(subset_cfgs):
-        print(f'Calculating results for batch {index}')
+        print(f'Calculating segmentation results for batch {index}')
 
         dataset = build_dataset(subset)
         assert args.background in dataset.CLASSES, f'Category {args.background} not in dataset.CLASSES.'

@@ -2,31 +2,31 @@ import mmcv
 import os
 import numpy as np
 
-from mmcv import Config
 
 from .. import new_gen_seg, generate_cams
-from ..generate_cams import generate_cam_overlay
-from .pipeline import get_pipeline_torchvision, apply_pipeline
 
 
 def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None, segDevice='cuda', annfile='', **kwargs):
-    assert (segConfig and segCheckpoint) or segData, 'Either config + checkpoint or data must be provided for segmentation.'
-    if segData:
-        return np.copy(segData)
-    if 'imgName' in kwargs:
-        assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
-        assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
-        temp_filePath = 'temp_ann.txt'
-        with open(temp_filePath,'w') as tmp:
-            tmp.write(kwargs['imgName'])
-        segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
-        os.remove(temp_filePath)
+    assert (segConfig and segCheckpoint) or (segData is not None), 'Either config + checkpoint or data must be provided for segmentation.'
+    segmentationMasks = None
+    segmentationImgData = None
+    if segData is not None:
+        segmentationMasks = np.copy(segData)
     else:
-        segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(annfile), '-r','--types', 'masks', 'images','--device',segDevice])
+        if 'imgName' in kwargs:
+            assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
+            assert os.path.isfile(segCheckpoint), f'segCheckpoint:{segCheckpoint} does not lead to a file'
+            temp_filePath = 'temp_ann.txt'
+            with open(temp_filePath,'w') as tmp:
+                tmp.write(kwargs['imgName'])
+            segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
+            os.remove(temp_filePath)
+        else:
+            segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(annfile), '-r','--types', 'masks', 'images','--device',segDevice])
     return segmentationMasks, segmentationImgData
 
 def prepareImg(imgPath='', imgData=None, **kwargs):
-    if imgData:
+    if imgData is not None:
         assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
         assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
         return np.copy(imgData)
@@ -36,13 +36,13 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
 def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', **kwargs):
-    assert (camConfig and camCheckpoint) or camData, 'Either config + checkpoint or data must be provided for CAM generation.'
-    if camData:
+    assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
+    if camData is not None:
         return np.copy(camData)
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice])
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice, '--method', method])
     else:
         raise ValueError('imgName must be specified if no camData is provided.')
     return camData
@@ -76,13 +76,20 @@ def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
         assert os.path.isfile(imgPath), f'Specified Path does not yield valid file:{imgPath}'
     results = []
     if prepImg:
-        imgData = prepImg(**kwargs)
+        imgData = prepareImg(**kwargs)
         results.append(imgData)
     if prepSeg:
         segmentationMasks, segmentationsImgData = prepareSegmentation(**kwargs)
-        results.append(segmentationMasks)
-        results.append(segmentationsImgData)
+        if 'imgName' in kwargs:
+            results.append(segmentationMasks[kwargs['imgName']])
+            results.append(segmentationsImgData[kwargs['imgName']])
+        else:
+            results.append(segmentationMasks)
+            results.append(segmentationsImgData)
     if prepCam:
         camData = prepareCams(**kwargs)
-        results.append(camData)
+        if 'imgName' in kwargs:
+            results.append(camData[kwargs['imgName']])
+        else:
+            results.append(camData)
     return results

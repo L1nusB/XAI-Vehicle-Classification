@@ -1,3 +1,4 @@
+import warnings
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import os
@@ -9,7 +10,7 @@ from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput
 from .utils.plot import generate_stats_single, plot_bar
 
-def generate_bar_cam_intersection(classes, **kwargs):
+def generate_bar_cam_intersection(classes, pipelineCfg=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.
     :param classes: Classes corresponding to the categories of the segmentation.
@@ -18,6 +19,24 @@ def generate_bar_cam_intersection(classes, **kwargs):
     for kwargs see :func:`prepareInput`
     """
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
+    cfg = None
+    if pipelineCfg and os.path.isfile(pipelineCfg):
+        cfg = Config.fromfile(pipelineCfg)
+    elif 'camConfig' in kwargs:
+        if 'segData' in kwargs:
+            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
+            'by pipelineCfg parameter.')
+        else:
+            cfg = Config.fromfile(kwargs['camConfig'])
+    else:
+        if not 'segData' in kwargs:
+            warnings.warn('No Pipeline specified and segData parameter not given. Shape must match automatically.')
+        else:
+            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
+            'by pipelineCfg parameter.')
+    if cfg:
+        pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
+        segmentation = pipelineScale(segmentation)
     classArray, segmentedCAMActivation, percentualSegmentedCAMActivation, dominantMask = generate_stats_single(segmentation, camHeatmap, classes)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
