@@ -1,37 +1,27 @@
-import warnings
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-import os
 import numpy as np
 from .generate_cams import generate_cam_overlay
-from mmcv import Config       
-from mmseg.apis import init_segmentor
 
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput, get_pipeline_cfg
-from .utils.plot import generate_stats_single, plot_bar
+from .utils.plot import plot_bar
+from .utils.preprocessing import add_background_class
+from .utils.calculations import generate_stats_single
 
-def generate_bar_cam_intersection(classes=None, pipelineCfg=None, **kwargs):
+def generate_bar_cam_intersection(classes=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.
     :param classes: Classes corresponding to the categories of the segmentation. If not specified loaded from segConfig, segCheckpoint in kwargs.
     :type classes: list/tuple like object.
-    :param pipelineCfg: Path to Config for Pipeline. If not given and no segData in kwargs pipeline will be loaded from camConfig.
-    :type pipelineCfg: str
 
     for kwargs see :func:`prepareInput`
     """
-    if classes is None:
-        assert 'segConfig' in kwargs and 'segCheckpoint' in kwargs, 'Required segConfig and segCheckpoint if classes are not specified.'
-        model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
-        classes = model.CLASSES
-    if 'addBackground' in kwargs:
-        classes = classes + ('background',) if kwargs['addBackground']==True else classes
-    else:
-        classes = classes + ('background',)
+    classes = add_background_class(classes, **kwargs)
     
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
-    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
+    # Manual pipelineCfg can be set via kwargs parameter pipelineCfg
+    cfg = get_pipeline_cfg(**kwargs)
     if cfg:
         pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
         segmentation = pipelineScale(segmentation)
@@ -50,7 +40,7 @@ def generate_bar_cam_intersection(classes=None, pipelineCfg=None, **kwargs):
     # Plot Relative CAM Activations
     plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
 
-def generate_bar_cam_intersection_prop_area(classes=None, pipelineCfg=None, showPropPercent=False, **kwargs):
+def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM as well as the proportion of the segment to the area. 
 
@@ -58,23 +48,15 @@ def generate_bar_cam_intersection_prop_area(classes=None, pipelineCfg=None, show
     :type classes: list/tuple like object.
     :param showPropPercent: show Percentage values of the proportional areas. Formatting is not great so default false.
     :type showPropPercent: bool
-    :param pipelineCfg: Path to Config for Pipeline. If not given and no segData in kwargs pipeline will be loaded from camConfig.
-    :type pipelineCfg: str
 
     for kwargs see :func:`prepareInput`
     """
-    if classes is None:
-        assert 'segConfig' in kwargs and 'segCheckpoint' in kwargs, 'Required segConfig and segCheckpoint if classes are not specified.'
-        model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
-        classes = model.CLASSES
-    if 'addBackground' in kwargs:
-        classes = classes + ('background',) if kwargs['addBackground']==True else classes
-    else:
-        classes = classes + ('background',)
+    classes = add_background_class(classes, **kwargs)
 
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
 
-    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
+    # Manual pipelineCfg can be set via kwargs parameter pipelineCfg
+    cfg = get_pipeline_cfg(**kwargs)
     if cfg:
         pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
         segmentation = pipelineScale(segmentation)

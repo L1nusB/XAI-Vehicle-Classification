@@ -67,10 +67,10 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
     return camData
 
 
-def get_pipeline_cfg(pipelineCfg=None, **kwargs):
+def get_pipeline_cfg(**kwargs):
     cfg = None
-    if pipelineCfg and os.path.isfile(pipelineCfg):
-        cfg = Config.fromfile(pipelineCfg)
+    if 'pipelineCfg' in kwargs and os.path.isfile(kwargs['pipelineCfg']):
+        cfg = Config.fromfile(kwargs['pipelineCfg'])
     elif 'camConfig' in kwargs:
         if 'segData' in kwargs:
             warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '

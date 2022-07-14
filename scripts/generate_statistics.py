@@ -9,56 +9,9 @@ from mmseg.apis import init_segmentor
 from .utils.io import get_samples, saveFigure, saveResults
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.pipeline import get_pipeline_torchvision
-from .utils.calculations import accumulate_statistics
-from .utils.plot import generate_stats, plot_bar
-
-
-def batch_statistics(classes, imgNames, cams, segmentations, forceAll=False, limit=10000, **kwargs):
-    """Splits the statistical Data for the given cams and segmentations into batches of size limit.
-    The batches are collected into a list and then returned as a numpy array. If no batching should be
-    done forceAll can be set to True then the results will be lists that only contain one element.
-
-    :param classes: Classes of the segmentation
-    :type classes: List like object
-    :param imgNames: Names of all images for which statistics will be computed
-    :type imgNames: List like
-    :param cams: The CAM Data
-    :type cams: dict
-    :param segmentations: The Segmentation Masks
-    :type segmentations: dict(str, np.ndarray)
-    :param forceAll: Force all statistics into a single element without batching, defaults to False
-    :type forceAll: Boolean, optional
-    :param limit: Batch size, defaults to 10000
-    :type limit: int, optional
-    :return: List containing [totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations]
-    """
-    classArray = np.array(classes)
-    numSamples = len(imgNames)
-    numSplits = numSamples // limit + 1
-    # Decrease by one if exact match
-    if numSplits*limit == numSamples:
-        numSplits-=1
-    totalCAMActivations = np.zeros((numSplits,limit))
-    segmentedCAMActivations = np.zeros((numSplits,limit, classArray.size))
-    percentualSegmentedCAMActivations = np.zeros((numSplits,limit, classArray.size))
-    if numSamples > limit:
-        warnings.warn(f'Statistics computed over {numSamples} items. Reverting to using batches of size {limit} '
-        'to avoid overflows. Can be overriden by using forceAll=True')
-    for batch in range(numSplits):
-        lower = limit*batch
-        higher = limit*(batch+1)
-        if forceAll:
-            totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames, cams, segmentations, classArray.size)
-        else:
-            print(f'Generating data for Batch {batch+1}')
-            totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = accumulate_statistics(imgNames[lower:higher], cams, segmentations, classArray.size)
-        totalCAMActivations[batch] = np.pad(totalCAMActivation, pad_width=(0,totalCAMActivations.shape[1]-totalCAMActivation.shape[0]), mode='constant')
-        segmentedCAMActivations[batch] = np.pad(segmentedCAMActivation, pad_width=((0,segmentedCAMActivations.shape[1]-segmentedCAMActivation.shape[0]),(0,0)), mode='constant')
-        percentualSegmentedCAMActivations[batch] = np.pad(percentualSegmentedCAMActivation, pad_width=((0,percentualSegmentedCAMActivations.shape[1]-percentualSegmentedCAMActivation.shape[0]),(0,0)), mode='constant')
-    
-    print('Data generated.')
-
-    return np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)
+from .utils.calculations import accumulate_statistics, generate_stats
+from .utils.plot import plot_bar
+from .utils.preprocessing import add_background_class, batch_statistics
 
 
 def generate_statistic(imgNames, cams, segmentations, classes, forceAll=False, saveResults=None):
@@ -292,14 +245,7 @@ def new(classes=None, **kwargs):
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
-    if classes is None:
-        assert 'segConfig' in kwargs and 'segCheckpoint' in kwargs, 'Required segConfig and segCheckpoint if classes are not specified.'
-        model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
-        classes = model.CLASSES
-    if 'addBackground' in kwargs:
-        classes = classes + ('background',) if kwargs['addBackground']==True else classes
-    else:
-        classes = classes + ('background',)
+    classes = add_background_class(classes, **kwargs)
 
     totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=segmentations, **kwargs)  # forceAll can be set in kwargs if desired
 
@@ -328,3 +274,66 @@ def new(classes=None, **kwargs):
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+
+
+def newProp(classes=None, showPropPercent=False, **kwargs):
+    assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
+
+    if 'imgNames' in kwargs:
+        imgNames = kwargs['imgNames']
+    else:
+        assert 'ann_file' in kwargs or ('imgRoot' in kwargs and 'imgDir' in kwargs), 'Either ann_file or imgRoot and imgDir must be specified.'
+        imgNames = get_samples(**kwargs) # Required ann_file or (imgRoot and imgDir) in kwargs
+
+    if len(imgNames) == 0:
+        raise ValueError('Given parameters do not yield any images.')
+
+    # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
+    # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
+    cams, segmentations, _ = prepareInput(prepImg=False, **kwargs)
+    assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
+    assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
+
+    transformedSegmentations = {}
+    cfg = get_pipeline_cfg(**kwargs)
+    if cfg:
+        pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
+    for name in imgNames:
+        transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
+
+    classes = add_background_class(classes, **kwargs)
+
+    _, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=segmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
+
+    # Pass fake segmentedActivations and totalCAM since i don't care about results.
+    classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
+
+    numSamples = len(classArray)
+
+    fig = plt.figure(figsize=(15,5),constrained_layout=True)
+
+    ax0 = fig.add_subplot()
+    ax0.set_title('Average relative CAM Activations')
+
+    # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
+    # reducing the width
+    barwidth = 0.4
+
+    bars = ax0.bar(np.arange(classArray.size), summarizedPercSegmentedCAMActivations, width=barwidth, label='CAM Activations')
+    ax0.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
+
+    rotation = 90 if showPropPercent else 0
+
+    # Format main Data with generated bar graph
+    plot_bar(ax=ax0, bars=bars, dominantMask=dominantMaskPercentual, x_tick_labels=classArray, format='.1%', textadjust_ypos=showPropPercent,
+        textrotation=rotation)
+
+    # Plot proportion Data next to main Data
+    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
+        barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPropPercent, hightlightDominant=False,
+        textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
+
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
+
+    if 'dataClasses' in kwargs:
+        ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
