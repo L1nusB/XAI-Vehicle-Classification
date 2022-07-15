@@ -25,28 +25,28 @@ def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/
     # Again no else needed since default is used otherwise
     return directory, fileName
 
-def get_samples(annfile=None, imgRoot=None, fc=None, classes=[], **kwargs):
+def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], **kwargs):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
     if annfile:
-        if len(classes)>0:
-            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes)]
+        if len(dataClasses)>0:
+            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in dataClasses)]
         else:
             samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
     else:
-        if classes:
-            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in classes)]
+        if dataClasses:
+            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in dataClasses)]
         else:
             samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
     return samples
 
-def get_sample_count(args, fc=None, classes=[]):
-    return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, classes=classes))
+def get_sample_count(args, fc=None, dataClasses=[]):
+    return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, dataClasses=dataClasses))
 
-def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, classes=[]):
+def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[]):
     sample_list = list(sample_iterator)
-    if len(classes)>0:
-        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in classes)]
+    if len(dataClasses)>0:
+        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
     if batch_size == -1:
         with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
             f.write('\n'.join(sample_list))
