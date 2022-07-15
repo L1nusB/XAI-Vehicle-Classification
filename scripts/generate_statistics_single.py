@@ -133,7 +133,7 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
 
 #def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, annfile='', method='gradcam', 
 #    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
-def plot(imgName, pipelineCfg=None,**kwargs):
+def plot(imgName, **kwargs):
     """
     Generates an overview and plot for a single Image. 
     The Segmentation and CAM can be provided or will be generated.
@@ -163,7 +163,7 @@ def plot(imgName, pipelineCfg=None,**kwargs):
     else:
         camHeatmap = np.copy(camData)
 
-    cfg = get_pipeline_cfg(pipelineCfg, **kwargs)
+    cfg = get_pipeline_cfg(**kwargs)
 
     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
 

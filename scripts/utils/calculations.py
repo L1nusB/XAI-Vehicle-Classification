@@ -75,15 +75,18 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     
     return results
 
-def generate_stats_abs(segmendtedActivations):
+def generate_stats_abs(segmentedActivations):
     """
     Creates array containing values for the absolute statistics for plotting of multiple samples.
-    :param segmendtedActivations: CAM Activations per Segment
-    :type segmendtedActivations: np.ndarray(np.ndarray(float))
+    :param segmentedActivations: CAM Activations per Segment
+    :type segmentedActivations: np.ndarray(np.ndarray(float))
 
     :return  summarizedSegmentedCAMActivations, dominantMask
     """
-    summarizedSegmentedCAMActivations = segmendtedActivations.mean(axis=1).mean(axis=0)
+    #summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=1).mean(axis=0)
+    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    n_samples = sum([x.shape[0] for x in segmentedActivations])
+    summarizedSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in segmentedActivations]) for i in range(segmentedActivations[0].shape[-1])]
 
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
@@ -98,7 +101,10 @@ def generate_stats_rel(percentualActivations):
 
     :return summarizedPercSegmentedCAMActivations, dominantMask
     """
-    summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
+    #summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
+    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    n_samples = sum([x.shape[0] for x in percentualActivations])
+    summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in percentualActivations]) for i in range(percentualActivations[0].shape[-1])]
 
     dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
     dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
@@ -118,13 +124,13 @@ def generate_stats_rel_area(percentualAreas):
 
     return summarizedPercSegmentedAreas
 
-def generate_stats(classes, segmendtedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None):
+def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None):
     """
     Creates arrays containing values for plotting of multiple samples.
     :param classes: Classes corresponding to the categories of the segmentations.
     :type classes: list/tuple like object.
-    :param segmendtedActivations: CAM Activations per Segment
-    :type segmendtedActivations: np.ndarray(np.ndarray(float))
+    :param segmentedActivations: CAM Activations per Segment
+    :type segmentedActivations: np.ndarray(np.ndarray(float))
     :param percentualActivations: Percentual CAM Activations per Segment
     :type percentualActivations: np.ndarray(np.ndarray(float))
     :param totalCAM: Total CAM Activations (per batch)
@@ -140,8 +146,8 @@ def generate_stats(classes, segmendtedActivations=None, percentualActivations=No
     if totalCAM is not None:
         totalActivation = np.sum(totalCAM)
         results.append(totalActivation)
-    if segmendtedActivations is not None:
-        summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmendtedActivations)
+    if segmentedActivations is not None:
+        summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)
         results.append(summarizedSegmentedCAMActivations)
         results.append(dominantMask)
     if percentualActivations is not None:

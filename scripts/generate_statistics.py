@@ -226,15 +226,16 @@ def new(classes=None, **kwargs):
     if 'imgNames' in kwargs:
         imgNames = kwargs['imgNames']
     else:
-        assert 'ann_file' in kwargs or ('imgRoot' in kwargs and 'imgDir' in kwargs), 'Either ann_file or imgRoot and imgDir must be specified.'
-        imgNames = get_samples(**kwargs) # Required ann_file or (imgRoot and imgDir) in kwargs
+        assert 'annfile' in kwargs or 'imgRoot' in kwargs, 'Either annfile or imgRoot must be specified.'
+        imgNames = get_samples(**kwargs) # Required annfile or (imgRoot) in kwargs
 
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
 
+
     # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
     # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
-    cams, segmentations, _ = prepareInput(prepImg=False, **kwargs)
+    segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
     assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
     assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
 
@@ -247,12 +248,12 @@ def new(classes=None, **kwargs):
 
     classes = add_background_class(classes, **kwargs)
 
-    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=segmentations, **kwargs)  # forceAll can be set in kwargs if desired
+    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)  # forceAll can be set in kwargs if desired
 
-    classArray, totalActivation, summarizedSegmentedCAMActivations, summarizedPercSegmentedCAMActivations, dominantMask, dominantMaskPercentual = generate_stats(
-        segmendtedActivations=segmentedCAMActivations, percentualActivations=percentualSegmentedCAMActivations, totalCAM=totalCAMActivations, classes=classes)
+    classArray, totalActivation, summarizedSegmentedCAMActivations, dominantMask, summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats(
+        segmentedActivations=segmentedCAMActivations, percentualActivations=percentualSegmentedCAMActivations, totalCAM=totalCAMActivations, classes=classes)
 
-    numSamples = len(classArray)
+    numSamples = len(imgNames)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
     grid = fig.add_gridspec(ncols=2, nrows=1)

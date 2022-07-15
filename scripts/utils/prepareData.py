@@ -28,9 +28,9 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             classParamAddition=[]
             if len(dataClasses)>0:
                 classParamAddition=['--classes'] + dataClasses
-                annfileParamAddition=[]
-                if annfile:
-                    annfileParamAddition=['--ann-file', os.path.abspath(annfile)]
+            annfileParamAddition=[]
+            if annfile:
+                annfileParamAddition=['--ann-file', os.path.abspath(annfile)]
             segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'-r','--types', 'masks', 'images','--device',segDevice] + classParamAddition + annfileParamAddition)
     return segmentationMasks, segmentationImgData
 
