@@ -11,16 +11,16 @@ class ImageDataset(Dataset):
         self.imgRoot = imgRoot
         if imgNames:
             if classes:
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if any(name.startswith(s) for s in classes)])
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if any(name.startswith(s) for s in classes) and os.path.isfile(os.path.join(imgRoot, name))])
             else:
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames])
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))])
         elif annfile:
             assert os.path.isfile(annfile), f'annfile {annfile} is no file.'
             with open(annfile) as f:
                 if classes:
-                    names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines() if any(x.startswith(s) for s in classes)]
+                    names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines() if any(x.startswith(s) for s in classes) and os.path.isfile(os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]))]
                 else:
-                    names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines()]
+                    names = [os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]) for x in f.readlines() if os.path.isfile(os.path.join(imgRoot, x.strip().rsplit(' ', 1)[0]))]
             self.imgPaths = np.array(names)
         else:
             if classes:

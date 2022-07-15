@@ -4,7 +4,6 @@ from mmcv import Config, DictAction
 from mmcls.apis import init_model
 from pathlib import Path
 import numpy as np
-from tqdm import tqdm
 import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
