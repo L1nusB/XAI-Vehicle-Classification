@@ -283,12 +283,15 @@ def main(args):
             np.savez(osp.join(work_dir, result_file.split('.')[0] + '_' + str(index) + ".npz"), **dict(zip(filenames, results)))
 
     if args.results:
-        imgs = {}
-        for result in filenames:
-            imgs[result] = mmcv.imread(osp.join(img_dir, result))
-        if not args.save:
-            shutil.rmtree(img_dir)
-        return dict(zip(filenames, results)),imgs
+        if TYPES[1] in args.types:
+            imgs = {}
+            for result in filenames:
+                imgs[result] = mmcv.imread(osp.join(img_dir, result))
+            if not args.save:
+                shutil.rmtree(img_dir)
+            return dict(zip(filenames, results)),imgs
+        else:
+           return dict(zip(filenames, results)) 
 
 if __name__ == '__main__':
     import sys
