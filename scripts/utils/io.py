@@ -25,23 +25,23 @@ def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/
     # Again no else needed since default is used otherwise
     return directory, fileName
 
-def get_samples(ann_file=None, imgRoot=None, imgDir=None, fc=None, classes=[], **kwargs):
+def get_samples(annfile=None, imgRoot=None, fc=None, classes=[], **kwargs):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
-    if ann_file:
+    if annfile:
         if len(classes)>0:
-            samples = [i for i in mmcv.list_from_file(ann_file, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes)]
+            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in classes)]
         else:
-            samples = [i for i in mmcv.list_from_file(ann_file, file_client_args=dict(backend='disk'))]
+            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
     else:
         if classes:
-            samples = [i for i in fc.list_dir_or_file(dir_path=osp.join(imgRoot, imgDir), list_dir=False, recursive=True)if any(i.startswith(c) for c in classes)]
+            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in classes)]
         else:
-            samples = [i for i in fc.list_dir_or_file(dir_path=osp.join(imgRoot, imgDir), list_dir=False, recursive=True)]
+            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
     return samples
 
 def get_sample_count(args, fc=None, classes=[]):
-    return len(get_samples(ann_file=args.ann_file, imgRoot=args.root, imgDir=args.imgDir, fc=fc, classes=classes))
+    return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, classes=classes))
 
 def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, classes=[]):
     sample_list = list(sample_iterator)
