@@ -7,7 +7,7 @@ from .generate_cams import generate_cam_overlay
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.plot import plot_bar
-from .utils.preprocessing import add_background_class
+from .utils.preprocessing import load_classes
 from .utils.calculations import generate_stats_single
 from .utils.io import get_save_figure_name, saveFigure
 
@@ -19,7 +19,7 @@ def generate_bar_cam_intersection(classes=None, **kwargs):
 
     for kwargs see :func:`prepareInput`
     """
-    classes = add_background_class(classes, **kwargs)
+    classes = load_classes(classes, **kwargs)
     
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
     # Manual pipelineCfg can be set via kwargs parameter pipelineCfg
@@ -59,7 +59,7 @@ def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False,
 
     for kwargs see :func:`prepareInput`
     """
-    classes = add_background_class(classes, **kwargs)
+    classes = load_classes(classes, **kwargs)
 
     segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
 

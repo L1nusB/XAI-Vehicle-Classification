@@ -10,13 +10,14 @@ import mmcv
 from mmcv.runner import load_checkpoint
 from mmcv.parallel import MMDataParallel
 
-from mmseg.apis import init_segmentor
+from mmseg.apis import init_segmentor, single_gpu_test
 from mmseg.datasets import build_dataloader, build_dataset
 
 from .utils.pipeline import get_pipeline_pre_post
 from .utils.constants import PALETTES, TYPES
 from .utils.io import generate_split_files, get_dir_and_file_path, get_sample_count
 from .utils.model import single_gpu_test_thresh
+from .utils.preprocessing import load_classes
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -103,6 +104,14 @@ def parse_args(args):
         'background category.'
     )
     parser.add_argument(
+        '--use-threshold',
+        default=False,
+        type=bool,
+        help='Use a different inference method for single_gpu_test that takes distribution of input '
+        'and assigns values below the threshold to a background class. Background class will be added '
+        'based on --background to the segmentation classes.'
+    )
+    parser.add_argument(
         '--background',
         type=str,
         default='background',
@@ -117,12 +126,6 @@ def parse_args(args):
             raise ValueError(f'Invalid Type specified:{type},'
                          f' supports {", ".join(TYPES)}.')
     return args
-
-def add_background_class(classes, background='background'):
-    if background in classes:
-        return classes
-    classes = classes + (background,)
-    return classes
 
 
 def set_dataset_fields(cfg, args,  classes, palette):
@@ -200,7 +203,7 @@ def main(args):
     assert 'CLASSES' in checkpoint.get('meta', {}), f'No CLASSES specified in the checkpoint of the model.'
     classes = checkpoint['meta']['CLASSES']
     # Add Background class
-    classes = add_background_class(classes, background=args.background)
+    classes = load_classes(classes, addBackground=args.use_threshold, backgroundCls=args.background)
 
 
 
@@ -250,8 +253,6 @@ def main(args):
         print(f'Calculating segmentation results for batch {index}')
 
         dataset = build_dataset(subset)
-        assert args.background in dataset.CLASSES, f'Category {args.background} not in dataset.CLASSES.'
-        backgroundIndex = dataset.CLASSES.index(args.background)   # Get numerical index
 
         data_loader = build_dataloader(
             dataset,
@@ -261,13 +262,24 @@ def main(args):
             dist=False
         )
 
-        results = single_gpu_test_thresh(
-            model=model,
-            data_loader=data_loader,
-            out_dir=img_dir,
-            threshold=args.threshold,
-            backgroundIndex=backgroundIndex
-        )
+        if args.use_threshold:
+            assert args.background in dataset.CLASSES, f'Category {args.background} not in dataset.CLASSES.'
+            backgroundIndex = dataset.CLASSES.index(args.background)   # Get numerical index
+            results = single_gpu_test_thresh(
+                model=model,
+                data_loader=data_loader,
+                out_dir=img_dir,
+                threshold=args.threshold,
+                backgroundIndex=backgroundIndex
+            )
+        else:
+            results = single_gpu_test_thresh(
+                model=model,
+                data_loader=data_loader,
+                out_dir=img_dir,
+                threshold=args.threshold,
+                backgroundIndex=backgroundIndex
+            )
 
         if postPipeline:
             transformedResults = []

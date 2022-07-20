@@ -4,9 +4,9 @@ import numpy as np
 
 from .calculations import accumulate_statistics
 
-def add_background_class(classes=None, backgroundCls='background', addBackground=True, **kwargs):
+def load_classes(classes=None, backgroundCls='background', addBackground=True, **kwargs):
     """
-    Adds a background class into the given set of classes or gets the classes for the given segmentation model
+    Gets the classes for the given segmentation model and if specified adds a background category
     via segConfig and segCheckpoint and then adds the background class.
     The background class will ONLY be added if the parameter addBackground is True.
     The background class will not be added if it already is in the determined classes.
@@ -16,13 +16,10 @@ def add_background_class(classes=None, backgroundCls='background', addBackground
         model = init_segmentor(kwargs['segConfig'], kwargs['segCheckpoint'])
         classes = model.CLASSES
 
-    if backgroundCls in classes:
+    if backgroundCls in classes and addBackground:
         warnings.warn(f'Background Class {backgroundCls} already present in given Classes. Will not be added again.')
     else:
-        if addBackground:
-            classes = classes + (backgroundCls,) if addBackground else classes
-        else:
-            classes = classes + (backgroundCls,)
+        classes = classes + (backgroundCls,) if addBackground else classes
 
     return classes
 

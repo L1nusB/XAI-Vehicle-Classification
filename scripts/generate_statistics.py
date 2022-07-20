@@ -11,7 +11,7 @@ from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import accumulate_statistics, generate_stats
 from .utils.plot import plot_bar
-from .utils.preprocessing import add_background_class, batch_statistics
+from .utils.preprocessing import load_classes, batch_statistics
 
 
 def generate_statistic(imgNames, cams, segmentations, classes, forceAll=False, saveResults=None):
@@ -246,7 +246,7 @@ def new(classes=None, **kwargs):
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
-    classes = add_background_class(classes, **kwargs)
+    classes = load_classes(classes, **kwargs)
 
     totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)  # forceAll can be set in kwargs if desired
 
@@ -306,7 +306,7 @@ def newProp(classes=None, showPropPercent=False, **kwargs):
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
-    classes = add_background_class(classes, **kwargs)
+    classes = load_classes(classes, **kwargs)
 
     _, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=segmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
 
