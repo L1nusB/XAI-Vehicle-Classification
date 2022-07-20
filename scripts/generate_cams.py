@@ -7,8 +7,9 @@ import numpy as np
 import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
-from .vis_cam_custom import getCAM, getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
+from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .ImageDataset import ImageDataset
+from .utils.io import saveCAMs
 from torch.utils.data import DataLoader
 
 try:
@@ -136,7 +137,7 @@ def getCAMConfig(args):
 
     return cfg,model,use_cuda,target_layers,reshape_transform
 
-def generateDataset(dataset, args):
+def generateCAMs(dataset, args):
     print(f'Generate Results for specified files')
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
     imgLoader = DataLoader(dataset)
@@ -151,22 +152,6 @@ def generateDataset(dataset, args):
         cams[item['name'][0]] = cam.squeeze()
         prog_bar.update()
     return cams
-
-
-def saveCAMs(args, cams):
-    print("Save generated CAMs to " + args.save_path)
-    Path(os.path.dirname(args.save_path)).mkdir(parents=True, exist_ok=True)
-    if os.path.isdir(args.save_path) or not os.path.basename(args.save_path):
-        print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save_path}')
-        path = os.path.join(args.save_path,"generated_cams.npz")
-    else: 
-        if os.path.basename(args.save_path)[-4:] == ".npz":
-            path = args.save_path
-        else:
-            path = os.path.join(os.path.dirname(args.save_path), os.path.basename(args.save_path)+".npz")
-    print(f'Output path to CAM file:{path}')
-    
-    np.savez(path,**cams)
 
 
 def generate_cam_overlay(sourceImg, camHeatmap):
@@ -191,9 +176,9 @@ def main(args):
         imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)])
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgDataset = ImageDataset(args.img, annfile=args.ann_file, classes=args.classes)
+        imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes)
 
-    cams = generateDataset(imgDataset, args)
+    cams = generateCAMs(imgDataset, args)
 
     if args.save_path:
         saveCAMs(args, cams)
