@@ -276,7 +276,7 @@ def new(classes=None, **kwargs):
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
-    figure_name = get_save_figure_name(statType='Multiple', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', **kwargs)
 
     saveFigure(savePath=os.path.join("results", figure_name), figure=fig)
 
@@ -343,6 +343,6 @@ def newProp(classes=None, showPropPercent=False, **kwargs):
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
-    figure_name = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
 
     saveFigure(savePath=os.path.join("results", figure_name), figure=fig)

@@ -43,7 +43,7 @@ def generate_bar_cam_intersection(classes=None, **kwargs):
     # Plot Relative CAM Activations
     plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
 
-    figure_name = get_save_figure_name(statType='Single', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Single', **kwargs)
 
     saveFigure(savePath=osp.join(RESULTS_PATH, figure_name), figure=fig)
 
@@ -103,7 +103,7 @@ def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False,
 
     ax0.legend(handles=handles)
 
-    figure_name = get_save_figure_name(statType='Single', additional='ShowPropArea', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Single', additional='ShowPropArea', **kwargs)
 
     saveFigure(savePath=osp.join(RESULTS_PATH, figure_name), figure=fig)
 
