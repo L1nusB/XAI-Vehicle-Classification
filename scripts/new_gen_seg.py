@@ -16,7 +16,7 @@ from mmseg.datasets import build_dataloader, build_dataset
 from .utils.pipeline import get_pipeline_pre_post
 from .utils.constants import PALETTES, TYPES
 from .utils.io import generate_split_files, get_dir_and_file_path, get_sample_count
-from .utils.model import single_gpu_test_thresh
+from .utils.model import single_gpu_test_thresh, wrap_model
 from .utils.preprocessing import load_classes
 
 def parse_args(args):
@@ -198,14 +198,14 @@ def main(args):
     model = init_segmentor(args.config, args.checkpoint, device=args.device)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
 
-    model.CLASSES = model.CLASSES + (args.background,) if args.use_threshold else model.CLASSES  # Add background class so show_results throws no error if specified
+    if args.use_threshold and args.background not in model.CLASSES:
+        model.CLASSES = model.CLASSES + (args.background,) # Add background class so show_results throws no error if specified (only if not present yes)
+
 
     assert 'CLASSES' in checkpoint.get('meta', {}), f'No CLASSES specified in the checkpoint of the model.'
     classes = checkpoint['meta']['CLASSES']
     # Add Background class
     classes = load_classes(classes, addBackground=args.use_threshold, backgroundCls=args.background)
-
-
 
     if args.palette is None:
         if 'PALETTE' in checkpoint.get('meta', {}):
@@ -246,6 +246,8 @@ def main(args):
         assert args.pipeline, 'Batch Size can ONLY be used if pipeline is given. See --batch-size'
     torch.cuda.empty_cache()
 
+    #Wrap Model into a Wrapper Class that can dynamically use Threshold or standard behaviour if desired
+    model = wrap_model(model, args.use_threshold, args.threshold, model.CLASSES.index(args.background))
 
     model = MMDataParallel(model, device_ids=cfg.gpu_ids)
 
@@ -264,20 +266,12 @@ def main(args):
 
         if args.use_threshold:
             assert args.background in dataset.CLASSES, f'Category {args.background} not in dataset.CLASSES.'
-            backgroundIndex = dataset.CLASSES.index(args.background)   # Get numerical index
-            results = single_gpu_test_thresh(
-                model=model,
-                data_loader=data_loader,
-                out_dir=img_dir,
-                threshold=args.threshold,
-                backgroundIndex=backgroundIndex
-            )
-        else:
-            results = single_gpu_test(
-                model=model,
-                data_loader=data_loader,
-                out_dir=img_dir
-            )
+
+        results = single_gpu_test(
+            model=model,
+            data_loader=data_loader,
+            out_dir=img_dir
+        )
 
         if postPipeline:
             transformedResults = []

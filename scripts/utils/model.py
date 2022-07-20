@@ -223,20 +223,30 @@ def aug_test_thres(model, imgs, img_metas, threshold, background, rescale=True):
 
 
 def wrap_model(model, use_threshold=False, threshold=0.7, backgroundIndex=-1):
-    if model.type in MODELWRAPPERS:
-        base = MODELWRAPPERS[model.type]
+    modelCfg = model.cfg.model
+    if modelCfg.type in MODELWRAPPERS:
+        base = MODELWRAPPERS[modelCfg.type]
     else:
-        warnings.warn(f'Given model type {model.type} is not tested/supported. Which can lead to unexpected behaviour. Supported types are ' + ",".join(MODELWRAPPERS.keys()))
-        import sys
-        base = getattr(sys.modules[__name__], model.type)
+       raise KeyError(f'Given model type {modelCfg.type} is not tested/supported.Supported types are ' + ",".join(MODELWRAPPERS.keys()))
+    
+    # Remove the type entry in model.cfg.model since this does not allow for inits via super
+    modelCfg = {key:values for key,values in modelCfg.items() if key != 'type'}
 
 
     class ModelWrapper(base):
-        def __init__(self, use_threshold=False, threshold=0.7, backgroundIndex=-1, **kwargs):
+        def __init__(self, model,  use_threshold=False, threshold=0.7, backgroundIndex=-1, **kwargs):
             super(ModelWrapper, self).__init__(**kwargs)
             self.use_threshold=use_threshold
             self.threshold = threshold
             self.backgroundIndex = backgroundIndex
+
+            """
+            Optionally add ALL other params here.
+            """
+            for key, value in model.__dict__.items():
+                setattr(self, key, value)
+
+
 
         def simple_test(self, img, img_meta, rescale=True):
             if self.aug_test:
@@ -275,4 +285,5 @@ def wrap_model(model, use_threshold=False, threshold=0.7, backgroundIndex=-1):
             else:
                 return super().simple_test(self, imgs, img_metas, rescale)
 
-    return ModelWrapper(use_threshold=use_threshold, threshold=threshold, backgroundIndex=backgroundIndex)
+    
+    return ModelWrapper(model, use_threshold=use_threshold, threshold=threshold, backgroundIndex=backgroundIndex, **modelCfg)
