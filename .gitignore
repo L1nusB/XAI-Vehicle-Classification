@@ -13,6 +13,7 @@ out/
 cams/
 segmentations/
 images/
+segmentation*/
 images_old/
 statsResults/
 
