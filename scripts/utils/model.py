@@ -5,6 +5,8 @@ import mmcv
 import tempfile
 import numpy as np
 
+from .constants import MODELWRAPPERS
+
 from mmcv.image import tensor2imgs
 
 def single_gpu_test_thresh(model,
@@ -218,3 +220,59 @@ def aug_test_thres(model, imgs, img_metas, threshold, background, rescale=True):
     # unravel batch dim
     seg_pred = list(seg_pred)
     return seg_pred
+
+
+def wrap_model(model, use_threshold=False, threshold=0.7, backgroundIndex=-1):
+    if model.type in MODELWRAPPERS:
+        base = MODELWRAPPERS[model.type]
+    else:
+        warnings.warn(f'Given model type {model.type} is not tested/supported. Which can lead to unexpected behaviour. Supported types are ' + ",".join(MODELWRAPPERS.keys()))
+        import sys
+        base = getattr(sys.modules[__name__], model.type)
+
+
+    class ModelWrapper(base):
+        def __init__(self, use_threshold=False, threshold=0.7, backgroundIndex=-1, **kwargs):
+            super(ModelWrapper, self).__init__(**kwargs)
+            self.use_threshold=use_threshold
+            self.threshold = threshold
+            self.backgroundIndex = backgroundIndex
+
+        def simple_test(self, img, img_meta, rescale=True):
+            if self.aug_test:
+                seg_logit = self.inference(img, img_meta, rescale)
+                seg_maxima = seg_logit.max(dim=1)
+                seg_maxima.indices[seg_maxima.values < self.threshold] = self.backgroundIndex
+                seg_pred = seg_maxima.indices
+                #seg_pred = seg_logit.argmax(dim=1)
+                if torch.onnx.is_in_onnx_export():
+                    # our inference backend only support 4D output
+                    seg_pred = seg_pred.unsqueeze(0)
+                    return seg_pred
+                seg_pred = seg_pred.cpu().numpy().astype('uint8')
+                # unravel batch dim
+                seg_pred = list(seg_pred)
+                return seg_pred
+            else:
+                return super().simple_test(self, img, img_meta, rescale)
+
+        def aug_test(self, imgs, img_metas, rescale=True):
+            if self.aug_test:
+                assert rescale
+                # to save memory, we get augmented seg logit inplace
+                seg_logit = self.inference(imgs[0], img_metas[0], rescale)
+                for i in range(1, len(imgs)):
+                    cur_seg_logit = self.inference(imgs[i], img_metas[i], rescale)
+                    seg_logit += cur_seg_logit
+                seg_logit /= len(imgs)
+                seg_maxima = seg_logit.max(dim=1)
+                seg_maxima.indices[seg_maxima.values < self.threshold] = self.backgroundIndex
+                seg_pred = seg_maxima.indices
+                seg_pred = seg_pred.cpu().numpy().astype('uint8')
+                # unravel batch dim
+                seg_pred = list(seg_pred)
+                return seg_pred
+            else:
+                return super().simple_test(self, imgs, img_metas, rescale)
+
+    return ModelWrapper(use_threshold=use_threshold, threshold=threshold, backgroundIndex=backgroundIndex)

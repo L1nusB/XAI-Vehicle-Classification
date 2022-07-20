@@ -86,3 +86,19 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     Path(os.path.dirname(outPath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving images to: {outPath}')
     figure.savefig(outPath)
+
+
+def saveCAMs(args, cams):
+    print("Save generated CAMs to " + args.save_path)
+    Path(os.path.dirname(args.save_path)).mkdir(parents=True, exist_ok=True)
+    if os.path.isdir(args.save_path) or not os.path.basename(args.save_path):
+        print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save_path}')
+        path = os.path.join(args.save_path,"generated_cams.npz")
+    else: 
+        if os.path.basename(args.save_path)[-4:] == ".npz":
+            path = args.save_path
+        else:
+            path = os.path.join(os.path.dirname(args.save_path), os.path.basename(args.save_path)+".npz")
+    print(f'Output path to CAM file:{path}')
+    
+    np.savez(path,**cams)

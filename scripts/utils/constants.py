@@ -1,3 +1,5 @@
+from mmseg.models.Segmentors import CascadeEncoderDecoder
+
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
     [[102, 179,  92],
@@ -93,3 +95,7 @@ TYPES=[
     'masks',
     'images',
 ]
+
+MODELWRAPPERS={
+    'CascadeEncoderDecoder':CascadeEncoderDecoder
+    }
