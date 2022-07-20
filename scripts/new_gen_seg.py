@@ -198,7 +198,7 @@ def main(args):
     model = init_segmentor(args.config, args.checkpoint, device=args.device)
     checkpoint = load_checkpoint(model, args.checkpoint, map_location='cpu')
 
-    model.CLASSES = model.CLASSES + (args.background,)  # Add background class so show_results throws no error
+    model.CLASSES = model.CLASSES + (args.background,) if args.use_threshold else model.CLASSES  # Add background class so show_results throws no error if specified
 
     assert 'CLASSES' in checkpoint.get('meta', {}), f'No CLASSES specified in the checkpoint of the model.'
     classes = checkpoint['meta']['CLASSES']

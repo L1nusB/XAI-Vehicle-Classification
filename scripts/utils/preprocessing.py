@@ -20,7 +20,6 @@ def load_classes(classes=None, backgroundCls='background', addBackground=True, *
         warnings.warn(f'Background Class {backgroundCls} already present in given Classes. Will not be added again.')
     else:
         classes = classes + (backgroundCls,) if addBackground else classes
-
     return classes
 
 def batch_statistics(classes, imgNames, cams, segmentations, forceAll=False, limit=10000, percentualArea=False, **kwargs):
