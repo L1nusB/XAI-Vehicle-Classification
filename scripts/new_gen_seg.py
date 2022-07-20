@@ -273,12 +273,10 @@ def main(args):
                 backgroundIndex=backgroundIndex
             )
         else:
-            results = single_gpu_test_thresh(
+            results = single_gpu_test(
                 model=model,
                 data_loader=data_loader,
-                out_dir=img_dir,
-                threshold=args.threshold,
-                backgroundIndex=backgroundIndex
+                out_dir=img_dir
             )
 
         if postPipeline:

@@ -10,6 +10,7 @@ from .utils.plot import plot_bar
 from .utils.preprocessing import load_classes
 from .utils.calculations import generate_stats_single
 from .utils.io import get_save_figure_name, saveFigure
+from .utils.constants import RESULTS_PATH
 
 def generate_bar_cam_intersection(classes=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -44,7 +45,7 @@ def generate_bar_cam_intersection(classes=None, **kwargs):
 
     figure_name = get_save_figure_name(statType='Single', **kwargs)
 
-    saveFigure(savePath=osp.join("results", figure_name), figure=fig)
+    saveFigure(savePath=osp.join(RESULTS_PATH, figure_name), figure=fig)
 
 
 
@@ -104,7 +105,7 @@ def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False,
 
     figure_name = get_save_figure_name(statType='Single', additional='ShowPropArea', **kwargs)
 
-    saveFigure(savePath=osp.join("results", figure_name), figure=fig)
+    saveFigure(savePath=osp.join(RESULTS_PATH, figure_name), figure=fig)
 
 
 def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
@@ -143,7 +144,7 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     axr.imshow(sourceImg)
     axr.axis('off')
 
-    saveFigure(osp.join("results", "Overview.jpg"), fig)
+    saveFigure(osp.join(RESULTS_PATH, "Overview.jpg"), fig)
 
 #def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, annfile='', method='gradcam', 
 #    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
