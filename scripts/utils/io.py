@@ -70,7 +70,12 @@ def saveResults(savePath, defaultName='generated_result.npz', **results):
     np.savez(path,**results)
 
 def saveFigure(savePath, figure, defaultName='figure.jpg'):
-    print(f'Saving figure in: {savePath}')
+    """
+    Saves the given figure under the specified Path.
+    If the Basename of savePath is not a directory its base will be used.
+    If savePath is a directory the defaultName will be added as the filename into that directory.
+    Otherwise it is ensured that it is .jpg or .png and if necessary a .jpg extension is added.
+    """
     Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
     base = os.path.dirname(savePath)
     if not os.path.isdir(savePath):
@@ -82,6 +87,8 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
                 outPath = savePath + ".jpg"
         else:
             outPath = os.path.join(base, defaultName)
+    else:
+        outPath = os.path.join(savePath, defaultName)
             
     Path(os.path.dirname(outPath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving images to: {outPath}')
@@ -102,3 +109,50 @@ def saveCAMs(args, cams):
     print(f'Output path to CAM file:{path}')
     
     np.savez(path,**cams)
+
+def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
+    """
+    Determines the name under which the figure and potential other files will be saved.
+    Determines if another file must be saved.
+    Filenames follow the strucutre:
+    statType_selectionCriterion_camMethod_camDataset_camModel_segModel_additional_dd_MM_yyyy
+
+    :param statType: (Single, Full, Multiple) What data went into the statistic. Will be multiple if dataClasses or annfile are given
+    :param dataClasses: List of Classes that was sampled from. Will be saved
+    :param annfile: Annotation file containing all samples used. Will be saved
+    :param method: Method used to generate the CAMs
+    :param additional: Additional statistics information see Excel Sheet.
+
+    :return: Tuple (figure_name, saveDataClasses, saveAnnfile)
+    """
+    from datetime import date
+    selectionCriterion = ''
+    saveAnnfile = False
+    saveDataClasses = False
+    if len(dataClasses)>0:
+        selectionCriterion='classes'
+        saveDataClasses = True
+        statType = 'Multiple' if statType.lower() != 'single' else statType
+    if annfile != '':
+        statType = 'Multiple' if statType.lower() != 'single' else statType
+        selectionCriterion=selectionCriterion+"+annfile" if selectionCriterion != '' else 'annfile'
+        saveAnnfile = True
+
+
+    if 'camData' in kwargs:
+        camMethod = 'CAM-Predefined'
+    else:
+        camMethod = method
+        camDataset = '' # Load these somehow from the model config
+        camModel = ''
+
+    if 'segData' in kwargs:
+        segModel = 'SEG-Predefined'
+
+    dateStr = date.today().strftime("%d_%m_%Y")
+
+    components = [statType, selectionCriterion, camMethod, camDataset, camModel, segModel, additional, dateStr]
+
+    figure_name = "_".join([component for component in components if component != '']) + '.png'
+
+    return figure_name, saveDataClasses, saveAnnfile
