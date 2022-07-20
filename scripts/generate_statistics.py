@@ -6,7 +6,7 @@ import numpy as np
 import heapq
 from mmseg.apis import init_segmentor
 
-from .utils.io import get_samples, saveFigure, saveResults
+from .utils.io import get_samples, saveFigure, get_save_figure_name
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import accumulate_statistics, generate_stats
@@ -276,6 +276,10 @@ def new(classes=None, **kwargs):
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
+    figure_name = get_save_figure_name(statType='Multiple', **kwargs)
+
+    saveFigure(savePath=os.path.join("results", figure_name), figure=fig)
+
 
 def newProp(classes=None, showPropPercent=False, **kwargs):
     assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
@@ -338,3 +342,7 @@ def newProp(classes=None, showPropPercent=False, **kwargs):
 
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+
+    figure_name = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
+
+    saveFigure(savePath=os.path.join("results", figure_name), figure=fig)

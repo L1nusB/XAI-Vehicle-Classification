@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
+import os.path as osp
 from .generate_cams import generate_cam_overlay
 
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
@@ -8,6 +9,7 @@ from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.plot import plot_bar
 from .utils.preprocessing import add_background_class
 from .utils.calculations import generate_stats_single
+from .utils.io import get_save_figure_name, saveFigure
 
 def generate_bar_cam_intersection(classes=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -39,6 +41,12 @@ def generate_bar_cam_intersection(classes=None, **kwargs):
     plot_bar(ax=ax0, x_ticks=classArray, data=segmentedCAMActivation, dominantMask=dominantMask, format='.0f')
     # Plot Relative CAM Activations
     plot_bar(ax=ax1, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
+
+    figure_name = get_save_figure_name(statType='Single', **kwargs)
+
+    saveFigure(savePath=osp.join("results", figure_name), figure=fig)
+
+
 
 def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -94,6 +102,10 @@ def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False,
 
     ax0.legend(handles=handles)
 
+    figure_name = get_save_figure_name(statType='Single', additional='ShowPropArea', **kwargs)
+
+    saveFigure(savePath=osp.join("results", figure_name), figure=fig)
+
 
 def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     """
@@ -130,6 +142,8 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
 
     axr.imshow(sourceImg)
     axr.axis('off')
+
+    saveFigure(osp.join("results", "Overview.jpg"), fig)
 
 #def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, annfile='', method='gradcam', 
 #    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
@@ -170,4 +184,5 @@ def plot(imgName, **kwargs):
     transformedSourceImg, transformedSegmentationImg = apply_pipeline(pipeline, sourceImg, segmentationImg)
     camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
     generate_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
+
     
