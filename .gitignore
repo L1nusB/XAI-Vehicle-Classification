@@ -17,6 +17,7 @@ segmentation*/
 images_old/
 statsResults/
 results*/
+notebooks/output/
 
 *.npz
 *.jpg

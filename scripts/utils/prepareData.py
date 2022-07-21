@@ -3,6 +3,7 @@ import os
 import numpy as np
 import warnings
 import copy
+import re
 
 from mmcv import Config
 
@@ -12,11 +13,40 @@ from .. import new_gen_seg, generate_cams
 
 
 def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None, segDevice='cuda', annfile='', dataClasses=[], **kwargs):
+    """
+    Determines segmentationMasks and segmentationImgData for given parameters. If segData is not provided it will be generated.
+
+    If segData is provided segmentationImgData will be returned None.
+    If segData is a dictionary it will just be copied.
+    If segData is a str/Path or a list thereof for each file a corresponding annfile with matching file name must exist in the same directory.
+       for str/Path like segData a list containing all given str/Paths will be returned. 
+       if segData is only a string the dictionary will be searched for all files matching {str}_{number}.npz
+       File extension for Paths must be .npz
+    """
     assert (segConfig and segCheckpoint) or (segData is not None), 'Either config + checkpoint or data must be provided for segmentation.'
     segmentationMasks = None
     segmentationImgData = None
     if segData is not None:
-        segmentationMasks = copy.copy(segData)
+        if isinstance(segmentationMasks,dict):
+            segmentationMasks = copy.copy(segData)
+        else:
+            segmentationMasks = []
+            if isinstance(segData, str):
+                pattern = re.compile(f'^{os.path.basename(segData).split(".")[0]}(_\d+)?.npz$')
+                # Search directory for all files with matching basename
+                # Split in case a .npz is given.
+                for file in os.listdir(os.path.dirname(segData)):
+                    if pattern.match(file):
+                        assert os.path.isfile(os.path.join(os.path.dirname(segData),file[:-4]+'.txt')),f'No matching .txt file (annfile) for {file} found.'
+                        segmentationMasks.append(os.path.join(os.path.dirname(segData),file))
+            else:
+                for path in segData:
+                    assert os.path.isfile(path),f'No such file {path}'
+                    assert path[-4:]=='.npz',f'{path} is no .npz file'
+                    assert os.path.isfile(path[:-4]+'.txt'),f'No matching .txt file (annfile) for {file} found.'
+                    segmentationMasks.append(path)
+            print(f'Generating data from segData files:' + ",".join(segmentationMasks))
+
     else:
         if 'imgName' in kwargs:
             assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'

@@ -47,16 +47,16 @@ def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], **kwargs):
 def get_sample_count(args, fc=None, dataClasses=[]):
     return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, dataClasses=dataClasses))
 
-def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[]):
+def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[], fileprefix='results'):
     sample_list = list(sample_iterator)
     if len(dataClasses)>0:
         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
     if batch_size == -1:
-        with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
+        with open(osp.join(work_dir, f'{fileprefix}_{0}.txt'),'w') as f:
             f.write('\n'.join(sample_list))
         return
     for i in range(batch_count):
-        with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
+        with open(osp.join(work_dir, f'{fileprefix}_{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
 def saveResults(savePath, defaultName='generated_result.npz', **results):
