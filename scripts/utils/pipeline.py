@@ -54,10 +54,10 @@ def get_pipeline_torchvision(pipeline,scaleToInt=True, workPIL=False):
         components.append(lambda x:(x.squeeze().numpy()*rescaleFactor))
         components.append(lambda x: (x.transpose(1,2,0) if len(x.shape)==3 else x).astype(resultType))
     else:
-        components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*rescaleFactor))  # Remove extra dims and scale up before translating to numpy array.
+        components.append(transforms.Lambda(lambda x:(x.squeeze().numpy()*rescaleFactor)))  # Remove extra dims and scale up before translating to numpy array.
     return transforms.Compose(components)
 
-def get_pipeline_pre_post(args, default_mapping='cls'):
+def get_pipeline_pre_post(args, default_mapping='cls', scaleToInt=True, workPIL=True):
     prePipeline = None
     postPipeline = None
     if len(args.pipeline)>0:
@@ -102,7 +102,7 @@ def get_pipeline_pre_post(args, default_mapping='cls'):
             postPipeline = None
         else:
             prePipeline = None
-            postPipeline = get_pipeline_torchvision(transformPipelineSteps)
+            postPipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL)
     return prePipeline, postPipeline
 
 def apply_pipeline(pipeline, *args):
