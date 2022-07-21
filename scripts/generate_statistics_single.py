@@ -90,7 +90,7 @@ def generate_bar_cam_intersection_prop_area(classes=None, showPropPercent=False,
         textrotation=rotation)
 
     # Plot proportion Data next to main Data
-    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, data=proportions, barwidth=barwidth, barcolor='g',
+    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray ,data=proportions, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMask, addText=showPropPercent, hightlightDominant=False,
         textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
 

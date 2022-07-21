@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 import os
 import numpy as np
 
@@ -129,11 +130,20 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
         textrotation=rotation)
 
     # Plot proportion Data next to main Data
-    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
+    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPropPercent, hightlightDominant=False,
         textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
 
     ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
+
+    legendMap = {
+        'b':'CAM Activations',
+        'r':'Top CAM Activations',
+        'g':'Proportional Segment Coverage'
+    }
+    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+
+    ax0.legend(handles=handles)
 
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
