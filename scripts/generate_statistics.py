@@ -27,8 +27,10 @@ def generate_statistic(classes=None, **kwargs):
     # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
     # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
     segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-    assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
+
+    # Assertion can not be used reliable here since one must account for multiple files and no immediate returns are given here anymore.
+    # assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
+    # assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
 
     transformedSegmentations = {}
     cfg = get_pipeline_cfg(**kwargs)

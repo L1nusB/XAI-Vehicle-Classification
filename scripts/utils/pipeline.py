@@ -82,8 +82,13 @@ def get_pipeline_pre_post(args, default_mapping='cls'):
                     warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
                 mapping = PIPELINEMAPS[mapSpecifier[0]]
             else:
-                print(f'No pipeline map specified. Using default {default_mapping}. Specify None if non is desired.')
-                mapping = PIPELINEMAPS[default_mapping]
+                # Only add a default mapping if it is not post since there we need a torchvision pipeline will does not like the custom mapped names.
+                # Otherwise set it to none
+                if posSpecifier.lower()=='post':
+                    mapping = PIPELINEMAPS['none']
+                else:
+                    print(f'No pipeline map specified. Using default {default_mapping}. Specify None if non is desired.')
+                    mapping = PIPELINEMAPS[default_mapping]
             for step in pipeline:
                 if step['type'] in mapping:
                     step['type'] = mapping[step['type']]
