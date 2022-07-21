@@ -4,6 +4,16 @@ RESULTS_PATH='./results'
 RESULTS_PATH_ANN='./results/annfiles'
 RESULTS_PATH_DATACLASS='./results/dataClasses'
 
+DATASETSDATAPREFIX={
+    'CompCarsOriginal':'CompCars_sv_original',
+    'CompCarsColor':'CompCars_sv_color',
+    'CompCarsWeb':'CompCars_web_original',
+    'CarPartsNoFlip':'carparts_noflip',
+    'CarPartsNoFrontBack':'carparts_nofrontback',
+    'CarPartsNoLeftRight':'carparts_noleftright',
+}
+
+
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
     [[102, 179,  92],

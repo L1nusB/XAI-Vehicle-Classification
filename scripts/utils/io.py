@@ -1,9 +1,12 @@
 import os.path as osp
 import shutil
 import mmcv
+from mmcv import Config
 from pathlib import Path
 import os
 import numpy as np
+
+from .constants import DATASETSDATAPREFIX
 
 def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/'):
     directory = defaultDir
@@ -151,7 +154,7 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
     Determines the name under which the figure and potential other files will be saved.
     Determines if another file must be saved.
     Filenames follow the strucutre:
-    statType_selectionCriterion_camMethod_camDataset_camModel_segModel_additional_dd_MM_yyyy
+    statType_selectionCriterion_camMethod_camDataset_camModel_segModel_segDataset_additional_dd_MM_yyyy
 
     :param statType: (Single, Full, Multiple) What data went into the statistic. Will be multiple if dataClasses or annfile are given
     :param dataClasses: List of Classes that was sampled from. Will be saved
@@ -177,18 +180,37 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
 
     if 'camData' in kwargs:
         camMethod = 'CAM-Predefined'
+        camDataset = 'CAM-Predefined'
+        camModel = 'CAM-Predefined'
     else:
+        # Now camConfig and camCheckpoint must be in kwargs
         camMethod = method
-        camDataset = '' # Load these somehow from the model config
-        camModel = ''
 
-    segModel = ''
+        cfg = Config.fromfile(kwargs['camConfig'])
+        camDataset = cfg.data.train.type # Load the general type. Used if not more detailed found
+        # Check if a detailed Dataset can be identified.
+        for k,v in DATASETSDATAPREFIX.items():
+            if v.lower() in cfg.data.train.data_prefix.lower():
+                camDataset = k
+                break
+        camModel = cfg.model.backbone.type
+
     if 'segData' in kwargs:
         segModel = 'SEG-Predefined'
+        segDataset = 'SEG-Predefined'
+    else:
+        cfg = Config.fromfile(kwargs['segConfig'])
+        segDataset = cfg.data.train.type # Load the general type. Used if not more detailed found
+        # Check if a detailed Dataset can be identified.
+        for k,v in DATASETSDATAPREFIX.items():
+            if v.lower() in cfg.data.train.data_prefix.lower():
+                segDataset = k
+                break
+        segModel = cfg.model.backbone.type
 
     dateStr = date.today().strftime("%d_%m_%Y")
 
-    components = [statType, selectionCriterion, camMethod, camDataset, camModel, segModel, additional, dateStr]
+    components = [statType, selectionCriterion, camMethod, camDataset, camModel, segModel, segDataset, additional, dateStr]
 
     figure_name = "_".join([component for component in components if component != '']) + '.png'
 
