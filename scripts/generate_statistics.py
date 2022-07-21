@@ -136,7 +136,7 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPropPercent, hightlightDominant=False,
         textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
 
-    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
+    ax0.text(0.9,1.02, f'No.Samples:{len(imgNames)}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
     legendMap = {
         'b':'CAM Activations',
