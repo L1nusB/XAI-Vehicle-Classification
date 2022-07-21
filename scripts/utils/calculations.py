@@ -34,7 +34,7 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
 
     segmentPercentualArea = None
     if percentualArea:
-        segmentPercentualArea = [segmentation[segmentation==c].size for c in np.arange(len(classes))] / np.prod(segmentation.shape)
+        segmentPercentualArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classes))]) / np.prod(segmentation.shape)
 
     return segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea
 
@@ -63,7 +63,7 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     for name in imgNames:
         totalCAMActivations.append(cams[name].sum())
         segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = accumulate_single(
-            cams[name], segmentations[name], classes)
+            cams[name], segmentations[name], classes, percentualArea=percentualArea)
         segmentedCAMActivations.append(segmentedCAMActivation)
         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
         if percentualArea:
@@ -119,8 +119,9 @@ def generate_stats_rel_area(percentualAreas):
 
     :return summarizedPercSegmentedAreas
     """
-    
-    summarizedPercSegmentedAreas = percentualAreas.mean(axis=0)
+    # Ensure conversion to np.array
+    areas = np.array(percentualAreas)
+    summarizedPercSegmentedAreas = areas.mean(axis=1).mean(axis=0)
 
     return summarizedPercSegmentedAreas
 
