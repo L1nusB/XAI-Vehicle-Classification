@@ -1,4 +1,5 @@
 import os.path as osp
+import shutil
 import mmcv
 from pathlib import Path
 import os
@@ -68,6 +69,41 @@ def saveResults(savePath, defaultName='generated_result.npz', **results):
             path = os.path.join(os.path.dirname(savePath), os.path.basename(savePath)+".npz")
     
     np.savez(path,**results)
+
+def copyFile(srcPath, dstPath):
+    """
+    Copys the file at srcPath into dstPath. 
+    Creates folders as necessery for dstPath.
+    If dstPath has no basename/is a dictionary the name of srcPath will be used.
+    """
+    assert osp.isfile(srcPath),f'No such file {srcPath}'
+    if osp.basename(dstPath).split('.')[0] != '.txt':
+        # Ensure dstPath leads to .txt file
+        outpath = osp.join(osp.dirname(dstPath), osp.basename(dstPath).split('.')[0]+'.txt')
+    else:
+        outpath = dstPath
+    if osp.isdir(dstPath) or osp.basename(dstPath) is None:
+        print(f'No Basename for dstPath. Using srcPath basename.')
+        outpath = dstPath + osp.basename(srcPath)
+    Path(os.path.dirname(outpath)).mkdir(parents=True, exist_ok=True)
+    print(f'Copying file from {srcPath} to {outpath}')
+    shutil.copy(srcPath, outpath)
+
+def writeArrayToFile(path, arr, seperator=','):
+    """
+    Writes the given elements of the array into a .txt file at the given Path.
+    If the file does not exist it will be created as well as necessary directories.
+    """
+    Path(os.path.dirname(path)).mkdir(parents=True, exist_ok=True)
+    if osp.basename(path).split('.')[0] != '.txt':
+        # Ensure path leads to .txt file
+        filePath = osp.join(osp.dirname(path), osp.basename(path).split('.')[0]+'.txt')
+    else:
+        filePath = path
+    print(f'Writing data to file at {path}')
+    with open(filePath, 'w') as f:
+        f.write(seperator.join(arr))
+
 
 def saveFigure(savePath, figure, defaultName='figure.jpg'):
     """
@@ -146,6 +182,7 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
         camDataset = '' # Load these somehow from the model config
         camModel = ''
 
+    segModel = ''
     if 'segData' in kwargs:
         segModel = 'SEG-Predefined'
 

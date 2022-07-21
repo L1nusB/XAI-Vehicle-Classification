@@ -4,7 +4,7 @@ import numpy as np
 
 from .calculations import accumulate_statistics
 
-def load_classes(classes=None, backgroundCls='background', addBackground=True, **kwargs):
+def load_classes(classes=None, backgroundCls='background', addBackground=False, **kwargs):
     """
     Gets the classes for the given segmentation model and if specified adds a background category
     via segConfig and segCheckpoint and then adds the background class.

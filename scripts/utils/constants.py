@@ -1,6 +1,8 @@
 from mmseg.models.segmentors import CascadeEncoderDecoder
 
 RESULTS_PATH='./results'
+RESULTS_PATH_ANN='./results/annfiles'
+RESULTS_PATH_DATACLASS='./results/dataClasses'
 
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':
