@@ -123,7 +123,11 @@ def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
         segmentationMasks, segmentationsImgData = prepareSegmentation(**kwargs)
         if 'imgName' in kwargs:
             results.append(segmentationMasks[kwargs['imgName']])
-            results.append(segmentationsImgData[kwargs['imgName']])
+            # In case only masks are needed and segData is provided the imgData would be None object.
+            if segmentationsImgData:
+                results.append(segmentationsImgData[kwargs['imgName']])
+            else:
+                results.append(None)
         else:
             results.append(segmentationMasks)
             results.append(segmentationsImgData)
