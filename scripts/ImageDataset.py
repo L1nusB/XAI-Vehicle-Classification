@@ -13,11 +13,14 @@ class ImageDataset(Dataset):
         self.imgRoot = imgRoot
         if imgNames:
             if len(dataClasses)>0:
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if any(name.startswith(s) for s in dataClasses) and os.path.isfile(os.path.join(imgRoot, name))])
+                self.data = [name for name in imgNames if any(name.startswith(s) for s in dataClasses) and os.path.isfile(os.path.join(imgRoot, name))]
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
             else:
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))])
+                self.data = [name for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))]
+                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
         else:
-            self.imgPaths = np.array([os.path.join(imgRoot, f) for f in get_samples(annfile, imgRoot, None, dataClasses)])
+            self.data = [name for name in get_samples(annfile, imgRoot, None, dataClasses)]
+            self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
         self.pipeline = pipeline
 
     def __len__(self):

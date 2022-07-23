@@ -189,13 +189,15 @@ def main(args):
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
         imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes)
 
+    print(f'Method for CAM generation: {args.method}, eigen-smooth:{args.eigen_smooth}, aug-smooth:{args.aug_smooth}, vit-like:{args.vit_like}')
     cams = generateCAMs(imgDataset, args)
 
     if args.save:
         work_dir, result_file_prefix = get_dir_and_file_path(args.save, defaultName='resultsCAM', removeFileExtensions=True)
         mmcv.mkdir_or_exist(os.path.abspath(work_dir))
 
-        generate_split_file((sample['name'] for sample in imgDataset), work_dir, fileprefix=result_file_prefix)
+        print(f'Save Split file for Cams')
+        generate_split_file(imgDataset.data, work_dir, fileprefix=result_file_prefix)
         
         path = os.path.join(work_dir, result_file_prefix + ".npz")
         print(f'Save generated CAMs to {path}')
