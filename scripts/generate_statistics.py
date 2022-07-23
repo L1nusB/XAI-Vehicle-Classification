@@ -35,7 +35,6 @@ def generate_statistic(classes=None, **kwargs):
     if cfg:
         pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
         print('Tranforming segmentation masks with the given pipeline.')
-        print(pipeline)
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
@@ -102,7 +101,6 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
     if cfg:
         pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
         print('Tranforming segmentation masks with the given pipeline.')
-        print(pipeline)
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 

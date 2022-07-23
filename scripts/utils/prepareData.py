@@ -62,7 +62,7 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
         annfileParamAddition=[]
         if annfile:
             annfileParamAddition=['--ann-file', annfile]
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition)
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition)
     else:
         raise ValueError('imgName must be a file or directory if no camData is provided.')
     return camData
