@@ -156,14 +156,6 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     print(f'Saving images to: {outPath}')
     figure.savefig(outPath)
 
-
-def saveCAMs(cams, work_dir, filePrefix):
-    path = osp.join(work_dir, filePrefix + ".npz")
-    print(f'Save generated CAMs to {path}')
-    mmcv.mkdir_or_exist(osp.abspath(work_dir))
-    np.savez(path, **cams)
-
-
 # def saveCAMs(args, cams):
 #     print("Save generated CAMs to " + args.save)
 #     Path(os.path.dirname(args.save)).mkdir(parents=True, exist_ok=True)

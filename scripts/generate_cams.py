@@ -117,6 +117,13 @@ def parse_args(args):
         nargs='+',
         help='Allows specification of classes for which CAMs are to be generated.'
     )
+    parser.add_argument(
+        '--results','-r',
+        type=bool,
+        nargs='?',
+        const=True,
+        help='Return the results.'
+    )
     args = parser.parse_args(args)
     if args.method.lower() not in METHOD_MAP.keys():
         raise ValueError(f'invalid CAM type {args.method},'
@@ -193,8 +200,8 @@ def main(args):
         path = os.path.join(work_dir, result_file_prefix + ".npz")
         print(f'Save generated CAMs to {path}')
         np.savez(path, **cams)
-        
-    return cams
+    if args.results:   
+        return cams
 
 if __name__ == '__main__':
     import sys
