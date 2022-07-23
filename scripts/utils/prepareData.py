@@ -2,10 +2,8 @@ import mmcv
 import os
 import numpy as np
 import warnings
-import copy
 
 from mmcv import Config
-
 
 
 from .. import new_gen_seg, generate_cams
@@ -16,7 +14,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
     segmentationMasks = None
     segmentationImgData = None
     if segData is not None:
-        segmentationMasks = copy.copy(segData)
+        segmentationMasks = np.copy(segData)
     else:
         if 'imgName' in kwargs:
             assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
@@ -49,7 +47,7 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
 def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', dataClasses=[], annfile='', **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
     if camData is not None:
-        return copy.copy(camData)
+        return np.copy(camData)
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
@@ -91,9 +89,6 @@ def get_pipeline_cfg(**kwargs):
 def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
     """
     Prepares the input data for the given parameter options for sourceImg, Segmentation and Cams.
-    The prepared data will be saved into temporary files unless data is given and paths will be returned.
-    If concrete Data is given this can be done in a dictionary containing the data or a (list) of strings/Paths
-    that lead to the files containing the data
 
     Potential kwargs are:
     imgRoot: Root to img Folder

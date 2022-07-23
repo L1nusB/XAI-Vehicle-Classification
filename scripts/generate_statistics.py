@@ -27,17 +27,13 @@ def generate_statistic(classes=None, **kwargs):
     # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
     # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
     segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-
-    # Assertion can not be used reliable here since one must account for multiple files and no immediate returns are given here anymore.
-    # assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    # assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
+    assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
+    assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
 
     transformedSegmentations = {}
     cfg = get_pipeline_cfg(**kwargs)
     if cfg:
         pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
-        print('Tranforming segmentation masks with the given pipeline.')
-        print(pipeline)
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
@@ -103,8 +99,6 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
     cfg = get_pipeline_cfg(**kwargs)
     if cfg:
         pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
-        print('Tranforming segmentation masks with the given pipeline.')
-        print(pipeline)
     for name in imgNames:
         transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
 
@@ -114,6 +108,8 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
 
     # Pass fake segmentedActivations and totalCAM since i don't care about results.
     classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
+
+    numSamples = len(classArray)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
 
@@ -138,7 +134,7 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPropPercent, hightlightDominant=False,
         textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
 
-    ax0.text(0.9,1.02, f'No.Samples:{len(imgNames)}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
     legendMap = {
         'b':'CAM Activations',

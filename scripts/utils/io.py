@@ -203,7 +203,7 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
         segDataset = cfg.data.train.type # Load the general type. Used if not more detailed found
         # Check if a detailed Dataset can be identified.
         for k,v in DATASETSDATAPREFIX.items():
-            if v.lower() in cfg.data.train.data_root.lower():
+            if v.lower() in cfg.data.train.data_prefix.lower():
                 segDataset = k
                 break
         segModel = cfg.model.backbone.type
