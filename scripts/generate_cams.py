@@ -9,7 +9,7 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .ImageDataset import ImageDataset
-from .utils.io import saveCAMs
+from .utils.io import saveCAMs, get_dir_and_file_path
 from torch.utils.data import DataLoader
 
 try:
@@ -34,8 +34,13 @@ def parse_args(args):
     parser.add_argument('img', help='Path to Image file or folder of image files')
     parser.add_argument('config', help='Config file')
     parser.add_argument('checkpoint', help='Checkpoint file')
-    parser.add_argument('--save-path',
-        help='The path to save visualize cam image.')
+    parser.add_argument(
+        '--save', '-s',
+        type=str,
+        nargs='?',
+        const='./output/',
+        help='Save generated cams.'
+    )
     parser.add_argument(
         '--target-layers',
         default=[],
@@ -180,7 +185,7 @@ def main(args):
 
     cams = generateCAMs(imgDataset, args)
 
-    if args.save_path:
+    if args.save:
         saveCAMs(args, cams)
     return cams
 

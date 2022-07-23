@@ -157,20 +157,28 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     figure.savefig(outPath)
 
 
-def saveCAMs(args, cams):
-    print("Save generated CAMs to " + args.save_path)
-    Path(os.path.dirname(args.save_path)).mkdir(parents=True, exist_ok=True)
-    if os.path.isdir(args.save_path) or not os.path.basename(args.save_path):
-        print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save_path}')
-        path = os.path.join(args.save_path,"generated_cams.npz")
-    else: 
-        if os.path.basename(args.save_path)[-4:] == ".npz":
-            path = args.save_path
-        else:
-            path = os.path.join(os.path.dirname(args.save_path), os.path.basename(args.save_path)+".npz")
-    print(f'Output path to CAM file:{path}')
+def saveCAMs(args, cams, defaultName='resultsCAM'):
+    work_dir, result_file_prefix = get_dir_and_file_path(args.save, defaultName=defaultName, removeFileExtensions=True)
+    path = osp.join(work_dir, result_file_prefix + ".npz")
+    print(f'Save generated CAMs to {path}')
+    mmcv.mkdir_or_exist(osp.abspath(work_dir))
+    np.savez(path, **cams)
+
+
+# def saveCAMs(args, cams):
+#     print("Save generated CAMs to " + args.save)
+#     Path(os.path.dirname(args.save)).mkdir(parents=True, exist_ok=True)
+#     if os.path.isdir(args.save) or not os.path.basename(args.save):
+#         print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save}')
+#         path = os.path.join(args.save,"generated_cams.npz")
+#     else: 
+#         if os.path.basename(args.save)[-4:] == ".npz":
+#             path = args.save
+#         else:
+#             path = os.path.join(os.path.dirname(args.save), os.path.basename(args.save)+".npz")
+#     print(f'Output path to CAM file:{path}')
     
-    np.savez(path,**cams)
+#     np.savez(path,**cams)
 
 def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
     """
