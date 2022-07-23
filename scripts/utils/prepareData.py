@@ -2,6 +2,7 @@ import mmcv
 import os
 import numpy as np
 import warnings
+import copy
 
 from mmcv import Config
 
@@ -14,7 +15,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
     segmentationMasks = None
     segmentationImgData = None
     if segData is not None:
-        segmentationMasks = np.copy(segData)
+        segmentationMasks = copy.copy(segData)
     else:
         if 'imgName' in kwargs:
             assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
@@ -47,7 +48,7 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
 def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', dataClasses=[], annfile='', **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
     if camData is not None:
-        return np.copy(camData)
+        return copy.copy(camData)
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'

@@ -57,7 +57,7 @@ def get_pipeline_torchvision(pipeline,scaleToInt=True, workPIL=False):
         components.append(transforms.Lambda(lambda x:x.squeeze().numpy()*rescaleFactor))  # Remove extra dims and scale up before translating to numpy array.
     return transforms.Compose(components)
 
-def get_pipeline_pre_post(args, default_mapping='cls'):
+def get_pipeline_pre_post(args, default_mapping='cls', scaleToInt=True, workPIL=True):
     prePipeline = None
     postPipeline = None
     if len(args.pipeline)>0:
@@ -82,8 +82,13 @@ def get_pipeline_pre_post(args, default_mapping='cls'):
                     warnings.warn('Using a Map Specifier for post processing is not advised and will likely raise Exceptions.')
                 mapping = PIPELINEMAPS[mapSpecifier[0]]
             else:
-                print(f'No pipeline map specified. Using default {default_mapping}. Specify None if non is desired.')
-                mapping = PIPELINEMAPS[default_mapping]
+                # Only add a default mapping if it is not post since there we need a torchvision pipeline will does not like the custom mapped names.
+                # Otherwise set it to none
+                if posSpecifier.lower()=='post':
+                    mapping = PIPELINEMAPS['none']
+                else:
+                    print(f'No pipeline map specified. Using default {default_mapping}. Specify None if non is desired.')
+                    mapping = PIPELINEMAPS[default_mapping]
             for step in pipeline:
                 if step['type'] in mapping:
                     step['type'] = mapping[step['type']]
@@ -97,7 +102,7 @@ def get_pipeline_pre_post(args, default_mapping='cls'):
             postPipeline = None
         else:
             prePipeline = None
-            postPipeline = get_pipeline_torchvision(transformPipelineSteps)
+            postPipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL)
     return prePipeline, postPipeline
 
 def apply_pipeline(pipeline, *args):

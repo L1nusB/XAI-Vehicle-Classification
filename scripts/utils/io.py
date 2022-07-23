@@ -8,25 +8,31 @@ import numpy as np
 
 from .constants import DATASETSDATAPREFIX
 
-def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/'):
+def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/', removeFileExtensions=False):
+    """Splits the given path into directory and basename covering the case, that the
+    path is a directory without a trailing slash. Missing areas in the path will be 
+    filled with the given defaults.
+    If specified possible file extensions will be removed by removing everything after the last found . in the filename.
+
+    :return: (directory, filename) tuple of paths.
+    """
     directory = defaultDir
     fileName = defaultName
     if osp.isdir(path):
         # Path is a directory
         # Just use default Name
         directory = path
-    elif osp.dirname(path):
-        # Base Directory Specified
-        # Override default Dir
-        directory = osp.dirname(path)
-    # No else since otherwise default Dir is used
-
-    if osp.basename(path):
-        fileName = osp.basename(path)
-        if osp.basename(path)[:-4] != '.npz':
-            # Change file extension to .npz
-            fileName = fileName + ".npz"
-    # Again no else needed since default is used otherwise
+    else:
+        if osp.dirname(path):
+            # Base Directory Specified
+            # Override default Dir
+            directory = osp.dirname(path)
+        if osp.basename(path):
+            fileName = osp.basename(path)
+            if removeFileExtensions:
+                # Ensure dot in fileName otherwise result will be empty
+                if '.' in fileName:
+                    fileName = ".".join(fileName.split(".")[:-1])
     return directory, fileName
 
 def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], **kwargs):
@@ -58,6 +64,23 @@ def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dat
     for i in range(batch_count):
         with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
+
+def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='resultsSeg'):
+    """Generates a .txt file containing all items of the given sample_iterator
+    that will be used to tell the dataset which samples to select.
+    Via dataClasses one can restrict the samples to ones based on those classes.
+
+    :param sample_iterator: Iterable containing all sample names/paths
+    :param work_dir: Path to the directory where the file will be saved to
+    :type work_dir: str
+    :param dataClasses: List of classes restricting the samples unless empty, defaults to []
+    :type dataClasses: List[str], optional
+    """
+    sample_list = list(sample_iterator)
+    if len(dataClasses)>0:
+        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
+    with open(osp.join(work_dir, f'{fileprefix}.txt'),'w') as f:
+        f.write('\n'.join(sample_list))
 
 def saveResults(savePath, defaultName='generated_result.npz', **results):
     print(f'Saving results in: {savePath}')
@@ -203,7 +226,7 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
         segDataset = cfg.data.train.type # Load the general type. Used if not more detailed found
         # Check if a detailed Dataset can be identified.
         for k,v in DATASETSDATAPREFIX.items():
-            if v.lower() in cfg.data.train.data_prefix.lower():
+            if v.lower() in cfg.data.train.data_root.lower():
                 segDataset = k
                 break
         segModel = cfg.model.backbone.type
