@@ -2,14 +2,13 @@ import argparse
 import os
 from mmcv import Config, DictAction
 from mmcls.apis import init_model
-from pathlib import Path
 import numpy as np
 import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .ImageDataset import ImageDataset
-from .utils.io import saveCAMs, get_dir_and_file_path
+from .utils.io import  generate_split_file, get_dir_and_file_path
 from torch.utils.data import DataLoader
 
 try:
@@ -186,7 +185,15 @@ def main(args):
     cams = generateCAMs(imgDataset, args)
 
     if args.save:
-        saveCAMs(args, cams)
+        work_dir, result_file_prefix = get_dir_and_file_path(args.save, defaultName='resultsCAM', removeFileExtensions=True)
+        mmcv.mkdir_or_exist(os.path.abspath(work_dir))
+
+        generate_split_file((sample['name'] for sample in imgDataset), work_dir, fileprefix=result_file_prefix)
+        
+        path = os.path.join(work_dir, result_file_prefix + ".npz")
+        print(f'Save generated CAMs to {path}')
+        np.savez(path, **cams)
+        
     return cams
 
 if __name__ == '__main__':
