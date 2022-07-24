@@ -1,5 +1,6 @@
 import argparse
 import os
+import warnings
 from mmcv import Config, DictAction
 from mmcls.apis import init_model
 import numpy as np
@@ -108,7 +109,8 @@ def parse_args(args):
         default=False,
         action='store_true',
         help='Determine whether to use the target category specified'
-        ' by the annotation file.'
+        ' by the annotation file. If a single image is directly specified use '
+        ' --target-category with the respective class.'
     )
     parser.add_argument(
         '--classes',
@@ -156,10 +158,16 @@ def generateCAMs(dataset, args):
     cams={}
     prog_bar = mmcv.ProgressBar(len(dataset))
 
+
     for item in imgLoader:
         path = args.img if os.path.isfile(args.img) else os.path.join(args.img, item['name'][0])
+        target_category = args.target_category
+        if args.use_ann_labels:
+            if target_category:
+                warnings.warn('Both use-ann-labels and target-category are specified. Target-category will be ignored.')
+            target_category = item['gt_target']
         cam = getCAM_without_build(path, cfg.data.test.pipeline,
-            args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, args.target_category)
+            args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, target_category)
         cams[item['name'][0]] = cam.squeeze()
         prog_bar.update()
     return cams
@@ -184,12 +192,14 @@ def main(args):
         if args.ann_file:
             raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
-        imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)])
+        imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes)
+        imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
 
     print(f'Method for CAM generation: {args.method}, eigen-smooth:{args.eigen_smooth}, aug-smooth:{args.aug_smooth}, vit-like:{args.vit_like}')
+    if args.use_ann_labels:
+        print('Using annotation labels provided by the annfile.')
     cams = generateCAMs(imgDataset, args)
 
     if args.save:
