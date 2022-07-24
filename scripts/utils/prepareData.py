@@ -52,7 +52,7 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'--device',camDevice, '--method', method])
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method])
     elif os.path.isdir(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
