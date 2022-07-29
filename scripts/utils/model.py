@@ -1,71 +1,32 @@
+from torch.utils.data import DataLoader
+import numpy as np
+import mmcv
 import torch
 
-from .constants import MODELWRAPPERS
 
+def get_wrongly_classified(model, dataset, gt=None):
+    """
+    :param gt: Optional path to ground truth file. If None dataset must hold gt.   
+    """
+    data_loader = DataLoader(dataset, batch_size=64, num_workers=4)
+    model.eval()
+    wrong_samples = []
+    dataset = data_loader.dataset
+    prog_bar = mmcv.ProgressBar(len(dataset))
+    for i, data in enumerate(data_loader):
+        with torch.no_grad():
+            result = model(return_loss=False, **data)
 
+        batch_size = len(result)
+        scores = np.vstack(result)
+        pred_label = np.argmax(scores, axis=1)
 
-def wrap_model(model, use_threshold=False, threshold=0.7, backgroundIndex=-1):
-    modelCfg = model.cfg.model
-    if modelCfg.type in MODELWRAPPERS:
-        base = MODELWRAPPERS[modelCfg.type]
-    else:
-       raise KeyError(f'Given model type {modelCfg.type} is not tested/supported.Supported types are ' + ",".join(MODELWRAPPERS.keys()))
+        if gt:
+            raise ValueError('gt not yet supported use Dataset that works.')
+        wrong_samples.extend([data['name'][j] for j in batch_size if data['gt_target'][j] == pred_label[j]])
+
+        batch_size = data['img'].size(0)
+        for _ in range(batch_size):
+            prog_bar.update()
     
-    # Remove the type entry in model.cfg.model since this does not allow for inits via super
-    modelCfg = {key:values for key,values in modelCfg.items() if key != 'type'}
-
-
-    class ModelWrapper(base):
-        def __init__(self, model,  use_threshold=False, threshold=0.7, backgroundIndex=-1, **kwargs):
-            super(ModelWrapper, self).__init__(**kwargs)
-            self.use_threshold=use_threshold
-            self.threshold = threshold
-            self.backgroundIndex = backgroundIndex
-
-            """
-            Optionally add ALL other params here.
-            """
-            for key, value in model.__dict__.items():
-                setattr(self, key, value)
-
-
-
-        def simple_test(self, img, img_meta, rescale=True):
-            if self.aug_test:
-                seg_logit = self.inference(img, img_meta, rescale)
-                seg_maxima = seg_logit.max(dim=1)
-                seg_maxima.indices[seg_maxima.values < self.threshold] = self.backgroundIndex
-                seg_pred = seg_maxima.indices
-                #seg_pred = seg_logit.argmax(dim=1)
-                if torch.onnx.is_in_onnx_export():
-                    # our inference backend only support 4D output
-                    seg_pred = seg_pred.unsqueeze(0)
-                    return seg_pred
-                seg_pred = seg_pred.cpu().numpy().astype('uint8')
-                # unravel batch dim
-                seg_pred = list(seg_pred)
-                return seg_pred
-            else:
-                return super().simple_test(self, img, img_meta, rescale)
-
-        def aug_test(self, imgs, img_metas, rescale=True):
-            if self.aug_test:
-                assert rescale
-                # to save memory, we get augmented seg logit inplace
-                seg_logit = self.inference(imgs[0], img_metas[0], rescale)
-                for i in range(1, len(imgs)):
-                    cur_seg_logit = self.inference(imgs[i], img_metas[i], rescale)
-                    seg_logit += cur_seg_logit
-                seg_logit /= len(imgs)
-                seg_maxima = seg_logit.max(dim=1)
-                seg_maxima.indices[seg_maxima.values < self.threshold] = self.backgroundIndex
-                seg_pred = seg_maxima.indices
-                seg_pred = seg_pred.cpu().numpy().astype('uint8')
-                # unravel batch dim
-                seg_pred = list(seg_pred)
-                return seg_pred
-            else:
-                return super().simple_test(self, imgs, img_metas, rescale)
-
-    
-    return ModelWrapper(model, use_threshold=use_threshold, threshold=threshold, backgroundIndex=backgroundIndex, **modelCfg)
+    return wrong_samples
