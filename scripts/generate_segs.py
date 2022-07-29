@@ -16,7 +16,7 @@ from mmseg.datasets import build_dataloader, build_dataset
 from .utils.pipeline import get_pipeline_pre_post
 from .utils.constants import PALETTES, TYPES
 from .utils.io import generate_split_file, get_dir_and_file_path
-from .utils.model import wrap_model
+from .utils.modelWrapper import wrap_model
 from .utils.preprocessing import load_classes
 
 def parse_args(args):
