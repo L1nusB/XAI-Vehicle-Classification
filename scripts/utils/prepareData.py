@@ -7,7 +7,7 @@ import copy
 from mmcv import Config
 
 
-from .. import new_gen_seg, generate_cams
+from .. import generate_cams, generate_segs
 
 
 def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None, segDevice='cuda', annfile='', dataClasses=[], **kwargs):
@@ -23,7 +23,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             temp_filePath = 'temp_ann.txt'
             with open(temp_filePath,'w') as tmp:
                 tmp.write(kwargs['imgName'])
-            segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
+            segmentationMasks, segmentationImgData = generate_segs.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
             os.remove(temp_filePath)
         else:
             classParamAddition=[]
@@ -32,7 +32,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             annfileParamAddition=[]
             if annfile:
                 annfileParamAddition=['--ann-file', os.path.abspath(annfile)]
-            segmentationMasks, segmentationImgData = new_gen_seg.main([imgRoot, segConfig, segCheckpoint,'-r','--types', 'masks', 'images','--device',segDevice] + classParamAddition + annfileParamAddition)
+            segmentationMasks, segmentationImgData = generate_segs.main([imgRoot, segConfig, segCheckpoint,'-r','--types', 'masks', 'images','--device',segDevice] + classParamAddition + annfileParamAddition)
     return segmentationMasks, segmentationImgData
 
 def prepareImg(imgPath='', imgData=None, **kwargs):
