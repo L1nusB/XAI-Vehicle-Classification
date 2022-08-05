@@ -102,8 +102,34 @@ def get_pipeline_pre_post(args, default_mapping='cls', scaleToInt=True, workPIL=
             postPipeline = None
         else:
             prePipeline = None
-            postPipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL)
+            postPipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, 
+                                workPIL=workPIL, transposeResult=transposeResult)
     return prePipeline, postPipeline
+
+def get_pipeline_from_cfg(cfg, scaleToInt=True, workPIL=True, transposeResult=True):
+    """
+    Creates a torchvisions pipeline from the given pipeline configuration
+    based on the contained transformation elements. 
+    The cfg can be either given as a dictionary or as a config file which
+    will be loaded.
+    """
+    cfgPipeline = None
+    if isinstance(cfg, str) or isinstance(cfg, Path):
+        print(f'Loading config from File {cfg}')
+        cfgPipeline = mmcv.Config.fromfile(cfg).data.test.pipeline
+    else:
+        assert isinstance(cfg,dict), 'Given cfg is no path like object or dictionary.'
+        cfgPipeline = copy(cfg)
+    
+    transformPipelineSteps = []
+    for step in cfgPipeline:
+        if step['type'] in PIPELINETRANSFORMS:
+            transformPipelineSteps.append(step)
+    pipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL, 
+                            transposeResult=transposeResult)
+    return pipeline
+    
+
 
 def apply_pipeline(pipeline, *args):
     """
