@@ -1,10 +1,11 @@
-from tkinter.tix import IMAGE
 import torchvision.transforms as transforms
 import numpy as np
 import warnings
 import mmcv
 import torch
 import os.path as osp
+import copy
+from pathlib import Path
 
 IMAGE_TRANSFORMS = {
 'Resize':'size', 
@@ -103,7 +104,7 @@ def get_pipeline_pre_post(args, default_mapping='cls', scaleToInt=True, workPIL=
         else:
             prePipeline = None
             postPipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, 
-                                workPIL=workPIL, transposeResult=transposeResult)
+                                workPIL=workPIL)
     return prePipeline, postPipeline
 
 def get_pipeline_from_cfg(cfg, scaleToInt=True, workPIL=True, transposeResult=True):
@@ -119,14 +120,13 @@ def get_pipeline_from_cfg(cfg, scaleToInt=True, workPIL=True, transposeResult=Tr
         cfgPipeline = mmcv.Config.fromfile(cfg).data.test.pipeline
     else:
         assert isinstance(cfg,dict), 'Given cfg is no path like object or dictionary.'
-        cfgPipeline = copy(cfg)
+        cfgPipeline = copy.copy(cfg)
     
     transformPipelineSteps = []
     for step in cfgPipeline:
         if step['type'] in PIPELINETRANSFORMS:
             transformPipelineSteps.append(step)
-    pipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL, 
-                            transposeResult=transposeResult)
+    pipeline = get_pipeline_torchvision(transformPipelineSteps, scaleToInt=scaleToInt, workPIL=workPIL)
     return pipeline
     
 
