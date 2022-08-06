@@ -101,12 +101,13 @@ def generate_statistic(classes=None, fileNamePrefix="" , **kwargs):
 
 
 
-def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=False, **kwargs):
+def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=False, showNormalized=False, **kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
     :param showPropPercent: (default False) Determine if percentage labels will be shown on the proportional area bars as well.
     :param fileNamePrefix: Prefix that will be added in front of the filenames under which the results are saved.
+    :param showNormalized: Show a normalized Plot showing the activations relative to the proportions as well.
 
     Relevant kwargs are:
     imgRoot: Path to root folder where images/samples lie
@@ -155,8 +156,13 @@ def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=Fal
     classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
+    if showNormalized:
+        grid = fig.add_gridspec(ncols=1, nrows=2)
+    else:
+        grid = fig.add_gridspec(ncols=1, nrows=1)
+    
 
-    ax0 = fig.add_subplot()
+    ax0 = fig.add_subplot(grid[0,0])
     ax0.set_title('Average relative CAM Activations')
 
     # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
@@ -190,6 +196,18 @@ def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=Fal
 
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+
+
+    if showNormalized:
+        import heapq
+        ax1 = fig.add_subplot(grid[1,0])
+        ax1.set_title('Normalized Area Activations')
+        normalizedActivations = percentualSegmentedCAMActivations / percentualSegmentAreas
+
+        dominantMaskNormalizedRaw = heapq.nlargest(3,normalizedActivations)
+        dominantMaskNormalized = normalizedActivations >= np.min(dominantMaskNormalizedRaw)
+
+        plot_bar(ax=ax1, x_ticks=classArray, data=normalizedActivations, dominantMask=dominantMaskNormalized, format='.1%')
 
     plt.show()
 
