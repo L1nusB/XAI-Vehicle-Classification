@@ -159,6 +159,7 @@ def main(args):
     # regardless of args.save)
     img_dir = None
     work_dir = './'
+    result_file_prefix = 'resultsSeg'
     if args.save:
         # results_file_prefix will not have a file extension!
         work_dir, result_file_prefix = get_dir_and_file_path(args.save, defaultName='resultsSeg', removeFileExtensions=True)
@@ -212,6 +213,14 @@ def main(args):
         for step in cfg.data.test.pipeline:
             if step.type=='MultiScaleFlipAug':
                 step.transforms = prePipeline + step.transforms
+
+    cfg.data.test.pipeline[1].transforms = [{'type': 'ResizeCls', 'size': (256, 256)}, {'type': 'CenterCropCls', 'crop_size': (224,224)}, 
+    {'type': 'Normalize', 'mean': [123.675, 116.28, 103.53], 'std': [58.395, 57.12, 57.375], 'to_rgb': True}, 
+    {'type': 'ImageToTensor', 'keys': ['img']}, {'type': 'Collect', 'keys': ['img']}]
+
+    print(prePipeline)
+    print(postPipeline)
+    print(cfg.data.test.pipeline)
 
     cfg.data.test = prepare_data_cfg(cfg.data.test, args, work_dir, args.classes, filename=result_file_prefix)
 
