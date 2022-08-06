@@ -121,6 +121,7 @@ def generate_stats_rel_area(percentualAreas):
     """
     # Ensure conversion to np.array
     areas = np.array(percentualAreas)
+    # Here we can use mean since the shapes will always be the same no matter if batched or not. (Maybe ^^)
     summarizedPercSegmentedAreas = areas.mean(axis=1).mean(axis=0)
 
     return summarizedPercSegmentedAreas
@@ -145,7 +146,8 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     results = [np.array(classes)]
 
     if totalCAM is not None:
-        totalActivation = np.sum(totalCAM)
+        totalActivation = sum(np.sum(batch) for batch in totalCAM)
+        # totalActivation = np.sum(totalCAM)
         results.append(totalActivation)
     if segmentedActivations is not None:
         summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)

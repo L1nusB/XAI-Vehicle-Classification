@@ -1,3 +1,4 @@
+from typing import Type
 import mmcv
 import os
 import numpy as np
@@ -15,7 +16,14 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
     segmentationMasks = None
     segmentationImgData = None
     if segData is not None:
-        segmentationMasks = copy.copy(segData)
+        print('Using given Segmentation Data.')
+        if isinstance(segData, dict):
+            segmentationMasks = copy.copy(segData)
+        elif isinstance(segData, str | os.PathLike):
+            print(f'Loading data from file at {segData}')
+            segmentationMasks = np.load(segData)
+        else:
+            raise TypeError(f'segData type {type(segData)} does not match dict or str | Pathlike')
     else:
         if 'imgName' in kwargs:
             assert os.path.isfile(segConfig), f'segConfig:{segConfig} does not lead to a file'
@@ -39,6 +47,7 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
     if imgData is not None:
         assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
         assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
+        print('Using given imgData')
         return np.copy(imgData)
     if os.path.isfile(imgPath):
         return mmcv.imread(imgPath)
@@ -48,7 +57,14 @@ def prepareImg(imgPath='', imgData=None, **kwargs):
 def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', dataClasses=[], annfile='', **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
     if camData is not None:
-        return copy.copy(camData)
+        print('Using given CAM Data.')
+        if isinstance(camData, dict):
+            return copy.copy(camData)
+        elif isinstance(camData, str | os.PathLike):
+            print(f'Loading data from file at {camData}')
+            return np.load(camData)
+        else:
+            raise TypeError(f'camData type {type(camData)} does not match dict or str | Pathlike')
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
