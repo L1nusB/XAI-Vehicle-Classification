@@ -240,6 +240,6 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
 
     components = [statType, selectionCriterion, camMethod, camDataset, camModel, segModel, segDataset, additional, dateStr]
 
-    figure_name = "_".join([component for component in components if component != '']) + '.png'
+    figure_name = "_".join([component for component in components if component != '']) + '.jpg'
 
     return figure_name, saveDataClasses, saveAnnfile
