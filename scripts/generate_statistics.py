@@ -11,10 +11,11 @@ from .utils.plot import plot_bar
 from .utils.preprocessing import load_classes, batch_statistics
 from .utils.constants import RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
-def generate_statistic(classes=None, **kwargs):
+def generate_statistic(classes=None, fileNamePrefix="" , **kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
+    :param fileNamePrefix: Prefix that will be added in front of the filenames under which the results are saved.
 
     Relevant kwargs are:
     imgRoot: Path to root folder where images/samples lie
@@ -88,6 +89,8 @@ def generate_statistic(classes=None, **kwargs):
     plt.show()
 
     figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', **kwargs)
+    if fileNamePrefix:
+        figure_name = fileNamePrefix + "_" + figure_name
 
     saveFigure(savePath=os.path.join(RESULTS_PATH, figure_name), figure=fig)
     if saveAnnfile:
@@ -98,11 +101,12 @@ def generate_statistic(classes=None, **kwargs):
 
 
 
-def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
+def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=False, **kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
     :param showPropPercent: (default False) Determine if percentage labels will be shown on the proportional area bars as well.
+    :param fileNamePrefix: Prefix that will be added in front of the filenames under which the results are saved.
 
     Relevant kwargs are:
     imgRoot: Path to root folder where images/samples lie
@@ -190,6 +194,9 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
     plt.show()
 
     figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
+
+    if fileNamePrefix:
+        figure_name = fileNamePrefix + "_" + figure_name
 
     saveFigure(savePath=os.path.join(RESULTS_PATH, figure_name), figure=fig)
     if saveAnnfile:
