@@ -52,6 +52,7 @@ def batch_statistics(classes, imgNames, cams, segmentations, forceAll=False, lim
     percentualSegmentedCAMActivations = [None]*numSplits
     percentualSegmentAreas = [None]*numSplits
     if numSamples > limit:
+        warnings.simplefilter('always')
         warnings.warn(f'Statistics computed over {numSamples} items. Reverting to using batches of size {limit} '
         'to avoid overflows. Can be overriden by using forceAll=True')
     for batch in range(numSplits):

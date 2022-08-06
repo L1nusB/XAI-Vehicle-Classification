@@ -214,14 +214,6 @@ def main(args):
             if step.type=='MultiScaleFlipAug':
                 step.transforms = prePipeline + step.transforms
 
-    cfg.data.test.pipeline[1].transforms = [{'type': 'ResizeCls', 'size': (256, 256)}, {'type': 'CenterCropCls', 'crop_size': (224,224)}, 
-    {'type': 'Normalize', 'mean': [123.675, 116.28, 103.53], 'std': [58.395, 57.12, 57.375], 'to_rgb': True}, 
-    {'type': 'ImageToTensor', 'keys': ['img']}, {'type': 'Collect', 'keys': ['img']}]
-
-    print(prePipeline)
-    print(postPipeline)
-    print(cfg.data.test.pipeline)
-
     cfg.data.test = prepare_data_cfg(cfg.data.test, args, work_dir, args.classes, filename=result_file_prefix)
 
     if args.worker_size:

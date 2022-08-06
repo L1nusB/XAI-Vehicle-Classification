@@ -12,6 +12,24 @@ from .utils.preprocessing import load_classes, batch_statistics
 from .utils.constants import RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
 def generate_statistic(classes=None, **kwargs):
+    """Generates a plot with average absolute and average relative CAM Activations.
+
+    :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
+
+    Relevant kwargs are:
+    imgRoot: Path to root folder where images/samples lie
+    camConfig: Path to config of the used CAM Model
+    camCheckpoint: Path to Checkpoint of the used CAM Model
+    camData: Path to file containing generated CAMs (or dictionary). Can be used instead of Config and Checkpoint
+    camDevice: Device used for generating CAMs if needed. Defaults to 'cpu'
+    method: Method used for generating the CAMs. Defaults to 'gradcam'
+    segConfig: Path to config of the used Segmentation Model
+    segCheckpoint: Path to Checkpoint of the used Segmentation Model
+    segData: Path to file containing generated Segmentations (or dictionary). Can be used instead of Config and Checkpoint
+    segDevice: Device used for generating the segmentations. Defaults to 'cuda'
+    annfile: Path to annotation file specifng which samples should be used.
+    dataClasses: Array of Class Prefixes that specify which sample classes should be used. If not specified everything will be generated.
+    """
     assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
 
     if 'imgNames' in kwargs:
@@ -27,8 +45,8 @@ def generate_statistic(classes=None, **kwargs):
     # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
     # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
     segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-    assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
+    assert (isinstance(cams, dict) and set(imgNames).issubset(set(cams.keys()))) or set(imgNames).issubset(set(cams.files)), f'Given CAM Dictionary does not contain all imgNames as keys.'
+    assert (isinstance(cams, dict) and set(imgNames).issubset(set(segmentations.keys()))) or set(imgNames).issubset(set(segmentations.files)), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
 
     transformedSegmentations = {}
     cfg = get_pipeline_cfg(**kwargs)
@@ -79,6 +97,25 @@ def generate_statistic(classes=None, **kwargs):
 
 
 def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
+    """Generates a plot with average absolute and average relative CAM Activations.
+
+    :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
+    :param showPropPercent: (default False) Determine if percentage labels will be shown on the proportional area bars as well.
+
+    Relevant kwargs are:
+    imgRoot: Path to root folder where images/samples lie
+    camConfig: Path to config of the used CAM Model
+    camCheckpoint: Path to Checkpoint of the used CAM Model
+    camData: Path to file containing generated CAMs (or dictionary). Can be used instead of Config and Checkpoint
+    camDevice: Device used for generating CAMs if needed. Defaults to 'cpu'
+    method: Method used for generating the CAMs. Defaults to 'gradcam'
+    segConfig: Path to config of the used Segmentation Model
+    segCheckpoint: Path to Checkpoint of the used Segmentation Model
+    segData: Path to file containing generated Segmentations (or dictionary). Can be used instead of Config and Checkpoint
+    segDevice: Device used for generating the segmentations. Defaults to 'cuda'
+    annfile: Path to annotation file specifng which samples should be used.
+    dataClasses: Array of Class Prefixes that specify which sample classes should be used. If not specified everything will be generated.
+    """
     assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
 
     if 'imgNames' in kwargs:
