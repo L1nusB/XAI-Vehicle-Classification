@@ -85,6 +85,7 @@ def generate_statistic(classes=None, **kwargs):
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+    plt.show()
 
     figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', **kwargs)
 
@@ -93,6 +94,7 @@ def generate_statistic(classes=None, **kwargs):
         copyFile(kwargs['annfile'], os.path.join(RESULTS_PATH_ANN, figure_name))
     if saveDataClasses:
         writeArrayToFile(os.path.join(RESULTS_PATH_DATACLASS, figure_name), kwargs['dataClasses'])
+
 
 
 
@@ -184,6 +186,8 @@ def generate_statistic_prop(classes=None, showPropPercent=False, **kwargs):
 
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+
+    plt.show()
 
     figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
 

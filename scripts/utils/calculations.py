@@ -121,8 +121,9 @@ def generate_stats_rel_area(percentualAreas):
     """
     # Ensure conversion to np.array
     areas = np.array(percentualAreas)
-    # Here we can use mean since the shapes will always be the same no matter if batched or not. (Maybe ^^)
-    summarizedPercSegmentedAreas = areas.mean(axis=1).mean(axis=0)
+    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    n_samples = sum([x.shape[0] for x in areas])
+    summarizedPercSegmentedAreas = [sum([sum(batch[:,i])/n_samples for batch in areas]) for i in range(areas[0].shape[-1])]
 
     return summarizedPercSegmentedAreas
 

@@ -204,6 +204,9 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
         camMethod = 'CAM-Predefined'
         camDataset = 'CAM-Predefined'
         camModel = 'CAM-Predefined'
+        # If camData is a path use that name for Method
+        if isinstance(kwargs['camData'], str | os.PathLike):
+            camMethod = osp.basename(kwargs['camData'])
     else:
         # Now camConfig and camCheckpoint must be in kwargs
         camMethod = method
@@ -220,6 +223,9 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
     if 'segData' in kwargs:
         segModel = 'SEG-Predefined'
         segDataset = 'SEG-Predefined'
+        # If segData is a path use that name for Dataset
+        if isinstance(kwargs['segData'], str | os.PathLike):
+            segDataset = osp.basename(kwargs['segData'])
     else:
         cfg = Config.fromfile(kwargs['segConfig'])
         segDataset = cfg.data.train.type # Load the general type. Used if not more detailed found
