@@ -6,7 +6,7 @@ import numpy as np
 from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, writeArrayToFile
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.pipeline import get_pipeline_torchvision
-from .utils.calculations import generate_stats
+from .utils.calculations import generate_stats, accumulate_statistics
 from .utils.plot import plot_bar
 from .utils.preprocessing import load_classes, batch_statistics
 from .utils.constants import RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
@@ -59,7 +59,9 @@ def generate_statistic(classes=None, fileNamePrefix="" , **kwargs):
 
     classes = load_classes(classes, **kwargs)
 
-    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)
+    #totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)
+
+    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames=imgNames, classes=classes, cams=cams, segmentations=transformedSegmentations)
 
     classArray, totalActivation, summarizedSegmentedCAMActivations, dominantMask, summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats(
         segmentedActivations=segmentedCAMActivations, percentualActivations=percentualSegmentedCAMActivations, totalCAM=totalCAMActivations, classes=classes)
@@ -150,7 +152,9 @@ def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=Fal
 
     classes = load_classes(classes, **kwargs)
 
-    _, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
+    #_, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
+
+    _, _, percentualSegmentedCAMActivations, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=segmentations, classes=classes, percentualArea=True)
 
     # Pass fake segmentedActivations and totalCAM since i don't care about results.
     classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)

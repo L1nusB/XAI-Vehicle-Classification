@@ -39,8 +39,9 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     return totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea
 
 def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea=False):
-    """Accumulates all intersections for the given imgNames.
-    Returns both absolut and percentual statistics.
+    """Accumulates all intersections and totalCAMActivations for the given imgNames.
+    Here only the individual datapoints are gathered and are not immediatly interpretable by themselves without further computations.
+    Returns accumulated data both for absolut and percentual statistics.
 
     :param imgNames: List of imgNames. Keys into the cams and segmentations
     :type imgNames: list or tuple
@@ -55,14 +56,16 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
 
     :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (percentualSegmentAreas))
     """
+    print('Accumulating Statistics for given imgNames.')
     totalCAMActivations = []
     segmentedCAMActivations = []
     percentualSegmentedCAMActivations = []
     percentualSegmentAreas = []
+    classArray = np.array(classes)
 
     for name in imgNames:
         totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = accumulate_single(
-            cams[name], segmentations[name], classes, percentualArea=percentualArea)
+            cams[name], segmentations[name], classArray, percentualArea=percentualArea)
         totalCAMActivations.append(totalCAMActivation)
         segmentedCAMActivations.append(segmentedCAMActivation)
         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
@@ -83,10 +86,13 @@ def generate_stats_abs(segmentedActivations):
 
     :return  summarizedSegmentedCAMActivations, dominantMask
     """
-    #summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=1).mean(axis=0)
-    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
-    n_samples = sum([x.shape[0] for x in segmentedActivations])
-    summarizedSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in segmentedActivations]) for i in range(segmentedActivations[0].shape[-1])]
+    # #summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=1).mean(axis=0)
+    # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    # n_samples = sum([x.shape[0] for x in segmentedActivations])
+    # summarizedSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in segmentedActivations]) for i in range(segmentedActivations[0].shape[-1])]
+
+    # New Version without any batches.
+    summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=0)
 
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
@@ -101,21 +107,23 @@ def generate_stats_rel(percentualActivations):
 
     :return summarizedPercSegmentedCAMActivations, dominantMask
     """
-    #summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
-    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
-    n_samples = sum([x.shape[0] for x in percentualActivations])
-    summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in percentualActivations]) for i in range(percentualActivations[0].shape[-1])]
+    # #summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
+    # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    # n_samples = sum([x.shape[0] for x in percentualActivations])
+    # summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in percentualActivations]) for i in range(percentualActivations[0].shape[-1])]
 
-    """
-    This is the more truthful btched calculations where the means are calculated within each batch by dividing by the number of elemnts of the batch and then averaging those.
-    In the above implementation while the sums are calculated within each batch the division is always by the true number of samples no matter which batch is used.
-    In theory this could lead to issues when the amount of samples is extremly high and the activations are comparably low but that is not really an issue.
-    Additionally by summing through the batches the divident will be much larger which makes divions not prone to underflows or similar.
-    And by using the true number to normalize we actually recreate the true mean instead by moving the divison inside a sum instead of introducing rounding errors.
+    # """
+    # This is the more truthful batched calculations where the means are calculated within each batch by dividing by the number of elemnts of the batch and then averaging those.
+    # In the above implementation while the sums are calculated within each batch the division is always by the true number of samples no matter which batch is used.
+    # In theory this could lead to issues when the amount of samples is extremly high and the activations are comparably low but that is not really an issue.
+    # Additionally by summing through the batches the divident will be much larger which makes divions not prone to underflows or similar.
+    # And by using the true number to normalize we actually recreate the true mean instead by moving the divison inside a sum instead of introducing rounding errors.
     
-    batch_n_samples = [x.shape[0] for x in percentualActivations]
-    summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/batch_n_samples[index] for index, batch in enumerate(percentualActivations)]) / len(batch_n_samples) for i in range(percentualActivations[0].shape[-1])]
-    """
+    # batch_n_samples = [x.shape[0] for x in percentualActivations]
+    # summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/batch_n_samples[index] for index, batch in enumerate(percentualActivations)]) / len(batch_n_samples) for i in range(percentualActivations[0].shape[-1])]
+    # """
+
+    summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=0)
 
     dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
     dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
@@ -130,11 +138,14 @@ def generate_stats_rel_area(percentualAreas):
 
     :return summarizedPercSegmentedAreas
     """
-    # Ensure conversion to np.array
-    areas = np.array(percentualAreas)
-    # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
-    n_samples = sum([x.shape[0] for x in areas])
-    summarizedPercSegmentedAreas = [sum([sum(batch[:,i])/n_samples for batch in areas]) for i in range(areas[0].shape[-1])]
+    # # Ensure conversion to np.array
+    # areas = np.array(percentualAreas)
+    # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    # n_samples = sum([x.shape[0] for x in areas])
+    # summarizedPercSegmentedAreas = [sum([sum(batch[:,i])/n_samples for batch in areas]) for i in range(areas[0].shape[-1])]
+
+    summarizedPercSegmentedAreas = percentualAreas.mean(axis=0)
+
     return summarizedPercSegmentedAreas
 
 def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None):
@@ -154,11 +165,28 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     :return: depending on what was specified: [classArray, totalActivation, summarizedSegmentedCAMActivations, summarizedPercSegmentedCAMActivations, dominantMask, dominantMaskPercentual,summarizedPercAreas] 
         
     """
+    print('Generate Statistics Data')
     results = [np.array(classes)]
 
+    # if totalCAM is not None:
+    #     totalActivation = sum(np.sum(batch) for batch in totalCAM)
+    #     # totalActivation = np.sum(totalCAM)
+    #     results.append(totalActivation)
+    # if segmentedActivations is not None:
+    #     summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)
+    #     results.append(summarizedSegmentedCAMActivations)
+    #     results.append(dominantMask)
+    # if percentualActivations is not None:
+    #     summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats_rel(percentualActivations)
+    #     results.append(summarizedPercSegmentedCAMActivations)
+    #     results.append(dominantMaskPercentual)
+    # if percentualAreas is not None:
+    #     summarizedPercAreas = generate_stats_rel_area(percentualAreas)
+    #     results.append(summarizedPercAreas)
+
     if totalCAM is not None:
-        totalActivation = sum(np.sum(batch) for batch in totalCAM)
-        # totalActivation = np.sum(totalCAM)
+        # If an overflow here occurs then so be it. This is HIGHLY UNLIKELY
+        totalActivation = np.sum(totalCAM)
         results.append(totalActivation)
     if segmentedActivations is not None:
         summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)
