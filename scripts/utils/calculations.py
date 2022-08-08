@@ -16,7 +16,7 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
     :type percentualArea: boolean
 
-    :return: Tuple containing (segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea)
+    :return: Tuple containing (totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea)
     """
     assert cam.shape == segmentation.shape, f"cam.shape {cam.shape} does not "\
         f"match segmentation.shape {segmentation.shape}"
@@ -36,7 +36,7 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     if percentualArea:
         segmentPercentualArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classes))]) / np.prod(segmentation.shape)
 
-    return segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea
+    return totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea
 
 def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea=False):
     """Accumulates all intersections for the given imgNames.
@@ -61,9 +61,9 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     percentualSegmentAreas = []
 
     for name in imgNames:
-        totalCAMActivations.append(cams[name].sum())
-        segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = accumulate_single(
+        totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = accumulate_single(
             cams[name], segmentations[name], classes, percentualArea=percentualArea)
+        totalCAMActivations.append(totalCAMActivation)
         segmentedCAMActivations.append(segmentedCAMActivation)
         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
         if percentualArea:
@@ -106,6 +106,17 @@ def generate_stats_rel(percentualActivations):
     n_samples = sum([x.shape[0] for x in percentualActivations])
     summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in percentualActivations]) for i in range(percentualActivations[0].shape[-1])]
 
+    """
+    This is the more truthful btched calculations where the means are calculated within each batch by dividing by the number of elemnts of the batch and then averaging those.
+    In the above implementation while the sums are calculated within each batch the division is always by the true number of samples no matter which batch is used.
+    In theory this could lead to issues when the amount of samples is extremly high and the activations are comparably low but that is not really an issue.
+    Additionally by summing through the batches the divident will be much larger which makes divions not prone to underflows or similar.
+    And by using the true number to normalize we actually recreate the true mean instead by moving the divison inside a sum instead of introducing rounding errors.
+    
+    batch_n_samples = [x.shape[0] for x in percentualActivations]
+    summarizedPercSegmentedCAMActivations= [sum([sum(batch[:,i])/batch_n_samples[index] for index, batch in enumerate(percentualActivations)]) / len(batch_n_samples) for i in range(percentualActivations[0].shape[-1])]
+    """
+
     dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
     dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
 
@@ -124,7 +135,6 @@ def generate_stats_rel_area(percentualAreas):
     # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
     n_samples = sum([x.shape[0] for x in areas])
     summarizedPercSegmentedAreas = [sum([sum(batch[:,i])/n_samples for batch in areas]) for i in range(areas[0].shape[-1])]
-
     return summarizedPercSegmentedAreas
 
 def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None):
