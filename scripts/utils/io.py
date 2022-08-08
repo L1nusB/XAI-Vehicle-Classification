@@ -171,7 +171,7 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     
 #     np.savez(path,**cams)
 
-def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
+def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
     """
     Determines the name under which the figure and potential other files will be saved.
     Determines if another file must be saved.
@@ -198,6 +198,10 @@ def get_save_figure_name(statType,dataClasses=[], annfile='', method='gradcam', 
         statType = 'Multiple' if statType.lower() != 'single' else statType
         selectionCriterion=selectionCriterion+"+annfile" if selectionCriterion != '' else 'annfile'
         saveAnnfile = True
+    
+    # Set to Full if no dataClasses, annfile or manually specified statType 'single'
+    if len(dataClasses) == 0 and annfile == '' and statType.lower() != 'single':
+        statType = 'Full'
 
 
     if 'camData' in kwargs:

@@ -88,7 +88,7 @@ def generate_statistic(classes=None, fileNamePrefix="" , **kwargs):
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
     if fileNamePrefix:
         figure_name = fileNamePrefix + "_" + figure_name
 
@@ -211,7 +211,7 @@ def generate_statistic_prop(classes=None, fileNamePrefix="", showPropPercent=Fal
 
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Multiple', additional='ShowPropArea', **kwargs)
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(additional='ShowPropArea', **kwargs)
 
     if fileNamePrefix:
         figure_name = fileNamePrefix + "_" + figure_name
