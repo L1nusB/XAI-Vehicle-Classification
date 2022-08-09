@@ -272,30 +272,37 @@ def generate_statistic_prop_normalized(classes=None, fileNamePrefix="", showPerc
     ax0 = fig.add_subplot(grid[0,0])
     ax0.set_title('Average relative CAM Activations')
 
-    # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
+    # Default width is 0.8 and since we are plotting three bars side by side avoiding overlap requires
     # reducing the width
-    barwidth = 0.4
+    barwidth = 0.8 / 3
 
-    bars = ax0.bar(np.arange(classArray.size), summarizedPercSegmentedCAMActivations, width=barwidth, label='CAM Activations')
-    ax0.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
+    bars = ax0.bar(np.arange(classArray.size), summarizedPercSegmentedCAMActivations, width=barwidth, label='CAM Activations', color='c')
+    ax0.set_xticks([tick+barwidth for tick in range(classArray.size)], classArray)
 
     rotation = 90 if showPercent else 0
 
     # Format main Data with generated bar graph
     plot_bar(ax=ax0, bars=bars, dominantMask=dominantMaskPercentual, x_tick_labels=classArray, format='.1%', textadjust_ypos=showPercent,
-        textrotation=rotation)
+        textrotation=rotation, hightlightColor='tab:blue')
 
     # Plot proportion Data next to main Data
     plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPercent, hightlightDominant=False,
         textadjust_ypos=showPercent, format='.1%', textrotation=rotation)
 
+    # Plot proportion Data next to main Data
+    plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+2*barwidth, x_tick_labels=classArray, data=rescaledSummarizedPercActivions, barwidth=barwidth, barcolor='y',
+        barlabel='Rescaled/Normalized Activation', dominantMask=dominantMaskRescaledActivations, addText=showPercent,
+        textadjust_ypos=showPercent, format='.1%', textrotation=rotation, hightlightColor='tab:orange')
+
     ax0.text(0.9,1.02, f'No.Samples:{len(imgNames)}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
     legendMap = {
-        'b':'CAM Activations',
-        'r':'Top CAM Activations',
-        'g':'Proportional Segment Coverage'
+        'c':'CAM Activations',
+        'tab:blue':'Top CAM Activations',
+        'g':'Proportional Segment Coverage',
+        'y':'Normalized Activation',
+        'tab:orange':'Top Normalized Activations'
     }
     handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
 

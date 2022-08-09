@@ -1,8 +1,6 @@
 import matplotlib.ticker as mticker
 
 
-
-
 def highlight_dominants(bars, dominantMask, color='red'):
     for index,dominant in enumerate(dominantMask):
         if dominant:
@@ -21,7 +19,7 @@ def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, valueModifi
         ax.text(bar.get_x()+bar.get_width()/2.0, ypos, f'{height*valueModifier:{format}}', ha='center', va='bottom' , **kwargs)
 
 
-def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=True, x_tick_labels=None, 
+def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=True, hightlightColor='red', x_tick_labels=None, 
             bars=None, addText=True,  format='.1%', **kwargs):
     """Creates a bar plot in the given axis from the given data. Customizations can be done
     in the x_ticks, labels, etc.
@@ -31,6 +29,7 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
     :param data: The data which generates the bars
     :param dominantMask: Binary mask which bars to highlight if highlightDominant is specified.
     :param hightlightDominant: Whether to highlight dominant bars given by dominantMask
+    :param hightlightColor: (default 'red') Color of the dominant highlights.
     :param x_tick_labels: Labels used on the x-axis
     :param bars: Already bar plot object which will be modified. If not specified one will be generated from the given data.
     :param addText: Whether to add Text onto the bars with the given format.
@@ -57,7 +56,7 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
 
     if hightlightDominant:
-        highlight_dominants(bars, dominantMask)
+        highlight_dominants(bars, dominantMask, hightlightColor)
 
     if addText:
         textkwargs = {key[len('text'):]:value for key,value in kwargs.items() if key.startswith('text')}
