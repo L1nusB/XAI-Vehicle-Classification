@@ -168,37 +168,15 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     print('Generate Statistics Data')
     results = [np.array(classes)]
 
-    # if totalCAM is not None:
-    #     totalActivation = sum(np.sum(batch) for batch in totalCAM)
-    #     # totalActivation = np.sum(totalCAM)
-    #     results.append(totalActivation)
-    # if segmentedActivations is not None:
-    #     summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)
-    #     results.append(summarizedSegmentedCAMActivations)
-    #     results.append(dominantMask)
-    # if percentualActivations is not None:
-    #     summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats_rel(percentualActivations)
-    #     results.append(summarizedPercSegmentedCAMActivations)
-    #     results.append(dominantMaskPercentual)
-    # if percentualAreas is not None:
-    #     summarizedPercAreas = generate_stats_rel_area(percentualAreas)
-    #     results.append(summarizedPercAreas)
-
     if totalCAM is not None:
         # If an overflow here occurs then so be it. This is HIGHLY UNLIKELY
-        totalActivation = np.sum(totalCAM)
-        results.append(totalActivation)
+        results.append(np.sum(totalCAM))
     if segmentedActivations is not None:
-        summarizedSegmentedCAMActivations, dominantMask = generate_stats_abs(segmentedActivations)
-        results.append(summarizedSegmentedCAMActivations)
-        results.append(dominantMask)
+        results = results + list(generate_stats_abs(segmentedActivations))
     if percentualActivations is not None:
-        summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats_rel(percentualActivations)
-        results.append(summarizedPercSegmentedCAMActivations)
-        results.append(dominantMaskPercentual)
+        results = results + list(generate_stats_rel(percentualActivations))
     if percentualAreas is not None:
-        summarizedPercAreas = generate_stats_rel_area(percentualAreas)
-        results.append(summarizedPercAreas)
+        results.append(generate_stats_rel_area(percentualAreas))
     
     return results
 
@@ -236,3 +214,27 @@ def generate_stats_single(segmentation, camHeatmap, classes, proportions=False):
         results.append([segmentation[segmentation==c].size for c in np.arange(len(classes))] / np.prod(segmentation.shape))
     
     return results
+
+def get_area_normalized_stats(percentualActivations, percentualAreas):
+    """Creates the normalized importance of the given activations w.r.t to the covered area.
+    This represents the importance of the activation taking into consideration the total area.
+    Additionally the original activations are scaled by that importance and returned.
+    For both datatypes the dominant Masks are returned.
+
+    :param percentualActivations: The summerized percentual Activations of each segment
+    :type percentualActivations: np.ndarray(float)
+    :param percentualAreas: The summerized percentual Area that each segment covers
+    :type percentualAreas: np.ndarray(float)
+
+    :return: relCAMImportance, dominantMaskRelImportance, rescaledActivations, dominantMaskRescaled
+    """
+    relCAMImportance = np.divide(percentualActivations, percentualAreas, out=np.zeros_like(percentualActivations), where=percentualAreas!=0)
+
+    dominantMaskRelImportanceRaw = heapq.nlargest(3,relCAMImportance)
+    dominantMaskRelImportance = relCAMImportance >= np.min(dominantMaskRelImportanceRaw)
+
+    rescaledActivations = percentualActivations * relCAMImportance
+    dominantMaskRescaledRaw = heapq.nlargest(3, rescaledActivations)
+    dominantMaskRescaled = rescaledActivations >= np.min(dominantMaskRescaledRaw)
+
+    return relCAMImportance, dominantMaskRelImportance, rescaledActivations, dominantMaskRescaled
