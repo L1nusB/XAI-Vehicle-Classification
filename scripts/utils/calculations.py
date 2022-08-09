@@ -228,6 +228,8 @@ def get_area_normalized_stats(percentualActivations, percentualAreas):
 
     :return: relCAMImportance, dominantMaskRelImportance, rescaledActivations, dominantMaskRescaled
     """
+    # Use divide with where statement to avoid divisions by zero
+    # out Must be set to zeros otherwise they are not properly set/uninitalized
     relCAMImportance = np.divide(percentualActivations, percentualAreas, out=np.zeros_like(percentualActivations), where=percentualAreas!=0)
 
     dominantMaskRelImportanceRaw = heapq.nlargest(3,relCAMImportance)
