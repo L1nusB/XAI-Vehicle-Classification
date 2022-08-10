@@ -78,11 +78,13 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     
     return results
 
-def generate_stats_abs(segmentedActivations):
+def generate_stats_abs(segmentedActivations, totalActivation):
     """
     Creates array containing values for the absolute statistics for plotting of multiple samples.
     :param segmentedActivations: CAM Activations per Segment
     :type segmentedActivations: np.ndarray(np.ndarray(float))
+    :param totalActivation: Sum of all activations in the CAM
+    :type totalActivation: float/np.ndarray(float) of dim 1
 
     :return  summarizedSegmentedCAMActivations, dominantMask
     """
@@ -92,7 +94,14 @@ def generate_stats_abs(segmentedActivations):
     # summarizedSegmentedCAMActivations= [sum([sum(batch[:,i])/n_samples for batch in segmentedActivations]) for i in range(segmentedActivations[0].shape[-1])]
 
     # New Version without any batches.
+    ##### OPTION 1 FOR GENERATE_STATS_ABS #####
     summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=0)
+
+    # So far OPTION 1 and OPTION 2 produce the SAME OUTPUT
+
+    ##### OPTION 2 FOR GENERATE_STATS_ABS #####
+    # summedActivations = segmentedActivations.sum(axis=0)
+    # summarizedSegmentedCAMActivations = summedActivations / totalActivation
 
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
@@ -168,11 +177,13 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     print('Generate Statistics Data')
     results = [np.array(classes)]
 
+    summedCAM = np.sum(totalCAM)
+
     if totalCAM is not None:
         # If an overflow here occurs then so be it. This is HIGHLY UNLIKELY
-        results.append(np.sum(totalCAM))
+        results.append(summedCAM)
     if segmentedActivations is not None:
-        results = results + list(generate_stats_abs(segmentedActivations))
+        results = results + list(generate_stats_abs(segmentedActivations, summedCAM))
     if percentualActivations is not None:
         results = results + list(generate_stats_rel(percentualActivations))
     if percentualAreas is not None:

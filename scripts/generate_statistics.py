@@ -74,9 +74,17 @@ def generate_statistic(classes=None, fileNamePrefix="" , **kwargs):
     ax0 = fig.add_subplot(grid[0,0])
     ax1 = fig.add_subplot(grid[0,1])
 
+
     # Plot segmentedCAMActivations aka the average of the absolute CAM Activations
+    ##### OPTION 1 FOR GENERATE_STATS_ABS #####
     plot_bar(ax=ax0, x_ticks=classArray, data=summarizedSegmentedCAMActivations, dominantMask=dominantMask, format='.1%', 
             textvalueModifier=numSamples/totalActivation)
+
+    # So far OPTION 1 and OPTION 2 produce the SAME OUTPUT
+    ##### OPTION 2 FOR GENERATE_STATS_ABS #####
+    # plot_bar(ax=ax0, x_ticks=classArray, data=summarizedSegmentedCAMActivations, dominantMask=dominantMask, format='.1%')
+
+
     ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
     ax0.set_title('Average absolut CAM Activations')
 
