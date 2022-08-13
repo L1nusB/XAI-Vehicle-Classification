@@ -1,4 +1,5 @@
 import matplotlib.ticker as mticker
+import numpy as np
 
 
 def highlight_dominants(bars, dominantMask, color='red'):
@@ -48,11 +49,17 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
     if bars is None:
         barkwargs = {key[len('bar'):]:value for key,value in kwargs.items() if key.startswith('bar')}
         bars = ax.bar(x_ticks, data, **barkwargs)
-    ticks_loc = ax.get_xticks()
-    ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    # ticks_loc = ax.get_xticks()
+    # ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
+    # if x_tick_labels is not None:
+    #     ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")
+    # else:
+    #     ax.set_xticklabels(x_ticks, rotation=45, ha="right")
     if x_tick_labels is not None:
+        ax.set_xticks(np.arange(len(x_tick_labels)))
         ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")
     else:
+        ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
 
     if hightlightDominant and dominantMask:
@@ -101,10 +108,9 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
     if addText:
         for i in range(len(meanData)):
             ax.text(i, meanData[i] + stdData[i] + ax.get_ylim()[1] / 50, f'$\mu=${meanData[i]:{format}} \n $\sigma=${stdData[i]:{format}}', fontsize=8,ha='center')
-
-    ticks_loc = ax.get_xticks()
-    ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))
     if x_tick_labels is not None:
+        ax.set_xticks(np.arange(len(x_tick_labels)))
         ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")
     else:
-        ax.set_xticklabels(x_ticks, rotation=45, ha="right")  
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels(x_ticks, rotation=45, ha="right")

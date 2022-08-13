@@ -346,12 +346,12 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
     summarizedPercSegmentAreas = stats[16]
     stdPercSegmentAreas = stats[17]
 
-    fig = plt.figure(figsize=(15,20), constrained_layout=True)
-    grid = fig.add_gridspec(ncols=1, nrows=2)
+    fig = plt.figure(figsize=(15,25), constrained_layout=True)
+    grid = fig.add_gridspec(ncols=1, nrows=5)
 
     numSamples = len(imgNames)
 
-    ax0 = fig.add_subplot(grid[0,0])
+    ax0 = fig.add_subplot(grid[0:2,0])
     ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
     if usePercScale:
@@ -362,7 +362,7 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
         plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedSegmentCAMActivations, stdData=stdSegmentCAMActivations)
 
     
-    ax1 = fig.add_subplot(grid[1,0])
+    ax1 = fig.add_subplot(grid[2:4,0])
     ax1.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax1.transAxes)
 
     if usePercScale:
@@ -375,4 +375,24 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
 
     if 'dataClasses' in kwargs:
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+        ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+
+    ax2 = fig.add_subplot(grid[4,0])
+    ax2.set_title('Total CAM Stats')
+
+    totalMean = totalCAMStats[1]
+    totalStd = totalCAMStats[2]
+    plot_bar(ax=ax2, x_ticks=[0], data=[totalMean], format='.2f', barcolor='tab:blue', baryerr=[totalStd], barcapsize=4, barwidth=0.2, addText=False, barecolor='r')
+    ax2.text(0.3, totalMean, f'$\mu=${totalMean:.2f} \n $\sigma=${totalStd:.2f}', ha='center', va='bottom')
+    plot_bar(ax=ax2, x_ticks=[1,2,3], data=totalCAMStats[4], format='.2f', barcolor='tab:orange')
+    plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + [imgNames[i] for i in totalCAMStats[3]] + [imgNames[i] for i in totalCAMStats[5]], data=totalCAMStats[6], format='.2f', barcolor='tab:green')
+
+    legendMap = {
+        'tab:blue':'Mean totalCAM',
+        'tab:orange':'Lowest 3 totalCAMs',
+        'tab:green':'Highest 3 totalCAMs',
+    }
+    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+
+    ax2.legend(handles=handles, bbox_to_anchor=(1,1.04), loc="lower right")
     plt.show()
