@@ -13,7 +13,7 @@ def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, valueModifi
         height = bar.get_height()
         ypos = height
         if adjust_ypos:
-            if dominantMask and dominantMask[index]:
+            if dominantMask is not None and dominantMask[index]:
                 ypos /= 2
             else:
                 ypos += 0.01
