@@ -7,7 +7,9 @@ import copy
 
 from mmcv import Config
 
-
+from .io import get_samples
+from .pipeline import get_pipeline_torchvision
+from .preprocessing import load_classes
 from .. import generate_cams, generate_segs
 
 
@@ -155,3 +157,42 @@ def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
         else:
             results.append(camData)
     return results
+
+def prepare_generate_stats(classes=None, **kwargs):
+    """Performs some general operations that are needed for all generate_stats procedures.
+    Creates list of imgNames that will be used for stat generation,
+    Loads/Generates the segmentations and cams and ensures all entries are present,
+    Transforms segmentations with a specified pipeline if desired,
+    Loads the Classes of the Segmentation Model
+
+    :return Tuple (imgNames, transformedSegmentations, cams, classes)
+    """
+    assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
+
+    if 'imgNames' in kwargs:
+        imgNames = kwargs['imgNames']
+    else:
+        assert 'annfile' in kwargs or 'imgRoot' in kwargs, 'Either annfile or imgRoot must be specified.'
+        imgNames = get_samples(**kwargs) # Required annfile or (imgRoot) in kwargs
+
+    if len(imgNames) == 0:
+        raise ValueError('Given parameters do not yield any images.')
+
+
+    # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
+    # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
+    segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
+    assert (isinstance(cams, dict) and set(imgNames).issubset(set(cams.keys()))) or set(imgNames).issubset(set(cams.files)), f'Given CAM Dictionary does not contain all imgNames as keys.'
+    assert (isinstance(cams, dict) and set(imgNames).issubset(set(segmentations.keys()))) or set(imgNames).issubset(set(segmentations.files)), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
+
+    transformedSegmentations = {}
+    cfg = get_pipeline_cfg(**kwargs)
+    if cfg:
+        pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
+        print('Tranforming segmentation masks with the given pipeline.')
+    for name in imgNames:
+        transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
+
+    classes = load_classes(classes, **kwargs)
+
+    return imgNames, transformedSegmentations, cams, classes
