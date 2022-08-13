@@ -299,7 +299,7 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     if saveDataClasses:
         writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
 
-def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
+def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -396,3 +396,23 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
 
     ax2.legend(handles=handles, bbox_to_anchor=(1,1.04), loc="lower right")
     plt.show()
+
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(additional='Mean_Std_Total', **kwargs)
+
+    if saveDir:
+        results_path = os.path.join(saveDir, 'meanStdTotal')
+        results_path_ann = os.path.join(saveDir, 'meanStdTotal', 'annfiles')
+        results_path_dataclasses = os.path.join(saveDir, 'meanStdTotal', 'dataClasses')
+    else:
+        results_path = os.path.join(RESULTS_PATH, 'meanStdTotal')
+        results_path_ann = os.path.join(RESULTS_PATH, 'meanStdTotal', 'annfiles')
+        results_path_dataclasses = os.path.join(RESULTS_PATH, 'meanStdTotal', 'dataClasses')
+
+    if fileNamePrefix:
+        figure_name = fileNamePrefix + "_" + figure_name
+
+    saveFigure(savePath=os.path.join(results_path, figure_name), figure=fig)
+    if saveAnnfile:
+        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
+    if saveDataClasses:
+        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])

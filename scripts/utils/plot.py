@@ -62,7 +62,7 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
 
-    if hightlightDominant and dominantMask:
+    if hightlightDominant and dominantMask is not None:
         highlight_dominants(bars, dominantMask, hightlightColor)
 
     if addText:
@@ -95,11 +95,15 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
     errorbarkwargs = {key[len('errorbar'):]:value for key,value in kwargs.items() if key.startswith('errorbar')}
     # Set default Formatting for errorplot
     if 'fmt' not in errorbarkwargs:
-        errorbarkwargs['fmt'] = '_'
+        errorbarkwargs['fmt'] = 'b_'
     if 'ecolor' not in errorbarkwargs:
         errorbarkwargs['ecolor'] = 'r'
     if 'capsize' not in errorbarkwargs:
         errorbarkwargs['capsize'] = 3
+    if 'mew' not in errorbarkwargs:
+        errorbarkwargs['mew'] = 2
+    if 'ms' not in errorbarkwargs:
+        errorbarkwargs['ms'] = 10
     for i in range(len(meanData)):
         ax.errorbar(x_ticks[i], meanData[i], yerr=stdData[i], **errorbarkwargs)
     # Add Text afterwards because only now is the height of the plot known

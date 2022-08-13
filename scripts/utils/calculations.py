@@ -275,7 +275,7 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
 
     if totalCAM is not None:
         # If an overflow here occurs then so be it. This is HIGHLY UNLIKELY
-        print('Gen TotalCAM Stats')
+        print('Generate TotalCAM Stats')
         totalCAMStats = generate_stats_totalCAMs(totalCAM, get_sum=get_total_sum, get_mean=get_total_mean, get_std=get_std, 
                                         get_top_low_high=get_total_top_low_high, top_low_high_values=total_top_low_high_values)
         results = results + totalCAMStats
