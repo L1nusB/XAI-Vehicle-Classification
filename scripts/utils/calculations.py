@@ -78,17 +78,17 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     
     return results
 
-def generate_stats_abs(segmentedActivations, totalActivation=1, get_variance=False):
+def generate_stats_abs(segmentedActivations, totalActivation=1, get_std=False):
     """
     Creates array containing values for the absolute statistics for plotting of multiple samples.
     :param segmentedActivations: CAM Activations per Segment
     :type segmentedActivations: np.ndarray(np.ndarray(float))
     :param totalActivation: Sum of all activations in the CAM CURRENTLY NOT USED ONLY FOR OPTION 2
     :type totalActivation: float/np.ndarray(float) of dim 1
-    :param get_variance: (default False) Additionally compute the variance 
-    :type get_variance: bool
+    :param get_std: (default False) Additionally compute the standard deviation 
+    :type get_std: bool
 
-    :return  summarizedSegmentedCAMActivations, dominantMask (, segmentedCAMActivationVariance)
+    :return  summarizedSegmentedCAMActivations, dominantMask (, segmentedCAMActivationStd)
     """
     # #summarizedSegmentedCAMActivations = segmentedActivations.mean(axis=1).mean(axis=0)
     # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
@@ -108,21 +108,21 @@ def generate_stats_abs(segmentedActivations, totalActivation=1, get_variance=Fal
     dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
     dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
 
-    if get_variance:
-        segmentedCAMActivationVariance = np.var(segmentedActivations, axis=0)
-        return summarizedSegmentedCAMActivations, dominantMask, segmentedCAMActivationVariance
+    if get_std:
+        segmentedCAMActivationStd = np.std(segmentedActivations, axis=0)
+        return summarizedSegmentedCAMActivations, dominantMask, segmentedCAMActivationStd
     else:
         return summarizedSegmentedCAMActivations, dominantMask
 
-def generate_stats_rel(percentualActivations, get_variance=False):
+def generate_stats_rel(percentualActivations, get_std=False):
     """
     Creates array containing values for the relative statistics for plotting of multiple samples.
     :param percentualActivations: Percentual CAM Activations per Segment
     :type percentualActivations: np.ndarray(np.ndarray(float))
-    :param get_variance: (default False) Additionally compute the variance 
-    :type get_variance: bool
+    :param get_std: (default False) Additionally compute the standard deviation 
+    :type get_std: bool
 
-    :return summarizedPercSegmentedCAMActivations, dominantMask (, percSegmentedActivationVariance)
+    :return summarizedPercSegmentedCAMActivations, dominantMask (, percSegmentedActivationStd)
     """
     # #summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=1).mean(axis=0)
     # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
@@ -145,21 +145,21 @@ def generate_stats_rel(percentualActivations, get_variance=False):
     dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
     dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
 
-    if get_variance:
-        percSegmentedActivationVariance = percentualActivations.var(axis=0)
-        return summarizedPercSegmentedCAMActivations, dominantMaskPercentual, percSegmentedActivationVariance
+    if get_std:
+        percSegmentedActivationStd = percentualActivations.std(axis=0)
+        return summarizedPercSegmentedCAMActivations, dominantMaskPercentual, percSegmentedActivationStd
     else:
         return summarizedPercSegmentedCAMActivations, dominantMaskPercentual
 
-def generate_stats_rel_area(percentualAreas, get_variance=False):
+def generate_stats_rel_area(percentualAreas, get_std=False):
     """
     Creates array containing values for the relative statistics for plotting the relative areas of each segment.
     :param percentualAreas: Relative Area of each segment w.r.t the entire mask/image
     :type percentualAreas: np.ndarray(np.ndarray(float))
-    :param get_variance: (default False) Additionally compute the variance 
-    :type get_variance: bool
+    :param get_std: (default False) Additionally compute the standard deviation 
+    :type get_std: bool
 
-    :return summarizedPercSegmentedAreas (, percSegmentedAreaVariance)
+    :return summarizedPercSegmentedAreas (, percSegmentedAreaStd)
     """
     # # Ensure conversion to np.array
     # areas = np.array(percentualAreas)
@@ -169,15 +169,15 @@ def generate_stats_rel_area(percentualAreas, get_variance=False):
 
     summarizedPercSegmentedAreas = percentualAreas.mean(axis=0)
 
-    if get_variance:
-        percSegmentedAreaVariance = percentualAreas.var(axis=0)
-        return summarizedPercSegmentedAreas, percSegmentedAreaVariance
+    if get_std:
+        percSegmentedAreaStd = percentualAreas.std(axis=0)
+        return summarizedPercSegmentedAreas, percSegmentedAreaStd
     else:
         return (summarizedPercSegmentedAreas,)
 
-def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_variance=False, get_top_low_high=False, top_low_high_values=3):
+def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_std=False, get_top_low_high=False, top_low_high_values=3):
     """Create values pertaining to the totalCAM Activation like
-    the total Sum, the mean Activation and the Variance
+    the total Sum, the mean Activation and the standard deviation
 
     :param totalCAM: Total CAM Activations
     :type totalCAM: np.ndarray(float)
@@ -185,22 +185,22 @@ def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_varianc
     :type get_sum: bool
     :param get_mean: (default False) Compute the Mean of the CAM Activations
     :type get_mean: bool
-    :param get_variance: (default False) Compute the variance 
-    :type get_variance: bool
+    :param get_std: (default False) Compute the standard deviation 
+    :type get_std: bool
     :param get_top_low_high: (default False) Determine the highest and lowest totalCAMs and their indices
     :type get_top_low_high: bool
     :param top_low_high_values: (default 3) Amount of top/low values to compute when get_top_low_high=True
     :type top_low_high_values: int
 
-    :return list of specified attributes in order [sum, mean, variance, lowestSampleIndices, lowestSamples, highestSampleIndices, highestSamples]
+    :return list of specified attributes in order [sum, mean, std, lowestSampleIndices, lowestSamples, highestSampleIndices, highestSamples]
     """
     results = []
     if get_sum:
         results.append(np.sum(totalCAM))
     if get_mean:
         results.append(np.mean(totalCAM))
-    if get_variance:
-        results.append(np.var(totalCAM))
+    if get_std:
+        results.append(np.std(totalCAM))
     if get_top_low_high:
         sortedTotalsIndices = np.argsort(totalCAM)
         lowestSampleIndices = sortedTotalsIndices[:top_low_high_values]
@@ -211,7 +211,7 @@ def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_varianc
     return results
 
 def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None, 
-                    get_variance=False, get_total_sum=True, get_total_mean=False):
+                    get_std=False, get_total_sum=True, get_total_mean=False, get_total_top_low_high=False, total_top_low_high_values = 3):
     """
     Creates arrays containing values for plotting of multiple samples.
     :param classes: Classes corresponding to the categories of the segmentations.
@@ -224,14 +224,19 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     :type totalCAM: np.ndarray(np.ndarray(float))
     :param percentualAreas: Relative Area of each segment w.r.t the entire mask/image
     :type percentualAreas: np.ndarray(np.ndarray(float))
-    :param get_variance: (default False) Additionally compute the variance of all statistics
-    :type get_variance: bool
+    :param get_std: (default False) Additionally compute the standard deviation of all statistics
+    :type get_std: bool
     :param get_total_sum: (default True) Compute the Sum over all CAM Activations
     :type get_total_sum: bool
     :param get_total_mean: (default False) Compute the mean of the total CAM Activations
     :type get_total_mean: bool
+    :param get_total_top_low_high: (default False) Determine the highest and lowest totalCAMs and their indices
+    :type get_total_top_low_high: bool
+    :param total_top_low_high_values: (default 3) Amount of top/low values to compute when get_total_top_low_high=True
+    :type total_top_low_high_values: int
 
-    :return: depending on what was specified: [classArray, totalActivation, summarizedSegmentedCAMActivations, summarizedPercSegmentedCAMActivations, dominantMask, dominantMaskPercentual,summarizedPercAreas] 
+    :return: depending on what was specified: [classArray, specified totalCAM Stats, summarizedSegmentedCAMActivations, dominantMask (, std), 
+        summarizedPercSegmentedCAMActivations, dominantMaskPercentual(, std) ,summarizedPercAreas(, std)] 
         
     """
     print('Generate Statistics Data')
@@ -239,14 +244,16 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
 
     if totalCAM is not None:
         # If an overflow here occurs then so be it. This is HIGHLY UNLIKELY
-        totalCAMStats = generate_stats_totalCAMs(totalCAM, get_sum=get_total_sum, get_mean=get_total_mean, get_variance=get_variance)
+        print('Gen TotalCAM Stats')
+        totalCAMStats = generate_stats_totalCAMs(totalCAM, get_sum=get_total_sum, get_mean=get_total_mean, get_std=get_std, 
+                                        get_top_low_high=get_total_top_low_high, top_low_high_values=total_top_low_high_values)
         results = results + totalCAMStats
     if segmentedActivations is not None:
-        results = results + list(generate_stats_abs(segmentedActivations))
+        results = results + list(generate_stats_abs(segmentedActivations, get_std=get_std))
     if percentualActivations is not None:
-        results = results + list(generate_stats_rel(percentualActivations))
+        results = results + list(generate_stats_rel(percentualActivations, get_std=get_std))
     if percentualAreas is not None:
-        results = results + list(generate_stats_rel_area(percentualAreas))
+        results = results + list(generate_stats_rel_area(percentualAreas, get_std=get_std))
     
     return results
 
