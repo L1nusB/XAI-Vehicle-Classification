@@ -7,7 +7,7 @@ from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, w
 from .utils.prepareData import prepareInput, get_pipeline_cfg, prepare_generate_stats
 from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats
-from .utils.plot import plot_bar
+from .utils.plot import plot_bar, plot_errorbar
 from .utils.preprocessing import load_classes
 from .utils.constants import RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
@@ -32,34 +32,6 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
     annfile: Path to annotation file specifng which samples should be used.
     dataClasses: Array of Class Prefixes that specify which sample classes should be used. If not specified everything will be generated.
     """
-    # assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
-
-    # if 'imgNames' in kwargs:
-    #     imgNames = kwargs['imgNames']
-    # else:
-    #     assert 'annfile' in kwargs or 'imgRoot' in kwargs, 'Either annfile or imgRoot must be specified.'
-    #     imgNames = get_samples(**kwargs) # Required annfile or (imgRoot) in kwargs
-
-    # if len(imgNames) == 0:
-    #     raise ValueError('Given parameters do not yield any images.')
-
-
-    # # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
-    # # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
-    # segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-    # assert (isinstance(cams, dict) and set(imgNames).issubset(set(cams.keys()))) or set(imgNames).issubset(set(cams.files)), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    # assert (isinstance(cams, dict) and set(imgNames).issubset(set(segmentations.keys()))) or set(imgNames).issubset(set(segmentations.files)), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
-
-    # transformedSegmentations = {}
-    # cfg = get_pipeline_cfg(**kwargs)
-    # if cfg:
-    #     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
-    #     print('Tranforming segmentation masks with the given pipeline.')
-    # for name in imgNames:
-    #     transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
-
-    # classes = load_classes(classes, **kwargs)
-
     imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
     #totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)
@@ -146,46 +118,21 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
     annfile: Path to annotation file specifng which samples should be used.
     dataClasses: Array of Class Prefixes that specify which sample classes should be used. If not specified everything will be generated.
     """
-    # assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
-
-    # if 'imgNames' in kwargs:
-    #     imgNames = kwargs['imgNames']
-    # else:
-    #     assert 'annfile' in kwargs or 'imgRoot' in kwargs, 'Either annfile or imgRoot must be specified.'
-    #     imgNames = get_samples(**kwargs) # Required annfile or (imgRoot) in kwargs
-
-    # if len(imgNames) == 0:
-    #     raise ValueError('Given parameters do not yield any images.')
-
-    # # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
-    # # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
-    # segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-    # assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    # assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
-
-    # transformedSegmentations = {}
-    # cfg = get_pipeline_cfg(**kwargs)
-    # if cfg:
-    #     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
-    #     print('Tranforming segmentation masks with the given pipeline.')
-    # for name in imgNames:
-    #     transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
-
-    # classes = load_classes(classes, **kwargs)
-
     imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
     #_, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
 
-    _, _, percentualSegmentedCAMActivations, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+    _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
     classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
     grid = fig.add_gridspec(ncols=1, nrows=1)
     
+    numSamples = len(imgNames)
 
     ax0 = fig.add_subplot(grid[0,0])
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
     ax0.set_title('Average relative CAM Activations')
 
     # Default width is 0.8 and since we are plotting two bars side by side avoiding overlap requires
@@ -267,36 +214,10 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     annfile: Path to annotation file specifng which samples should be used.
     dataClasses: Array of Class Prefixes that specify which sample classes should be used. If not specified everything will be generated.
     """
-    # assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
-
-    # if 'imgNames' in kwargs:
-    #     imgNames = kwargs['imgNames']
-    # else:
-    #     assert 'annfile' in kwargs or 'imgRoot' in kwargs, 'Either annfile or imgRoot must be specified.'
-    #     imgNames = get_samples(**kwargs) # Required annfile or (imgRoot) in kwargs
-
-    # if len(imgNames) == 0:
-    #     raise ValueError('Given parameters do not yield any images.')
-
-    # # For CAM: Here we need camConfig, camCheckpoint or camData, imgRoot, (camDevice), (method), (dataClasses) and (annfile)
-    # # For Seg: Here we need segConfig, segCheckpoint or segData, imgRoot, (segDevice), (dataClasses) and (annfile)
-    # segmentations, _, cams = prepareInput(prepImg=False, **kwargs)
-    # assert set(imgNames).issubset(set(cams.keys())), f'Given CAM Dictionary does not contain all imgNames as keys.'
-    # assert set(imgNames).issubset(set(segmentations.keys())), f'Given Segmentation Dictionary does not contain all imgNames as keys.'
-
-    # transformedSegmentations = {}
-    # cfg = get_pipeline_cfg(**kwargs)
-    # if cfg:
-    #     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
-    #     print('Tranforming segmentation masks with the given pipeline.')
-    # for name in imgNames:
-    #     transformedSegmentations[name] = pipeline(segmentations[name]) if cfg else segmentations[name]
-
-    # classes = load_classes(classes, **kwargs)
 
     imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
-    _, _, percentualSegmentedCAMActivations, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+    _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
     classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
 
@@ -304,9 +225,11 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
     fig = plt.figure(figsize=(15,10),constrained_layout=True)
     grid = fig.add_gridspec(ncols=1, nrows=2)
-    
+
+    numSamples = len(imgNames)
 
     ax0 = fig.add_subplot(grid[0,0])
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
     ax0.set_title('Average relative CAM Activations')
 
     # Default width is 0.8 and since we are plotting three bars side by side avoiding overlap requires
@@ -376,7 +299,7 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     if saveDataClasses:
         writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
 
-def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix="",  **kwargs):
+def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -384,6 +307,8 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
     :param fileNamePrefix: Prefix that will be added in front of the filenames under which the results are saved.
     :param saveDir: Directory Path where the resulting files will be saved to. If not specified defaults to './results/'. Files will be saved 
                     under the given or default directory Path in a folder called 'normalized'
+    :param usePercScale: Use Percentage Scale for first plot showing the mean and standard deviation of the CAM Activations per Segment. 
+                    If False the absolut values will be used.
 
     Relevant kwargs are:
     imgRoot: Path to root folder where images/samples lie
@@ -401,20 +326,53 @@ def generate_statistics_mean_variance(classes=None, saveDir='',fileNamePrefix=""
     """
     imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
-    totalCAMActivations, _, percentualSegmentedCAMActivations, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+    totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, segmentAreas, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
-    stats = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations, totalCAM=totalCAMActivations,
-                         percentualAreas=percentualSegmentAreas, get_std=True, get_total_sum=True, get_total_mean=True, get_total_top_low_high=True)
+    stats = generate_stats(classes=classes, segmentedActivations=segmentedCAMActivations, totalCAM=totalCAMActivations, percentualActivations=percentualSegmentedCAMActivations,
+                          absoluteAreas=segmentAreas, percentualAreas=percentualSegmentAreas, get_std=True, get_total_mean=True, get_total_top_low_high=True)
 
-    return stats
     # Split the stats separatly to avoid mega crowding in one line
     classArray = stats[0]
     # sum, mean, std, lowestSampleIndices, lowestSamples, highestSampleIndices, highestSamples
     totalCAMStats = stats[1:8]
-    summarizedPercSegmentedCAMActivations = stats[8]
-    dominantMaskPercentual = stats[9]
-    stdPercSegmentedCAMActivations = stats[10]
-    summarizedPercSegmentAreas = stats[11]
-    stdPercSegmentAreas = stats[12]
+    summarizedSegmentCAMActivations = stats[8]
+    #dominantMask = stats[9]
+    stdSegmentCAMActivations = stats[10]
+    summarizedPercSegmentCAMActivations = stats[11]
+    #dominantMaskPerc = stats[12]
+    stdPercSegmentCAMActivations = stats[13]
+    summarizedSegmentAreas = stats[14]
+    stdSegmentAreas = stats[15]
+    summarizedPercSegmentAreas = stats[16]
+    stdPercSegmentAreas = stats[17]
 
-    return summarizedPercSegmentedCAMActivations, stdPercSegmentedCAMActivations
+    fig = plt.figure(figsize=(15,20), constrained_layout=True)
+    grid = fig.add_gridspec(ncols=1, nrows=2)
+
+    numSamples = len(imgNames)
+
+    ax0 = fig.add_subplot(grid[0,0])
+    ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
+
+    if usePercScale:
+        ax0.set_title('Percentual Mean and Standard Deviation of Each Segment Category')
+        plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedPercSegmentCAMActivations, stdData=stdPercSegmentCAMActivations)
+    else:
+        ax0.set_title('Absolute Mean and Standard Deviation of Each Segment Category')
+        plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedSegmentCAMActivations, stdData=stdSegmentCAMActivations)
+
+    
+    ax1 = fig.add_subplot(grid[1,0])
+    ax1.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax1.transAxes)
+
+    if usePercScale:
+        ax1.set_title('Percentual Mean and Standard Deviation of Area of Segments')
+        plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedPercSegmentAreas, stdData=stdPercSegmentAreas)
+    else:
+        ax1.set_title('Absolute Mean and Standard Deviation of Area of Segments')
+        plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedSegmentAreas, stdData=stdSegmentAreas)
+
+
+    if 'dataClasses' in kwargs:
+        ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+    plt.show()

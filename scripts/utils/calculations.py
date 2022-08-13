@@ -16,7 +16,7 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
     :type percentualArea: boolean
 
-    :return: Tuple containing (totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea)
+    :return: Tuple containing (totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, segmentPercentualArea)
     """
     assert cam.shape == segmentation.shape, f"cam.shape {cam.shape} does not "\
         f"match segmentation.shape {segmentation.shape}"
@@ -32,11 +32,13 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
     percentualSegmentedCAMActivation = segmentedCAMActivation/totalCAMActivation
 
+    segmentArea = None
     segmentPercentualArea = None
     if percentualArea:
-        segmentPercentualArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classes))]) / np.prod(segmentation.shape)
+        segmentArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classes))])
+        segmentPercentualArea = segmentArea / np.prod(segmentation.shape)
 
-    return totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentPercentualArea
+    return totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, segmentPercentualArea
 
 def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea=False):
     """Accumulates all intersections and totalCAMActivations for the given imgNames.
@@ -54,26 +56,29 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
     :type percentualArea: boolean
 
-    :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (percentualSegmentAreas))
+    :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (segmentAreas, percentualSegmentAreas))
     """
     print('Accumulating Statistics for given imgNames.')
     totalCAMActivations = []
     segmentedCAMActivations = []
     percentualSegmentedCAMActivations = []
+    segmentAreas = []
     percentualSegmentAreas = []
     classArray = np.array(classes)
 
     for name in imgNames:
-        totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = accumulate_single(
+        totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, percentualSegmentArea = accumulate_single(
             cams[name], segmentations[name], classArray, percentualArea=percentualArea)
         totalCAMActivations.append(totalCAMActivation)
         segmentedCAMActivations.append(segmentedCAMActivation)
         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
         if percentualArea:
+            segmentAreas.append(segmentArea)
             percentualSegmentAreas.append(percentualSegmentArea)
 
     results = [np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)]
     if percentualArea:
+        results.append(np.array(segmentAreas))
         results.append(np.array(percentualSegmentAreas))
     
     return results
@@ -175,6 +180,30 @@ def generate_stats_rel_area(percentualAreas, get_std=False):
     else:
         return (summarizedPercSegmentedAreas,)
 
+def generate_stats_abs_area(absAreas, get_std=False):
+    """
+    Creates array containing values for the absolute statistics for plotting the absolute areas of each segment.
+    :param absAreas: Absolute Area of each segment
+    :type absAreas: np.ndarray(np.ndarray(float))
+    :param get_std: (default False) Additionally compute the standard deviation 
+    :type get_std: bool
+
+    :return summarizedSegmentedAreas (, SegmentedAreaStd)
+    """
+    # # Ensure conversion to np.array
+    # areas = np.array(percentualAreas)
+    # # This simulates mean(axis=1).mean(axis=0) for lists that do not have to match sizes which can be the case.
+    # n_samples = sum([x.shape[0] for x in areas])
+    # summarizedPercSegmentedAreas = [sum([sum(batch[:,i])/n_samples for batch in areas]) for i in range(areas[0].shape[-1])]
+
+    summarizedSegmentedAreas = absAreas.mean(axis=0)
+
+    if get_std:
+        segmentedAreaStd = absAreas.std(axis=0)
+        return summarizedSegmentedAreas, segmentedAreaStd
+    else:
+        return (summarizedSegmentedAreas,)
+
 def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_std=False, get_top_low_high=False, top_low_high_values=3):
     """Create values pertaining to the totalCAM Activation like
     the total Sum, the mean Activation and the standard deviation
@@ -210,7 +239,7 @@ def generate_stats_totalCAMs(totalCAM, get_sum=True, get_mean=False, get_std=Fal
         results = results + [lowestSampleIndices, lowestSamples, highestSampleIndices, highestSamples]
     return results
 
-def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None, 
+def generate_stats(classes, segmentedActivations=None, percentualActivations=None, totalCAM=None, percentualAreas=None, absoluteAreas=None,
                     get_std=False, get_total_sum=True, get_total_mean=False, get_total_top_low_high=False, total_top_low_high_values = 3):
     """
     Creates arrays containing values for plotting of multiple samples.
@@ -224,6 +253,8 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     :type totalCAM: np.ndarray(np.ndarray(float))
     :param percentualAreas: Relative Area of each segment w.r.t the entire mask/image
     :type percentualAreas: np.ndarray(np.ndarray(float))
+    :param absoluteAreas: Absolute Area of each segment
+    :type absoluteAreas: np.ndarray(np.ndarray(float))
     :param get_std: (default False) Additionally compute the standard deviation of all statistics
     :type get_std: bool
     :param get_total_sum: (default True) Compute the Sum over all CAM Activations
@@ -236,7 +267,7 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
     :type total_top_low_high_values: int
 
     :return: depending on what was specified: [classArray, specified totalCAM Stats, summarizedSegmentedCAMActivations, dominantMask (, std), 
-        summarizedPercSegmentedCAMActivations, dominantMaskPercentual(, std) ,summarizedPercAreas(, std)] 
+        summarizedPercSegmentedCAMActivations, dominantMaskPercentual(, std) , summarizedAreas(, std), summarizedPercAreas(, std)] 
         
     """
     print('Generate Statistics Data')
@@ -252,6 +283,8 @@ def generate_stats(classes, segmentedActivations=None, percentualActivations=Non
         results = results + list(generate_stats_abs(segmentedActivations, get_std=get_std))
     if percentualActivations is not None:
         results = results + list(generate_stats_rel(percentualActivations, get_std=get_std))
+    if absoluteAreas is not None:
+        results = results + list(generate_stats_abs_area(absoluteAreas, get_std=get_std))
     if percentualAreas is not None:
         results = results + list(generate_stats_rel_area(percentualAreas, get_std=get_std))
     

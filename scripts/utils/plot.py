@@ -100,8 +100,7 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
     ax.set_ylim(top=ax.get_ylim()[1] + up)
     if addText:
         for i in range(len(meanData)):
-            t = f'$\mu=${meanData[i]:{format}}'
-            ax.text(i, meanData[i] + stdData[i] + 5 + ax.get_ylim()[1] / 50, f'$\mu=${meanData[i]:{format}} \n $\sigma=${stdData[i]:{format}}', fontsize=8,ha='center')
+            ax.text(i, meanData[i] + stdData[i] + ax.get_ylim()[1] / 50, f'$\mu=${meanData[i]:{format}} \n $\sigma=${stdData[i]:{format}}', fontsize=8,ha='center')
 
     ticks_loc = ax.get_xticks()
     ax.xaxis.set_major_locator(mticker.FixedLocator(ticks_loc))

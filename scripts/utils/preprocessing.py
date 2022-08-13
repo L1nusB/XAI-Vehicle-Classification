@@ -61,14 +61,14 @@ def batch_statistics(classes, imgNames, cams, segmentations, forceAll=False, lim
         if forceAll:
             result= accumulate_statistics(imgNames, cams, segmentations, classArray, percentualArea=percentualArea)
             if percentualArea:
-                totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = result
+                totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, percentualSegmentArea = result
             else:
                 totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = result
         else:
             print(f'Generating data for Batch {batch+1}')
             result = accumulate_statistics(imgNames[lower:higher], cams, segmentations, classArray, percentualArea=percentualArea)
             if percentualArea:
-                totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, percentualSegmentArea = result
+                totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, percentualSegmentArea = result
             else:
                 totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation = result
         totalCAMActivations[batch] = totalCAMActivation
