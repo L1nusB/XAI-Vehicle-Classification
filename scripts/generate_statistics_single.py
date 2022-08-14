@@ -166,7 +166,8 @@ def plot(imgName, **kwargs):
     :param camDevice: Device used for generating the CAM. (default 'cuda')
     """
     kwargs['imgName'] = imgName # Add imgName to kwargs for consolidation in input.
-    sourceImg, _, segmentationImgData, camData = prepareInput(**kwargs)
+    sourceImgDict, _, segmentationImgData, camData = prepareInput(**kwargs)
+    sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
     assert segmentationImgData is not None, "segmentationImgData must not be none if generate is False"
     assert camData is not None, "Cam Overlay must not be none if generate is False"
     if isinstance(segmentationImgData, dict):

@@ -1,3 +1,4 @@
+from genericpath import isdir
 from typing import Type
 import mmcv
 import os
@@ -45,14 +46,27 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             segmentationMasks, segmentationImgData = generate_segs.main([imgRoot, segConfig, segCheckpoint,'-r','--types', 'masks', 'images','--device',segDevice] + classParamAddition + annfileParamAddition)
     return segmentationMasks, segmentationImgData
 
-def prepareImg(imgPath='', imgData=None, **kwargs):
+def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
     if imgData is not None:
-        assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
-        assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
+        # assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
+        # assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
+        assert isinstance(imgData, dict), f'Given imgData has type {type(imgData)} but must be a dictionary.'
         print('Using given imgData')
-        return np.copy(imgData)
+        return copy.copy(imgData)
+
+
     if os.path.isfile(imgPath):
-        return mmcv.imread(imgPath)
+        return {os.path.basename(imgPath):mmcv.imread(imgPath)}
+    elif os.path.isdir(imgPath):
+        imgs = {}
+        if imgNames is None:
+            imgNames = get_samples(**kwargs)
+        elif isinstance(imgNames, str):
+            imgNames = [imgNames]
+        assert isinstance(imgNames, list|np.array|np.ndarray), f'Unexpected type {type(imgNames)} for imgNames'
+        for name in imgNames:
+            imgs[name] = mmcv.imread(os.path.join(imgPath, name))
+        return imgs
     else:
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
