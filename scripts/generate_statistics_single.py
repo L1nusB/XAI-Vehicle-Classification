@@ -1,3 +1,4 @@
+import warnings
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
@@ -156,7 +157,6 @@ def plot(imgName, **kwargs):
     :param imgName: Name of the Image.
     :param imgRoot: Path to the directory containing the image.
     :param imgData: (np.ndarray) Array containing the image data. Must match shape (_,_,1) or (_,_,3)
-    :param segmentationData: (Dictionary or np.ndarray) Image Data of the segmentation overlayed with the Image. If not given will be generated.
     :param camData: (Dictionary or np.ndarray) Raw CAM Data. If not given will be generated.
     :param segConfig: Path to Config file used for Segmentation. Required if no segmentationImgData is provided.
     :param segCheckpoint: Path to Checkpoint file used for Segmentation. Required if no segmentationImgData is provided.
@@ -166,10 +166,12 @@ def plot(imgName, **kwargs):
     :param camDevice: Device used for generating the CAM. (default 'cuda')
     """
     kwargs['imgName'] = imgName # Add imgName to kwargs for consolidation in input.
+    if 'segData' in kwargs:
+        warnings.simplefilter('always')
+        warnings.warn('Specifiyng segData will lead to image Data not being generated. Ignoring parameter.')
+        kwargs['segData'] = None
     sourceImgDict, _, segmentationImgData, camData = prepareInput(**kwargs)
     sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
-    assert segmentationImgData is not None, "segmentationImgData must not be none if generate is False"
-    assert camData is not None, "Cam Overlay must not be none if generate is False"
     if isinstance(segmentationImgData, dict):
         segmentationImg = segmentationImgData[imgName]
     else:
@@ -180,6 +182,8 @@ def plot(imgName, **kwargs):
         camHeatmap = np.copy(camData)
 
     cfg = get_pipeline_cfg(**kwargs)
+
+    assert cfg is not None, 'No pipeline could be determined. Specify either pipelineCfg or camConfig'
 
     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
 

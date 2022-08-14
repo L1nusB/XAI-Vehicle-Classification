@@ -105,13 +105,13 @@ def get_pipeline_cfg(**kwargs):
     if 'pipelineCfg' in kwargs and os.path.isfile(kwargs['pipelineCfg']):
         cfg = Config.fromfile(kwargs['pipelineCfg'])
     elif 'camConfig' in kwargs:
-        if 'segData' in kwargs:
+        if 'segData' in kwargs and kwargs['segData'] is not None:
             warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
             'by pipelineCfg parameter.')
         else:
             cfg = Config.fromfile(kwargs['camConfig'])
     else:
-        if not 'segData' in kwargs:
+        if not 'segData' in kwargs or kwargs['segData'] is None:
             warnings.warn('No Pipeline specified and segData parameter not given. Shape must match automatically.')
         else:
             warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
