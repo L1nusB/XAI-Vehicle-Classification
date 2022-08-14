@@ -21,7 +21,7 @@ def add_text(bars, ax, format, adjust_ypos=False, dominantMask=None, valueModifi
 
 
 def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=True, hightlightColor='red', x_tick_labels=None, 
-            bars=None, addText=True,  format='.1%', **kwargs):
+            bars=None, addText=True,  format='.1%', keep_x_ticks=False, increase_ylim_scale=1, **kwargs):
     """Creates a bar plot in the given axis from the given data. Customizations can be done
     in the x_ticks, labels, etc.
 
@@ -35,6 +35,8 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
     :param bars: Already bar plot object which will be modified. If not specified one will be generated from the given data.
     :param addText: Whether to add Text onto the bars with the given format.
     :param format: Format under which the text will be added to the bars. The text indicates the height of the bar.
+    :param keep_x_ticks: Keep the x_ticks that are already set or are set by default.
+    :param increase_ylim_scale: Increase the y-axis limit by the given scale.
 
     Optional more parameters can be passed using kwargs. 
     For additional arguments for the generation of the bar plot they must be prefixed with 'bar' and be 
@@ -56,18 +58,22 @@ def plot_bar(ax, x_ticks=None, data=None, dominantMask=None, hightlightDominant=
     # else:
     #     ax.set_xticklabels(x_ticks, rotation=45, ha="right")
     if x_tick_labels is not None:
-        ax.set_xticks(np.arange(len(x_tick_labels)))
+        if not keep_x_ticks:
+            ax.set_xticks(np.arange(len(x_tick_labels)))
         ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")
     else:
-        ax.set_xticks(x_ticks)
+        if not keep_x_ticks:
+            ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
-
     if hightlightDominant and dominantMask is not None:
         highlight_dominants(bars, dominantMask, hightlightColor)
-
+        
     if addText:
         textkwargs = {key[len('text'):]:value for key,value in kwargs.items() if key.startswith('text')}
         add_text(bars, ax, format, dominantMask=dominantMask, **textkwargs)
+
+    if increase_ylim_scale != 1:
+        ax.set_ylim(top=ax.get_ylim()[1] * increase_ylim_scale)
 
 
 def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=True,  format='.2f', **kwargs):
@@ -111,7 +117,7 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
     ax.set_ylim(top=ax.get_ylim()[1] + up)
     if addText:
         for i in range(len(meanData)):
-            ax.text(i, meanData[i] + stdData[i] + ax.get_ylim()[1] / 50, f'$\mu=${meanData[i]:{format}} \n $\sigma=${stdData[i]:{format}}', fontsize=8,ha='center')
+            ax.text(i, meanData[i] + stdData[i] + ax.get_ylim()[1] / 50, f'\u03BC={meanData[i]:{format}} \n \u03C3={stdData[i]:{format}}', fontsize=8,ha='center')
     if x_tick_labels is not None:
         ax.set_xticks(np.arange(len(x_tick_labels)))
         ax.set_xticklabels(x_tick_labels, rotation=45, ha="right")

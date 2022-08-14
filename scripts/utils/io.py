@@ -6,7 +6,7 @@ from pathlib import Path
 import os
 import numpy as np
 
-from .constants import DATASETSDATAPREFIX
+from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
 def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/', removeFileExtensions=False):
     """Splits the given path into directory and basename covering the case, that the
@@ -250,3 +250,35 @@ def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradca
     figure_name = "_".join([component for component in components if component != '']) + '.jpg'
 
     return figure_name, saveDataClasses, saveAnnfile
+
+def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNamePrefix="", default_Path=RESULTS_PATH, default_Ann_Path=RESULTS_PATH_ANN, default_DataClasses_Path=RESULTS_PATH_DATACLASS, **kwargs):
+    """Saves the given figure and potential corresponding annfile and dataClasses File in the given base saveDir.
+    An optional intermediate can be specified which will create a directory after the saveDir in which results will be saved to.
+
+    :param figure: Figure to save
+    :param save_dir: Path to base directory to which results will be saved to.
+    :param path_intermediate: Optional intermediate that will add a directory after save_dir
+    :param fileNamePrefix: Optional prefix that will be added in front of the fileName
+    :param default_Path: Default Path where the figure will be saved to
+    :param default_Ann_Path: Default Path where the annfiles will be saved to
+    :param default_DataClasses_Path: Default Path where the dataClasses file will be saved to
+    """
+
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
+    if fileNamePrefix:
+        figure_name = fileNamePrefix + "_" + figure_name
+
+    if save_dir:
+        results_path = os.path.join(save_dir, path_intermediate)
+        results_path_ann = os.path.join(save_dir, path_intermediate, 'annfiles')
+        results_path_dataclasses = os.path.join(save_dir, path_intermediate, 'dataClasses')
+    else:
+        results_path = os.path.join(RESULTS_PATH, path_intermediate)
+        results_path_ann = os.path.join(RESULTS_PATH_ANN, path_intermediate)
+        results_path_dataclasses = os.path.join(RESULTS_PATH_DATACLASS, path_intermediate)
+
+    saveFigure(savePath=os.path.join(results_path, figure_name), figure=figure)
+    if saveAnnfile:
+        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
+    if saveDataClasses:
+        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])

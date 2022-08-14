@@ -3,7 +3,7 @@ from matplotlib.patches import Patch
 import os
 import numpy as np
 
-from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, writeArrayToFile
+from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, writeArrayToFile, save_result_figure_data
 from .utils.prepareData import prepareInput, get_pipeline_cfg, prepare_generate_stats
 from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats
@@ -73,24 +73,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
-    if fileNamePrefix:
-        figure_name = fileNamePrefix + "_" + figure_name
-
-    if saveDir:
-        results_path = saveDir
-        results_path_ann = os.path.join(saveDir, 'annfiles')
-        results_path_dataclasses = os.path.join(saveDir, 'dataClasses')
-    else:
-        results_path = RESULTS_PATH
-        results_path_ann = RESULTS_PATH_ANN
-        results_path_dataclasses = RESULTS_PATH_DATACLASS
-
-    saveFigure(savePath=os.path.join(results_path, figure_name), figure=fig)
-    if saveAnnfile:
-        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
-    if saveDataClasses:
-        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
+    save_result_figure_data(figure=fig, save_dir=saveDir, fileNamePrefix=fileNamePrefix, **kwargs)
 
 
 
@@ -146,12 +129,12 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
 
     # Format main Data with generated bar graph
     plot_bar(ax=ax0, bars=bars, dominantMask=dominantMaskPercentual, x_tick_labels=classArray, format='.1%', textadjust_ypos=showPropPercent,
-        textrotation=rotation)
+        textrotation=rotation, keep_x_ticks=True)
 
     # Plot proportion Data next to main Data
     plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPropPercent, hightlightDominant=False,
-        textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation)
+        textadjust_ypos=showPropPercent, format='.1%', textrotation=rotation, keep_x_ticks=True)
 
     ax0.text(0.9,1.02, f'No.Samples:{len(imgNames)}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
@@ -169,25 +152,7 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
 
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(additional='ShowPropArea', **kwargs)
-
-    if saveDir:
-        results_path = os.path.join(saveDir, 'statsProp')
-        results_path_ann = os.path.join(saveDir, 'statsProp', 'annfiles')
-        results_path_dataclasses = os.path.join(saveDir, 'statsProp', 'dataClasses')
-    else:
-        results_path = os.path.join(RESULTS_PATH, 'statsProp')
-        results_path_ann = os.path.join(RESULTS_PATH, 'statsProp', 'annfiles')
-        results_path_dataclasses = os.path.join(RESULTS_PATH, 'statsProp', 'dataClasses')
-
-    if fileNamePrefix:
-        figure_name = fileNamePrefix + "_" + figure_name
-
-    saveFigure(savePath=os.path.join(results_path, figure_name), figure=fig)
-    if saveAnnfile:
-        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
-    if saveDataClasses:
-        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='statsProp', fileNamePrefix=fileNamePrefix, **kwargs)
 
 def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, **kwargs):
     """Generates a plot with average relative CAM Activations, the covered segment area as well as a normalized display 
@@ -243,17 +208,17 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
     # Format main Data with generated bar graph
     plot_bar(ax=ax0, bars=bars, dominantMask=dominantMaskPercentual, x_tick_labels=classArray, format='.1%', textadjust_ypos=showPercent,
-        textrotation=rotation, hightlightColor='tab:blue')
+        textrotation=rotation, hightlightColor='tab:blue', keep_x_ticks=True)
 
     # Plot proportion Data next to main Data
     plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercSegmentAreas, barwidth=barwidth, barcolor='g',
         barlabel='Proportional Segment Coverage', dominantMask=dominantMaskPercentual, addText=showPercent, hightlightDominant=False,
-        textadjust_ypos=showPercent, format='.1%', textrotation=rotation)
+        textadjust_ypos=showPercent, format='.1%', textrotation=rotation, keep_x_ticks=True)
 
     # Plot proportion Data next to main Data
     plot_bar(ax=ax0, x_ticks=np.arange(classArray.size)+2*barwidth, x_tick_labels=classArray, data=rescaledSummarizedPercActivions, barwidth=barwidth, barcolor='y',
         barlabel='Rescaled/Normalized Activation', dominantMask=dominantMaskRescaledActivations, addText=showPercent,
-        textadjust_ypos=showPercent, format='.1%', textrotation=rotation, hightlightColor='tab:orange')
+        textadjust_ypos=showPercent, format='.1%', textrotation=rotation, hightlightColor='tab:orange', keep_x_ticks=True)
 
     ax0.text(0.9,1.02, f'No.Samples:{len(imgNames)}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
 
@@ -279,25 +244,7 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(additional='ShowPropArea_AreaNormalized', **kwargs)
-
-    if saveDir:
-        results_path = os.path.join(saveDir, 'normalized')
-        results_path_ann = os.path.join(saveDir, 'normalized', 'annfiles')
-        results_path_dataclasses = os.path.join(saveDir, 'normalized', 'dataClasses')
-    else:
-        results_path = os.path.join(RESULTS_PATH, 'normalized')
-        results_path_ann = os.path.join(RESULTS_PATH, 'normalized', 'annfiles')
-        results_path_dataclasses = os.path.join(RESULTS_PATH, 'normalized', 'dataClasses')
-
-    if fileNamePrefix:
-        figure_name = fileNamePrefix + "_" + figure_name
-
-    saveFigure(savePath=os.path.join(results_path, figure_name), figure=fig)
-    if saveAnnfile:
-        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
-    if saveDataClasses:
-        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='normalized', fileNamePrefix=fileNamePrefix, **kwargs)
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
@@ -383,7 +330,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     totalMean = totalCAMStats[1]
     totalStd = totalCAMStats[2]
     plot_bar(ax=ax2, x_ticks=[0], data=[totalMean], format='.2f', barcolor='tab:blue', baryerr=[totalStd], barcapsize=4, barwidth=0.2, addText=False, barecolor='r')
-    ax2.text(0.3, totalMean, f'$\mu=${totalMean:.2f} \n $\sigma=${totalStd:.2f}', ha='center', va='bottom')
+    ax2.text(0.3, totalMean, f'\u03BC={totalMean:.2f} \n \u03C3={totalStd:.2f}', ha='center', va='bottom')
     plot_bar(ax=ax2, x_ticks=[1,2,3], data=totalCAMStats[4], format='.2f', barcolor='tab:orange')
     plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + [imgNames[i] for i in totalCAMStats[3]] + [imgNames[i] for i in totalCAMStats[5]], data=totalCAMStats[6], format='.2f', barcolor='tab:green')
 
@@ -397,22 +344,4 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     ax2.legend(handles=handles, bbox_to_anchor=(1,1.04), loc="lower right")
     plt.show()
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(additional='Mean_Std_Total', **kwargs)
-
-    if saveDir:
-        results_path = os.path.join(saveDir, 'meanStdTotal')
-        results_path_ann = os.path.join(saveDir, 'meanStdTotal', 'annfiles')
-        results_path_dataclasses = os.path.join(saveDir, 'meanStdTotal', 'dataClasses')
-    else:
-        results_path = os.path.join(RESULTS_PATH, 'meanStdTotal')
-        results_path_ann = os.path.join(RESULTS_PATH, 'meanStdTotal', 'annfiles')
-        results_path_dataclasses = os.path.join(RESULTS_PATH, 'meanStdTotal', 'dataClasses')
-
-    if fileNamePrefix:
-        figure_name = fileNamePrefix + "_" + figure_name
-
-    saveFigure(savePath=os.path.join(results_path, figure_name), figure=fig)
-    if saveAnnfile:
-        copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
-    if saveDataClasses:
-        writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, **kwargs)
