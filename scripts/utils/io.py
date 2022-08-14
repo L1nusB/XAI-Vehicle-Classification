@@ -156,20 +156,23 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     print(f'Saving images to: {outPath}')
     figure.savefig(outPath)
 
-# def saveCAMs(args, cams):
-#     print("Save generated CAMs to " + args.save)
-#     Path(os.path.dirname(args.save)).mkdir(parents=True, exist_ok=True)
-#     if os.path.isdir(args.save) or not os.path.basename(args.save):
-#         print(f'No filename specified. Generating file "generated_cams.npz" in directory {args.save}')
-#         path = os.path.join(args.save,"generated_cams.npz")
-#     else: 
-#         if os.path.basename(args.save)[-4:] == ".npz":
-#             path = args.save
-#         else:
-#             path = os.path.join(os.path.dirname(args.save), os.path.basename(args.save)+".npz")
-#     print(f'Output path to CAM file:{path}')
-    
-#     np.savez(path,**cams)
+def savePIL(img, fileName, dir='./'):
+    """Saves the given PIL Image under the fileName in the specified diretory
+
+    :param img: Image to be saved
+    :type img: PIL Image
+    :param dir: Directory where to save the image to
+    :type dir: str | Path
+    :param fileName: Name of the file. If no extension a .png will be created.
+    :type fileName: str | Path
+    """
+    Path(dir).mkdir(parents=True, exist_ok=True)
+    if fileName[-4:] != '.jpg' and fileName[-4:] != '.png':
+        fileName = fileName + '.png'
+    absPath = os.path.join(dir, fileName)
+    print(f'Saving image to: {absPath}')
+    img.save(absPath)
+
 
 def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
     """

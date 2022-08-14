@@ -63,7 +63,7 @@ def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
             imgNames = get_samples(**kwargs)
         elif isinstance(imgNames, str):
             imgNames = [imgNames]
-        assert isinstance(imgNames, list|np.array|np.ndarray), f'Unexpected type {type(imgNames)} for imgNames'
+        assert isinstance(imgNames, list|np.ndarray), f'Unexpected type {type(imgNames)} for imgNames'
         for name in imgNames:
             imgs[name] = mmcv.imread(os.path.join(imgPath, name))
         return imgs
@@ -111,11 +111,8 @@ def get_pipeline_cfg(**kwargs):
         else:
             cfg = Config.fromfile(kwargs['camConfig'])
     else:
-        if not 'segData' in kwargs or kwargs['segData'] is None:
-            warnings.warn('No Pipeline specified and segData parameter not given. Shape must match automatically.')
-        else:
-            warnings.warn('No pipeline is applied since segData is provided. If pipeline should be applied specify '
-            'by pipelineCfg parameter.')
+        warnings.warn('No pipeline configured. If pipeline should be applied specify either pipelineCfg or camConfig. '
+                        'desired images must match shape automatically.')
     return cfg
     
 
@@ -201,6 +198,7 @@ def prepare_generate_stats(classes=None, **kwargs):
 
     transformedSegmentations = {}
     cfg = get_pipeline_cfg(**kwargs)
+
     if cfg:
         pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=True, workPIL=True)
         print('Tranforming segmentation masks with the given pipeline.')

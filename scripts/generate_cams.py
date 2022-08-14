@@ -174,6 +174,15 @@ def generateCAMs(dataset, args):
 
 
 def generate_cam_overlay(sourceImg, camHeatmap):
+    """Creates an overlay of the cam Heatmap over the sourceImg.
+
+    :param sourceImg: Img Data for the Source Img
+    :type sourceImg: np.ndarray
+    :param camHeatmap: Data for the CAM Heatmap
+    :type camHeatmap: np.ndarray
+    :return: Overlay Image Data
+    :rtype: np.ndarray
+    """
     assert sourceImg.shape[:-1] == camHeatmap.shape, f"Shape of camHeatmap {camHeatmap.shape} and sourceImg (heightxwidth) {sourceImg.shape} do not match"
     return show_cam_on_image(sourceImg, camHeatmap, use_rgb=False)
 
