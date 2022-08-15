@@ -13,7 +13,7 @@ from .utils.preprocessing import load_classes
 from .utils.calculations import accumulate_statistics, generate_stats
 from .utils.plot import plot_bar
 
-VISUALIZE_TYPES=['none','heatmap','overlay']
+VISUALIZE_TYPES=['none','heatmap','overlay', 'both']
 
 def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=False,**kwargs):
     """Create images showing the CAM results for CPU and GPU comparing them.
@@ -21,7 +21,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
 
     :param saveDir: Directory where the images will be saved to. It will be appended by '/imgs/'
     :type saveDir: str
-    :param visType: Type of the visualizations images. Must be included in VISUALIZE_TYPES (Currently ['heatmap','overlay'])
+    :param visType: Type of the visualizations images. Must be included in VISUALIZE_TYPES (Currently ['heatmap','overlay', 'both'])
     :type visType: str
     :param plot: Create a plot that compares the cam Activations between CPU and GPU and the totalCAMs (default False)
     :type plot: bool
@@ -66,7 +66,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
 
     if visType != VISUALIZE_TYPES[0]:
         # Create and save visualization images
-        if visType == VISUALIZE_TYPES[2]:
+        if visType == VISUALIZE_TYPES[2] or visType == VISUALIZE_TYPES[3]:
             # Only load sourceImgs if we need them for overlays
             sourceImgs = prepareInput(prepImg=True, prepSeg=False, prepCam=False, **kwargs)[0] # Need to index here since we return a list
             transformedSourceImgs = {}
@@ -79,7 +79,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
         saveDir = os.path.join(saveDir, 'imgs')
         print(f'Saving images into directory {saveDir}')
         for name in imgNames:
-            if visType == VISUALIZE_TYPES[1]:
+            if visType == VISUALIZE_TYPES[1] or visType == VISUALIZE_TYPES[3]:
                 # Use CAM Heatmaps
                 cpuImg = convert_numpy_to_PIL(camsCPU[name])
                 gpuImg = convert_numpy_to_PIL(camsGPU[name])
@@ -91,6 +91,11 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
             add_text(cpuImg, 'CPU')
             add_text(gpuImg, 'GPU')
             combinedImg = concatenate_images(cpuImg, gpuImg)
+            if visType == VISUALIZE_TYPES[3]:
+                cpuImg = convert_numpy_to_PIL(generate_cam_overlay(transformedSourceImgs[name], camsCPU[name]))
+                gpuImg = convert_numpy_to_PIL(generate_cam_overlay(transformedSourceImgs[name], camsGPU[name]))
+                combinedImgOverlay = concatenate_images(cpuImg, gpuImg)
+                combinedImg = concatenate_images(combinedImg, combinedImgOverlay, direction='vertical')
             nameParts = name.split('.')
             if len(nameParts) > 1:
                 fName = ".".join(nameParts[:-1])
@@ -98,7 +103,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
             else:
                 fName = name
                 fExtension = ""
-            savePIL(combinedImg, fileName=fName + "_" + visType + fExtension, dir=saveDir)
+            savePIL(combinedImg, fileName=fName + "_" + visType + fExtension, dir=saveDir, logSave=False)
 
         
     if plot:
@@ -183,4 +188,4 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
         
         plt.show()
 
-        save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='GPUvsCPU', fileNamePrefix=fileNamePrefix, **kwargs)
+        save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='GPUvsCPU', fileNamePrefix=fileNamePrefix, **kwargs, **cpuKwargs)

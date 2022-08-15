@@ -158,7 +158,7 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     print(f'Saving images to: {outPath}')
     figure.savefig(outPath)
 
-def savePIL(img, fileName, dir='./'):
+def savePIL(img, fileName, dir='./', logSave=True):
     """Saves the given PIL Image under the fileName in the specified diretory
 
     :param img: Image to be saved
@@ -167,12 +167,15 @@ def savePIL(img, fileName, dir='./'):
     :type dir: str | Path
     :param fileName: Name of the file. If no extension a .png will be created.
     :type fileName: str | Path
+    :param logSave: (default True)Log a message where the file is saved.
+    :type logSave: bool
     """
     Path(dir).mkdir(parents=True, exist_ok=True)
     if fileName[-4:] != '.jpg' and fileName[-4:] != '.png':
         fileName = fileName + '.png'
     absPath = os.path.join(dir, fileName)
-    print(f'Saving image to: {absPath}')
+    if logSave:
+        print(f'Saving image to: {absPath}')
     img.save(absPath)
 
 
