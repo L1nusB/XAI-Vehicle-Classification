@@ -9,7 +9,7 @@ from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats
 from .utils.plot import plot_bar, plot_errorbar
 from .utils.preprocessing import load_classes
-from .utils.constants import RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
+from .utils.model import get_wrongly_classified
 
 def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
@@ -345,3 +345,20 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, **kwargs)
+
+def generate_statistics_missclassified(**kwargs):
+    """
+    Generates plots showing the activations for only the correctly classified samples for the given dataset,
+    A plot showing the activations of the wrongly classified samples.
+    """
+    assert 'imgRoot' in kwargs and os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs.get("imgRoot")}'
+
+    if 'imgNames' in kwargs:
+        imgNames = kwargs['imgNames']
+    else:
+        imgNames = get_samples(**kwargs)
+
+    if len(imgNames) == 0:
+        raise ValueError('Given parameters do not yield any images.')
+
+    get_wrongly_classified(imgNames=imgNames, **kwargs)

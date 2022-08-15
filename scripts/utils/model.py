@@ -2,31 +2,44 @@ from torch.utils.data import DataLoader
 import numpy as np
 import mmcv
 import torch
+import os.path as osp
+
+from .io import generate_filtered_annfile
+
+from mmcls.datasets.compcars import CompCars
+from mmcls.datasets.compcarsWeb import CompCarsWeb
+
+from mmseg.datasets.builder import DATASETS
+
+"""Here all model Classes used in classification must be registered into the DATASET Registry of mmseg"""
+# @DATASETS.register_module('CompCars')
+# def CompCarsWrapper(**kwargs):
+#     return CompCars(**kwargs)
+
+# @DATASETS.register_module('CompCarsWeb')
+# def CompCarsWrapper(**kwargs):
+#     return CompCarsWeb(**kwargs)
 
 
-def get_wrongly_classified(model, dataset, gt=None):
+
+def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames, **kwargs):
     """
-    :param gt: Optional path to ground truth file. If None dataset must hold gt.   
+    :param imgRoot: Path to the root directory containing all samples.
+    :param camConfig: Path to Config of CAM Model
+    :param camCheckpoint: Path to CHeckpoint of CAM Model
+    :param annfile: Path to annotation file containing all samples and corresponding ground truth. 
+    :param imgNames: List of all image Names that should be considered. An updated annfile will be generated
+                     based on those image Names and deleted afterwards.
     """
-    data_loader = DataLoader(dataset, batch_size=64, num_workers=4)
-    model.eval()
-    wrong_samples = []
-    dataset = data_loader.dataset
-    prog_bar = mmcv.ProgressBar(len(dataset))
-    for i, data in enumerate(data_loader):
-        with torch.no_grad():
-            result = model(return_loss=False, **data)
+    #print(DATASETS)
+    assert osp.isdir(imgRoot), f'No such directory {imgRoot}.'
+    assert osp.isfile(osp.abspath(annfile)), f'No such file {osp.abspath(annfile)} for annfile.'
 
-        batch_size = len(result)
-        scores = np.vstack(result)
-        pred_label = np.argmax(scores, axis=1)
+    print(imgNames)
+    filteredAnnfilePath = generate_filtered_annfile(annfile, imgNames)
 
-        if gt:
-            raise ValueError('gt not yet supported use Dataset that works.')
-        wrong_samples.extend([data['name'][j] for j in batch_size if data['gt_target'][j] == pred_label[j]])
+    cfg = mmcv.Config.fromfile(camConfig)
 
-        batch_size = data['img'].size(0)
-        for _ in range(batch_size):
-            prog_bar.update()
-    
-    return wrong_samples
+    cfg.data.test['ann_file'] = annfile
+    cfg.data.test['data_prefix'] = imgRoot
+    print(cfg.data.test)
