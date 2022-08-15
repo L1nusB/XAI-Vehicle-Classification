@@ -38,32 +38,34 @@ def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/
 def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], **kwargs):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
+    if isinstance(dataClasses, str):
+        dataClasses = [dataClasses]
     if annfile:
         if len(dataClasses)>0:
-            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in dataClasses)]
+            samples = [i.strip().rsplit(" ",1)[0] for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in dataClasses)]
         else:
-            samples = [i for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
+            samples = [i.strip().rsplit(" ",1)[0] for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
     else:
         if dataClasses:
-            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in dataClasses)]
+            samples = [i.strip().rsplit(" ",1)[0] for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in dataClasses)]
         else:
-            samples = [i for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
+            samples = [i.strip().rsplit(" ",1)[0] for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
     return samples
 
 def get_sample_count(args, fc=None, dataClasses=[]):
     return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, dataClasses=dataClasses))
 
-def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[]):
-    sample_list = list(sample_iterator)
-    if len(dataClasses)>0:
-        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
-    if batch_size == -1:
-        with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
-            f.write('\n'.join(sample_list))
-        return
-    for i in range(batch_count):
-        with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
-            f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
+# def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[]):
+#     sample_list = list(sample_iterator)
+#     if len(dataClasses)>0:
+#         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
+#     if batch_size == -1:
+#         with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
+#             f.write('\n'.join(sample_list))
+#         return
+#     for i in range(batch_count):
+#         with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
+#             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
 def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='resultsSeg'):
     """Generates a .txt file containing all items of the given sample_iterator
@@ -282,3 +284,31 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
         copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
     if saveDataClasses:
         writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
+
+def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'):
+    """Creates an updated annotation file under the given name that is a filtered version of the specified
+    annotation file by the given image Names.
+    The file be created in the same directory as the original file and the filename will be returned
+
+    :param annfile: Path to the original annotation file.
+    :type annfile: str | Path
+    :param imgNames: Collection of the image Names that should be kept after filtering.
+    :type imgNames: List | np.ndarray
+    :param fileName: Name under which the filtered file will be saved to.
+    :type fileName: str | Path
+    """
+    assert os.path.isfile(annfile), f'No such file {annfile}'
+    filteredEntries = []
+    with open(annfile, encoding='utf-8') as f:
+        for entry in f.readlines():
+            if entry.strip().rsplit(' ')[0] in imgNames:
+                filteredEntries.append(entry)
+
+    if fileName[-4:] != '.txt':
+        fileName = fileName + '.txt'
+
+    with open(os.path.join(os.path.dirname(annfile), fileName), mode='w', encoding='utf-8') as f:
+        f.write("".join(filteredEntries))
+    
+    print(f"Created filtered annotation file at {os.path.join(os.path.dirname(annfile), fileName)}")
+    return os.path.join(os.path.dirname(annfile), fileName)
