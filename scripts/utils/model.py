@@ -5,11 +5,12 @@ import torch
 import os.path as osp
 import os
 
-from .io import generate_filtered_annfile
+from .io import generate_filtered_annfile, generate_ann_file
 
 from mmcls.datasets.compcars import CompCars
 from mmcls.datasets.compcarsWeb import CompCarsWeb
 from mmcls.models.builder import build_classifier
+from mmcls.apis.test import single_gpu_test
 
 from mmseg.datasets.builder import DATASETS, build_dataset, build_dataloader
 
@@ -45,7 +46,7 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
 
     cfg.data.test['ann_file'] = filteredAnnfilePath
     cfg.data.test['data_prefix'] = imgRoot
-    print(cfg.data.test)
+    
     dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(
         dataset,
@@ -55,5 +56,22 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     )
     model = build_classifier(cfg.model)
     checkpoint = load_checkpoint(model, camCheckpoint, map_location='cpu')
+
+    results = single_gpu_test(model, data_loader)
+    results = np.vstack(results)
+
+    pred_labels = np.argmax(results, axis=1)
+    gt_labels = dataset.get_gt_labels()
+    correct = pred_labels == gt_labels
+    
+    correctClassifiedList = [match['img_info']['filename'] + " " + str(match['gt_label'].item()) + "_0" 
+                            for match in np.array(dataset.data_infos)[correct]]
+    wronglyClassifiedList = [match['img_info']['filename'] + " " + str(match['gt_label'].item()) + "_0" 
+                            for match in np.array(dataset.data_infos)[np.logical_not(correct)]]
+
+    # Generate the annotation files for further work.
+    annfileCorrectPath = generate_ann_file(correctClassifiedList, osp.dirname(annfile), fileprefix="annfile_correct")
+    annfileIncorrectPath = generate_ann_file(wronglyClassifiedList, osp.dirname(annfile), fileprefix="annfile_incorrect")
+    return results, pred_labels, dataset, gt_labels
     # Delete custom annfile after finish.
     #os.remove(filteredAnnfilePath)

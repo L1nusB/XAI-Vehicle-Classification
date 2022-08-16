@@ -19,7 +19,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
     """Create images showing the CAM results for CPU and GPU comparing them.
     The type can be the raw CAM Heatmap or the CAM Overlay over the original image
 
-    :param saveDir: Directory where the images will be saved to. It will be appended by '/imgs/'
+    :param saveDir: Directory where the images will be saved to. It will be appended by '/imgs/'. Plot will be saved into saveDir.
     :type saveDir: str
     :param visType: Type of the visualizations images. Must be included in VISUALIZE_TYPES (Currently ['heatmap','overlay', 'both'])
     :type visType: str
@@ -76,8 +76,8 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
             for name in imgNames:
                 transformedSourceImgs[name] = pipeline(sourceImgs[name]) if cfg else sourceImgs[name]
 
-        saveDir = os.path.join(saveDir, 'imgs')
-        print(f'Saving images into directory {saveDir}')
+        saveDirImg = os.path.join(saveDir, 'imgs')
+        print(f'Saving images into directory {saveDirImg}')
         for name in imgNames:
             if visType == VISUALIZE_TYPES[1] or visType == VISUALIZE_TYPES[3]:
                 # Use CAM Heatmaps
@@ -103,7 +103,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
             else:
                 fName = name
                 fExtension = ""
-            savePIL(combinedImg, fileName=fName + "_" + visType + fExtension, dir=saveDir, logSave=False)
+            savePIL(combinedImg, fileName=fName + "_" + visType + fExtension, dir=saveDirImg, logSave=False)
 
         
     if plot:
@@ -172,7 +172,7 @@ def visualize_cpu_vs_gpu(saveDir='', visType='overlay', fileNamePrefix="", plot=
         bars = ax1.bar([0], [totalActivationMeanGPU], width=barwidth)
         ax1.set_xticks([barwidth/2], [classArray[0]])
         plot_bar(ax=ax1, bars=bars, x_tick_labels=['Mean totalCAM Activation'], barwidth=barwidth, dominantMask=[True], hightlightColor='tab:blue',
-                                textadjust_ypos=True, format='.1%', textrotation=90, keep_x_ticks=True)
+                                textadjust_ypos=True, format='.2f', textrotation=90, keep_x_ticks=True)
         plot_bar(ax=ax1, x_ticks=[barwidth],  x_tick_labels=['Mean totalCAM Activation'], data=[totalActivationMeanCPU], dominantMask=[True], hightlightColor='tab:green', 
                                 textadjust_ypos=True, barcolor='g', format='.2f', textrotation=90, barwidth=barwidth, keep_x_ticks=True, increase_ylim_scale=1.3)
 

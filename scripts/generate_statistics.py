@@ -361,4 +361,4 @@ def generate_statistics_missclassified(**kwargs):
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
 
-    get_wrongly_classified(imgNames=imgNames, **kwargs)
+    return get_wrongly_classified(imgNames=imgNames, **kwargs)

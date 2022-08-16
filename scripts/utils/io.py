@@ -5,6 +5,7 @@ from mmcv import Config
 from pathlib import Path
 import os
 import numpy as np
+import warnings
 
 from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
@@ -67,7 +68,7 @@ def get_sample_count(args, fc=None, dataClasses=[]):
 #         with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
 #             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
-def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='resultsSeg'):
+def generate_ann_file(sample_iterator, work_dir, dataClasses=[], fileprefix='results'):
     """Generates a .txt file containing all items of the given sample_iterator
     that will be used to tell the dataset which samples to select.
     Via dataClasses one can restrict the samples to ones based on those classes.
@@ -77,12 +78,53 @@ def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='r
     :type work_dir: str
     :param dataClasses: List of classes restricting the samples unless empty, defaults to []
     :type dataClasses: List[str], optional
+    :param fileprefix: Name of the file that will be created. File extension is NOT required.
+    :type fileprefix: str
+
+    :return filePath of the created file.
     """
     sample_list = list(sample_iterator)
     if len(dataClasses)>0:
         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
-    with open(osp.join(work_dir, f'{fileprefix}.txt'),'w') as f:
+    # Remove .txt file extension if given.
+    if fileprefix[-4:] == '.txt':
+        fileprefix = fileprefix[-4:]
+    filePath = osp.join(work_dir, f'{fileprefix}.txt')
+    print(f'Creating annotation file at {filePath}')
+    with open(filePath,'w') as f:
         f.write('\n'.join(sample_list))
+    return filePath
+
+def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='resultsSeg'):
+    """
+    This function directly calles generate_ann_files
+    Generates a .txt file containing all items of the given sample_iterator
+    that will be used to tell the dataset which samples to select.
+    Via dataClasses one can restrict the samples to ones based on those classes.
+
+    :param sample_iterator: Iterable containing all sample names/paths
+    :param work_dir: Path to the directory where the file will be saved to
+    :type work_dir: str
+    :param dataClasses: List of classes restricting the samples unless empty, defaults to []
+    :type dataClasses: List[str], optional
+    :param fileprefix: Name of the file that will be created. File extension is NOT required.
+    :type fileprefix: str
+
+    :return filePath of the created file.
+    """
+    warnings.warn("Using generate_split_files will redirect the call to generate_ann_file. Consider directly calling that function")
+    return generate_ann_file(sample_iterator, work_dir, dataClasses, fileprefix)
+    sample_list = list(sample_iterator)
+    if len(dataClasses)>0:
+        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
+    # Remove .txt file extension if given.
+    if fileprefix[-4:] == '.txt':
+        fileprefix = fileprefix[-4:]
+    filePath = osp.join(work_dir, f'{fileprefix}.txt')
+    with open(filePath,'w') as f:
+        f.write('\n'.join(sample_list))
+    return filePath
+
 
 def saveResults(savePath, defaultName='generated_result.npz', **results):
     print(f'Saving results in: {savePath}')
