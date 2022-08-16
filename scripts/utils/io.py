@@ -36,21 +36,23 @@ def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/
                     fileName = ".".join(fileName.split(".")[:-1])
     return directory, fileName
 
-def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], **kwargs):
+def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], splitSamples=True, **kwargs):
     if fc is None:
         fc = mmcv.FileClient.infer_client(dict(backend='disk'))
     if isinstance(dataClasses, str):
         dataClasses = [dataClasses]
     if annfile:
         if len(dataClasses)>0:
-            samples = [i.strip().rsplit(" ",1)[0] for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in dataClasses)]
+            samples = [i.strip() for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk')) if any(i.startswith(c) for c in dataClasses)]
         else:
-            samples = [i.strip().rsplit(" ",1)[0] for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
+            samples = [i.strip() for i in mmcv.list_from_file(annfile, file_client_args=dict(backend='disk'))]
     else:
         if dataClasses:
-            samples = [i.strip().rsplit(" ",1)[0] for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in dataClasses)]
+            samples = [i.strip() for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)if any(i.startswith(c) for c in dataClasses)]
         else:
-            samples = [i.strip().rsplit(" ",1)[0] for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
+            samples = [i.strip() for i in fc.list_dir_or_file(dir_path=imgRoot, list_dir=False, recursive=True)]
+    if splitSamples:
+        samples = [i.rsplit(" ",1)[0] for i in samples]
     return samples
 
 def get_sample_count(args, fc=None, dataClasses=[]):

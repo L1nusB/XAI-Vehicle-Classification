@@ -1,5 +1,3 @@
-from genericpath import isdir
-from typing import Type
 import mmcv
 import os
 import numpy as np
@@ -35,6 +33,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             with open(temp_filePath,'w') as tmp:
                 tmp.write(kwargs['imgName'])
             segmentationMasks, segmentationImgData = generate_segs.main([imgRoot, segConfig, segCheckpoint,'--ann-file',os.path.abspath(temp_filePath), '-r','--types', 'masks', 'images','--device',segDevice])
+            print("") # New line to clear progress bar
             os.remove(temp_filePath)
         else:
             classParamAddition=[]
@@ -44,6 +43,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             if annfile:
                 annfileParamAddition=['--ann-file', os.path.abspath(annfile)]
             segmentationMasks, segmentationImgData = generate_segs.main([imgRoot, segConfig, segCheckpoint,'-r','--types', 'masks', 'images','--device',segDevice] + classParamAddition + annfileParamAddition)
+            print("") # New line to clear progress bar
     return segmentationMasks, segmentationImgData
 
 def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
@@ -70,7 +70,8 @@ def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
     else:
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
-def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', method='gradcam', dataClasses=[], annfile='', **kwargs):
+def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', 
+                method='gradcam', dataClasses=[], annfile='', useAnnLabels=False, **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
     if camData is not None:
         print('Using given CAM Data.')
@@ -85,6 +86,7 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
         camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method])
+        print("") # New line to clear progress bar
     elif os.path.isdir(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
@@ -94,7 +96,10 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
         annfileParamAddition=[]
         if annfile:
             annfileParamAddition=['--ann-file', annfile]
+            if useAnnLabels:
+                annfileParamAddition=annfileParamAddition + ['--use-ann-labels']
         camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition)
+        print("") # New line to clear progress bar
     else:
         raise ValueError('imgName must be a file or directory if no camData is provided.')
     return camData

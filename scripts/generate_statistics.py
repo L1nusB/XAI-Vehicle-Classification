@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import os
 import numpy as np
+import copy
 
 from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, writeArrayToFile, save_result_figure_data
 from .utils.prepareData import prepareInput, get_pipeline_cfg, prepare_generate_stats
@@ -346,19 +347,115 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, **kwargs)
 
-def generate_statistics_missclassified(**kwargs):
+def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camCheckpoint, saveDir='', fileNamePrefix="", **kwargs):
     """
     Generates plots showing the activations for only the correctly classified samples for the given dataset,
     A plot showing the activations of the wrongly classified samples.
     """
-    assert 'imgRoot' in kwargs and os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs.get("imgRoot")}'
+    assert os.path.isdir(imgRoot), f'imgRoot does not lead to a directory {imgRoot}'
 
     if 'imgNames' in kwargs:
         imgNames = kwargs['imgNames']
     else:
-        imgNames = get_samples(**kwargs)
+        imgNames = get_samples(annfile=annfile, imgRoot=imgRoot,**kwargs)
 
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
 
-    return get_wrongly_classified(imgNames=imgNames, **kwargs)
+    annfileCorrect, annfileIncorrect =  get_wrongly_classified(imgRoot=imgRoot, annfile=annfile, imgNames=imgNames, 
+                                                        camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+
+    kwargsCorrected = copy.copy(kwargs)
+    kwargsCorrected['camData'] = None # Set camData to none so that it must generate new cams
+
+    imgNamesOriginal, transformedSegmentationsOriginal, camsOriginal, classes = prepare_generate_stats(
+        imgRoot=imgRoot, annfile=annfile, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+    imgNamesCorrect, transformedSegmentationsCorrect, camsCorrect, _ = prepare_generate_stats(
+        imgRoot=imgRoot, annfile=annfileCorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+    imgNamesIncorrect, transformedSegmentationsIncorrect, camsIncorrect, _ = prepare_generate_stats(
+        imgRoot=imgRoot, annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+    # Index here at the end because we get a list as return value
+    camsCorrected = prepareInput(prepImg=False, prepSeg=False, prepCam=True, imgRoot=imgRoot, useAnnLabels=True,
+                    annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargsCorrected)[0]
+
+    _, _, percentualCAMActivationsOriginal = accumulate_statistics(imgNames=imgNamesOriginal, classes=classes, cams=camsOriginal, segmentations=transformedSegmentationsOriginal)
+    _, _, percentualCAMActivationsCorrect = accumulate_statistics(imgNames=imgNamesCorrect, classes=classes, cams=camsCorrect, segmentations=transformedSegmentationsCorrect)
+    _, _, percentualCAMActivationsIncorrect = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsIncorrect, segmentations=transformedSegmentationsIncorrect)
+    _, _, percentualCAMActivationsCorrected = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsCorrected, segmentations=transformedSegmentationsIncorrect)
+
+    percentualCAMActivationsFixed = np.concatenate((percentualCAMActivationsCorrect, percentualCAMActivationsCorrected))
+
+    classArray, summarizedPercCAMActivationsOriginal, _ = generate_stats(percentualActivations=percentualCAMActivationsOriginal, classes=classes)
+    _, summarizedPercCAMActivationsCorrect, dominantMaskPercCorrect = generate_stats(percentualActivations=percentualCAMActivationsCorrect, classes=classes)
+    _, summarizedPercCAMActivationsIncorrect, dominantMaskPercIncorret = generate_stats(percentualActivations=percentualCAMActivationsIncorrect, classes=classes)
+    _, summarizedPercCAMActivationsCorrected, dominantMaskPercCorrected = generate_stats(percentualActivations=percentualCAMActivationsCorrected, classes=classes)
+    _, summarizedPercCAMActivationsFixed, _ = generate_stats(percentualActivations=percentualCAMActivationsFixed, classes=classes)
+
+    numSamplesOriginal = len(imgNamesOriginal)
+    numSamplesCorrect = len(imgNamesCorrect)
+    numSamplesIncorrect = len(imgNamesIncorrect)
+
+    fig = plt.figure(figsize=(15,10),constrained_layout=True)
+    grid = fig.add_gridspec(ncols=3, nrows=2)
+
+    axCorrect = fig.add_subplot(grid[0,0]) # Only correct
+    axIncorrect = fig.add_subplot(grid[0,1]) # Only incorrect
+    axCorrected = fig.add_subplot(grid[0,2]) # Only corrected
+    axCompare = fig.add_subplot(grid[1,:]) # Compare original and fixed
+
+    axCorrect.xaxis.set_label_position('top')
+    axCorrect.set_xlabel(f'No.Samples:{numSamplesCorrect}')
+    axCorrect.set_title('Correct samples average CAM Activations')
+
+    plot_bar(ax=axCorrect, x_ticks=classArray, data=summarizedPercCAMActivationsCorrect, dominantMask=dominantMaskPercCorrect, 
+            textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
+
+    axIncorrect.xaxis.set_label_position('top')
+    axIncorrect.set_xlabel(f'No.Samples:{numSamplesIncorrect}')
+    axIncorrect.set_title('Wrongly classified samples average CAM Activations')
+
+    plot_bar(ax=axIncorrect, x_ticks=classArray, data=summarizedPercCAMActivationsIncorrect, dominantMask=dominantMaskPercIncorret, 
+            textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
+
+    axCorrected.xaxis.set_label_position('top')
+    axCorrected.set_xlabel(f'No.Samples:{numSamplesIncorrect}')
+    axCorrected.set_title('Wrongly classified corrected average CAM Activations')
+
+    plot_bar(ax=axCorrected, x_ticks=classArray, data=summarizedPercCAMActivationsCorrected, dominantMask=dominantMaskPercCorrected, 
+            textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
+
+    axCompare.text(0.9,1.02, f'No.Samples:{numSamplesOriginal}',horizontalalignment='center',verticalalignment='center',transform = axCompare.transAxes)
+    axCompare.set_title('Original and fixed classification average CAM Activations')
+
+    barwidth = 0.4
+    bars = axCompare.bar(np.arange(classArray.size), summarizedPercCAMActivationsOriginal, width=barwidth)
+    axCompare.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
+
+    # Format orginal data
+    plot_bar(ax=axCompare, bars=bars, x_tick_labels=classArray, format='.1%', textadjust_ypos=True,
+        textrotation=90, keep_x_ticks=True, hightlightDominant=False)
+
+    # Plot Fixed activation
+    plot_bar(ax=axCompare, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercCAMActivationsFixed, 
+        barwidth=barwidth, barcolor='g', addText=True, hightlightDominant=False,
+        textadjust_ypos=True, format='.1%', textrotation=90, keep_x_ticks=True, increase_ylim_scale=1.2)
+
+    legendMap = {
+        'tab:blue':'CAM Activations',
+        'tab:red':'Top CAM Activations'
+    }
+    legendMapCompare = {
+        'tab:blue':'Original CAM Activations',
+        'tab:green':'Fixed CAM Activations'
+    }
+    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+    handlesCompare = [Patch(color=k, label=v) for k,v in legendMapCompare.items()]
+
+    axCorrect.legend(handles=handles)
+    axIncorrect.legend(handles=handles)
+    axCorrected.legend(handles=handles)
+    axCompare.legend(handles=handlesCompare)
+
+    plt.show()
+
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='wronglyClassifications', fileNamePrefix=fileNamePrefix, **kwargs)

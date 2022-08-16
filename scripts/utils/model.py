@@ -35,6 +35,7 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     :param annfile: Path to annotation file containing all samples and corresponding ground truth. 
     :param imgNames: List of all image Names that should be considered. An updated annfile will be generated
                      based on those image Names and deleted afterwards.
+    :return (pathCorrect, pathIncorrect) Path to annotation files specifying correct and incorretly classified samples. 
     """
     #print(DATASETS)
     assert osp.isdir(imgRoot), f'No such directory {imgRoot}.'
@@ -46,7 +47,7 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
 
     cfg.data.test['ann_file'] = filteredAnnfilePath
     cfg.data.test['data_prefix'] = imgRoot
-    
+
     dataset = build_dataset(cfg.data.test)
     data_loader = build_dataloader(
         dataset,
@@ -56,8 +57,9 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     )
     model = build_classifier(cfg.model)
     checkpoint = load_checkpoint(model, camCheckpoint, map_location='cpu')
-
+    print("Determining wrongly classified samples.")
     results = single_gpu_test(model, data_loader)
+    print("") # Just a new line after the progress bar
     results = np.vstack(results)
 
     pred_labels = np.argmax(results, axis=1)
@@ -66,12 +68,17 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     
     correctClassifiedList = [match['img_info']['filename'] + " " + str(match['gt_label'].item()) + "_0" 
                             for match in np.array(dataset.data_infos)[correct]]
-    wronglyClassifiedList = [match['img_info']['filename'] + " " + str(match['gt_label'].item()) + "_0" 
+    incorrectClassifiedList = [match['img_info']['filename'] + " " + str(match['gt_label'].item()) + "_0" 
                             for match in np.array(dataset.data_infos)[np.logical_not(correct)]]
 
+    print(f'Number of correctly classified samples: {len(correctClassifiedList)}')
+    print(f'Number of incorrectly classified samples: {len(incorrectClassifiedList)}')
+
+    # Delete filtered annfile after finish since it is not needed anymore.
+    print(f'Removing filtered annotation file {filteredAnnfilePath}')
+    os.remove(filteredAnnfilePath)
+    
     # Generate the annotation files for further work.
     annfileCorrectPath = generate_ann_file(correctClassifiedList, osp.dirname(annfile), fileprefix="annfile_correct")
-    annfileIncorrectPath = generate_ann_file(wronglyClassifiedList, osp.dirname(annfile), fileprefix="annfile_incorrect")
-    return results, pred_labels, dataset, gt_labels
-    # Delete custom annfile after finish.
-    #os.remove(filteredAnnfilePath)
+    annfileIncorrectPath = generate_ann_file(incorrectClassifiedList, osp.dirname(annfile), fileprefix="annfile_incorrect")
+    return annfileCorrectPath, annfileIncorrectPath

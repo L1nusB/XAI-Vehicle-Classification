@@ -24,7 +24,7 @@ class ImageDataset(Dataset):
                 self.data = [name for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))]
                 self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
         else:
-            samples = [sample for sample in get_samples(annfile, imgRoot, None, dataClasses)]
+            samples = [sample for sample in get_samples(annfile, imgRoot, None, dataClasses, splitSamples=not(get_gt))]
             if get_gt:
                 self.data = [sample.split(" ")[0] for sample in samples]
                 self.gt_targets = [int(sample.split(" ")[-1].split("_")[0]) for sample in samples]
