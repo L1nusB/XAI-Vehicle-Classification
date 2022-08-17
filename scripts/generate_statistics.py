@@ -363,7 +363,7 @@ def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camC
         raise ValueError('Given parameters do not yield any images.')
 
     annfileCorrect, annfileIncorrect =  get_wrongly_classified(imgRoot=imgRoot, annfile=annfile, imgNames=imgNames, 
-                                                        camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+                                                        camConfig=camConfig, camCheckpoint=camCheckpoint, saveDir=saveDir, **kwargs)
 
     kwargsCorrected = copy.copy(kwargs)
     kwargsCorrected['camData'] = None # Set camData to none so that it must generate new cams
