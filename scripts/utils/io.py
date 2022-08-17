@@ -332,7 +332,7 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
     if saveDataClasses:
         writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
 
-def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'):
+def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt', saveDir="./"):
     """Creates an updated annotation file under the given name that is a filtered version of the specified
     annotation file by the given image Names.
     The file be created in the same directory as the original file and the filename will be returned
@@ -343,6 +343,8 @@ def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'
     :type imgNames: List | np.ndarray
     :param fileName: Name under which the filtered file will be saved to.
     :type fileName: str | Path
+    :param saveDir: Where annotation file be saved to
+    :type saveDir: str | Path
     """
     assert os.path.isfile(annfile), f'No such file {annfile}'
     filteredEntries = []
@@ -354,8 +356,10 @@ def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'
     if fileName[-4:] != '.txt':
         fileName = fileName + '.txt'
 
-    with open(os.path.join(os.path.dirname(annfile), fileName), mode='w', encoding='utf-8') as f:
+    filePath = osp.join(saveDir, fileName)
+    print(f"Created filtered annotation file at {filePath}")
+
+    with open(filePath, mode='w', encoding='utf-8') as f:
         f.write("".join(filteredEntries))
     
-    print(f"Created filtered annotation file at {os.path.join(os.path.dirname(annfile), fileName)}")
-    return os.path.join(os.path.dirname(annfile), fileName)
+    return filePath
