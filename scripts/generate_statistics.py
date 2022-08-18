@@ -347,7 +347,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, **kwargs)
 
-def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camCheckpoint, saveDir='', fileNamePrefix="", **kwargs):
+def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camCheckpoint, saveDir='', fileNamePrefix="", annfileCorrect="", annfileIncorrect="", **kwargs):
     """
     Generates plots showing the activations for only the correctly classified samples for the given dataset,
     A plot showing the activations of the wrongly classified samples.
@@ -362,8 +362,12 @@ def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camC
     if len(imgNames) == 0:
         raise ValueError('Given parameters do not yield any images.')
 
-    annfileCorrect, annfileIncorrect =  get_wrongly_classified(imgRoot=imgRoot, annfile=annfile, imgNames=imgNames, 
-                                                        camConfig=camConfig, camCheckpoint=camCheckpoint, saveDir=saveDir, **kwargs)
+    # Only generate files if we don't have path already specified.
+    if annfileCorrect == "" or annfileIncorrect == "":
+        annfileCorrect, annfileIncorrect =  get_wrongly_classified(imgRoot=imgRoot, annfile=annfile, imgNames=imgNames, 
+                                                            camConfig=camConfig, camCheckpoint=camCheckpoint, saveDir=saveDir, **kwargs)
+    else:
+        print(f'Using provided annfile correct:{annfileCorrect}, incorrect: {annfileIncorrect}')
 
     kwargsCorrected = copy.copy(kwargs)
     kwargsCorrected['camData'] = None # Set camData to none so that it must generate new cams

@@ -17,14 +17,16 @@ from mmseg.datasets.builder import DATASETS, build_dataset, build_dataloader
 from mmcv.runner import load_checkpoint
 
 """Here all model Classes used in classification must be registered into the DATASET Registry of mmseg"""
-@DATASETS.register_module('CompCars')
-def CompCarsWrapper(**kwargs):
-    return CompCars(**kwargs)
+# @DATASETS.register_module('CompCars')
+# def CompCarsWrapper(**kwargs):
+#     return CompCars(**kwargs)
 
-@DATASETS.register_module('CompCarsWeb')
-def CompCarsWrapper(**kwargs):
-    return CompCarsWeb(**kwargs)
+# @DATASETS.register_module('CompCarsWeb')
+# def CompCarsWrapper(**kwargs):
+#     return CompCarsWeb(**kwargs)
 
+if not('CompCars' in DATASETS and 'CompCarsWeb' in DATASETS):
+    from .registrerDatasets import *
 
 
 def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames, saveDir, **kwargs):

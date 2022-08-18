@@ -30,7 +30,7 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
     segmentedCAM = [cam*mask for mask in binaryMasks]
     totalCAMActivation = cam.sum()
     segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
-    percentualSegmentedCAMActivation = segmentedCAMActivation/totalCAMActivation
+    percentualSegmentedCAMActivation = np.divide(segmentedCAMActivation, totalCAMActivation, out=np.zeros_like(segmentedCAMActivation), where=totalCAMActivation!=0)
 
     segmentArea = None
     segmentPercentualArea = None
