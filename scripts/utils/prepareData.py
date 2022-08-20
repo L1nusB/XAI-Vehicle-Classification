@@ -70,7 +70,7 @@ def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
     else:
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
-def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', 
+def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', vitLike=False,
                 method='gradcam', dataClasses=[], annfile='', useAnnLabels=False, **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
     if camData is not None:
@@ -85,7 +85,10 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method])
+        vitLikeAddition = []
+        if vitLike:
+            vitLikeAddition = ['--vit-like']
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method] + vitLikeAddition)
         print("") # New line to clear progress bar
     elif os.path.isdir(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
@@ -98,7 +101,10 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
             annfileParamAddition=['--ann-file', annfile]
             if useAnnLabels:
                 annfileParamAddition=annfileParamAddition + ['--use-ann-labels']
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition)
+        vitLikeAddition = []
+        if vitLike:
+            vitLikeAddition = ['--vit-like']
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition + vitLikeAddition)
         print("") # New line to clear progress bar
     else:
         raise ValueError('imgName must be a file or directory if no camData is provided.')
@@ -138,6 +144,7 @@ def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
     camCheckpoint: Path to Checkpoint for CAMs
     camData: Already loaded object containing CAMs
     camDevice: (default cpu) Device used for CAMs
+    vitLike: (default False) Generate CAMs using --vit-like Option
     method: (default gradcam) Method by which the CAMs are generated
     dataClasses: (default []) List classes for which data will be generated. [] results in everything.
 

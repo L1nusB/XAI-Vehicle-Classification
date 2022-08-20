@@ -4,7 +4,7 @@ import os
 import numpy as np
 import copy
 
-from .utils.io import get_samples, saveFigure, get_save_figure_name, copyFile, writeArrayToFile, save_result_figure_data
+from .utils.io import get_samples, save_result_figure_data, save_to_excel
 from .utils.prepareData import prepareInput, get_pipeline_cfg, prepare_generate_stats
 from .utils.pipeline import get_pipeline_torchvision
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats
@@ -463,3 +463,11 @@ def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camC
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='wronglyClassifications', fileNamePrefix=fileNamePrefix, **kwargs)
+    saveDic = {
+        'PercActivationsOriginal':summarizedPercCAMActivationsOriginal,
+        'PercActivationsCorrect' : summarizedPercCAMActivationsCorrect,
+        'PercActivationsIncorrect' : summarizedPercCAMActivationsIncorrect,
+        'PercActivationsCorrected' : summarizedPercCAMActivationsCorrected,
+        'PercActivationsFixed' : summarizedPercCAMActivationsFixed,
+    }
+    save_to_excel(saveDic, filename='wronlyClassifiedResults.xlsx', saveDir=saveDir, segments=classArray)

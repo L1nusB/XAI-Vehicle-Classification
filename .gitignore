@@ -18,7 +18,9 @@ images_old/
 statsResults/
 results*/
 preGenData/
+evalResultsCPUvsGPU/
 
+*.xlsx
 *.npz
 *.jpg
 *.png

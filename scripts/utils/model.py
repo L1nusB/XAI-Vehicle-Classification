@@ -15,6 +15,7 @@ from mmcls.apis.test import single_gpu_test
 from mmseg.datasets.builder import DATASETS, build_dataset, build_dataloader
 
 from mmcv.runner import load_checkpoint
+from mmcv.parallel import MMDataParallel
 
 """Here all model Classes used in classification must be registered into the DATASET Registry of mmseg"""
 # @DATASETS.register_module('CompCars')
@@ -29,7 +30,7 @@ if not('CompCars' in DATASETS and 'CompCarsWeb' in DATASETS):
     from .registrerDatasets import *
 
 
-def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames, saveDir, **kwargs):
+def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames, saveDir, use_gpu=True, **kwargs):
     """
     :param imgRoot: Path to the root directory containing all samples.
     :param camConfig: Path to Config of CAM Model
@@ -38,6 +39,7 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     :param imgNames: List of all image Names that should be considered. An updated annfile will be generated
                      based on those image Names and deleted afterwards.
     :param saveDir: Path where annotation files be saved to
+    :param use_gpu: (default True) compute results / eval model on GPU. If False results will be computed over CPU
 
     :return (pathCorrect, pathIncorrect) Path to annotation files specifying correct and incorretly classified samples. 
     """
@@ -60,6 +62,11 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
         shuffle=False
     )
     model = build_classifier(cfg.model)
+    if use_gpu:
+        print('Evaluating Model on GPU')
+        model = MMDataParallel(model, device_ids=[0])
+    else:
+        print("Evaluating Model on CPU")
     checkpoint = load_checkpoint(model, camCheckpoint, map_location='cpu')
     print("Determining wrongly classified samples.")
     results = single_gpu_test(model, data_loader)

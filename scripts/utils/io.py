@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 import numpy as np
 import warnings
+import pandas
 
 from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
@@ -57,18 +58,6 @@ def get_samples(annfile=None, imgRoot=None, fc=None, dataClasses=[], splitSample
 
 def get_sample_count(args, fc=None, dataClasses=[]):
     return len(get_samples(annfile=args.ann_file, imgRoot=osp.join(args.root, args.imgDir), fc=fc, dataClasses=dataClasses))
-
-# def generate_split_files(sample_iterator, batch_count, batch_size, work_dir, dataClasses=[]):
-#     sample_list = list(sample_iterator)
-#     if len(dataClasses)>0:
-#         sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
-#     if batch_size == -1:
-#         with open(osp.join(work_dir, f'split_{0}.txt'),'w') as f:
-#             f.write('\n'.join(sample_list))
-#         return
-#     for i in range(batch_count):
-#         with open(osp.join(work_dir, f'split_{i}.txt'),'w') as f:
-#             f.write('\n'.join(sample_list[i*batch_size:(i+1)*batch_size]))
 
 def generate_ann_file(sample_iterator, work_dir, dataClasses=[], fileprefix='results'):
     """Generates a .txt file containing all items of the given sample_iterator
@@ -357,9 +346,35 @@ def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'
         fileName = fileName + '.txt'
 
     filePath = osp.join(saveDir, fileName)
+    Path(osp.dirname(filePath)).mkdir(parents=True, exist_ok=True)
     print(f"Created filtered annotation file at {filePath}")
 
     with open(filePath, mode='w', encoding='utf-8') as f:
         f.write("".join(filteredEntries))
     
     return filePath
+
+def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
+    """Saves the given arrays into an excel file. 
+    If the arrays are passed in a dictionary the keys will be used as column names.
+    """
+    print("Generate excel file for results.")
+    df = pandas.DataFrame(index=segments)
+    if isinstance(arrs, dict):
+        print("Using specified dictionary keys as column names")
+        for key, value in arrs.items():
+            df[key] = value
+    elif isinstance(arrs, list):
+        print("No names specified default indices will be used for columns.")
+        for arr in arrs:
+            df = pandas.concat((df, arr), axis=1)
+    else:
+        assert isinstance(arrs, np.ndarray), f'Unsupported type passed for objects to be saved: {type(arrs)}'
+        df = pandas.DataFrame(arrs, index=segments)
+    
+    savePath = osp.join(saveDir, filename)
+    if savePath[-5:] != '.xlsx':
+        savePath = savePath + '.xlsx'
+    Path(osp.dirname(savePath)).mkdir(parents=True, exist_ok=True)
+    print(f'Saving excel to {savePath}.')
+    df.to_excel(savePath, index=segments is not None)
