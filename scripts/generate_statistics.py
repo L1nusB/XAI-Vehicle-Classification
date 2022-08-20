@@ -75,6 +75,12 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, fileNamePrefix=fileNamePrefix, **kwargs)
+    saveDic = {
+        'RawActivations':summarizedSegmentedCAMActivations,
+        'PercActivations' : summarizedPercSegmentedCAMActivations,
+        'totalActivation' : [totalActivation]
+    }
+    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
 
 
 
@@ -154,6 +160,11 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='statsProp', fileNamePrefix=fileNamePrefix, **kwargs)
+    saveDic = {
+        'PercActivations' : summarizedPercSegmentedCAMActivations,
+        'PercSegmentAreas' : summarizedPercSegmentAreas
+    }
+    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
 
 def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, **kwargs):
     """Generates a plot with average relative CAM Activations, the covered segment area as well as a normalized display 
@@ -246,6 +257,14 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='normalized', fileNamePrefix=fileNamePrefix, **kwargs)
+    saveDic = {
+        'PercActivations' : summarizedPercSegmentedCAMActivations,
+        'PercSegmentAreas' : summarizedPercSegmentAreas,
+        'RelativeCAMImportance':relImportance,
+        'PercActivationsRescaled':rescaledSummarizedPercActivions
+    }
+    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
+    
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
@@ -346,6 +365,19 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     plt.show()
 
     save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, **kwargs)
+    saveDic = {
+        'PercActivations' : summarizedPercSegmentCAMActivations,
+        'PercActivationsStd':stdPercSegmentCAMActivations,
+        'RawActivations':summarizedSegmentCAMActivations,
+        'RawActivationsStd':stdSegmentCAMActivations,
+        'PercSegmentAreas' : summarizedPercSegmentAreas,
+        'PercSegmentAreasStd':stdPercSegmentAreas,
+        'RawSegmentAreas':summarizedSegmentAreas,
+        'RawSegmentAreasStd':stdSegmentAreas,
+        'totalMean':[totalMean],
+        'totalStd':[totalStd]
+    }
+    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
 
 def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camCheckpoint, saveDir='', fileNamePrefix="", annfileCorrect="", annfileIncorrect="", **kwargs):
     """

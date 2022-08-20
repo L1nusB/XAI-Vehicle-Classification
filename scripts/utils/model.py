@@ -7,8 +7,6 @@ import os
 
 from .io import generate_filtered_annfile, generate_ann_file
 
-from mmcls.datasets.compcars import CompCars
-from mmcls.datasets.compcarsWeb import CompCarsWeb
 from mmcls.models.builder import build_classifier
 from mmcls.apis.test import single_gpu_test
 
