@@ -378,3 +378,31 @@ def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
     Path(osp.dirname(savePath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving excel to {savePath}.')
     df.to_excel(savePath, index=segments is not None)
+
+def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, **kwargs):
+    """Saves the given arrays into an excel file.
+    The filename will be determined dynamically based on the passed arguments like camConfig, camCheckpoint,
+    camData, segConfig, segCheckpoint, segData using the get_save_figure_name function.
+    After determination of the filename the saving will be performed by save_to_excel function
+
+    :param arrs: arrays to be saved. Can either be a dictionary of a list. For dictionaries the key will be used as names.
+    :param fileNamePrefix: Prefix that will be added in front of the determined filename
+    :type fileNamePrefix: str
+    :param save_dir: Path to dictionary where file will be saved to, if not specified it will default to RESULTS_PATH
+    :type save_dir: str | Path, optional
+    :param path_intermediate: Optional intermediate that will add a directory after save_dir, defaults to ''
+    :type path_intermediate: str | Path, optional
+    :param segments: If specified will use the given list of segments as indices (RowNames), defaults to None
+    :type segments: List(str), optional
+    """
+
+    file_name, _, _ = get_save_figure_name(**kwargs)
+    if fileNamePrefix:
+        file_name = fileNamePrefix + "_" + file_name
+
+    if save_dir:
+        results_path = osp.join(save_dir, path_intermediate)
+    else:
+        results_path = osp.join(RESULTS_PATH, path_intermediate)
+
+    save_to_excel(arrs, filename=file_name, saveDir=results_path, segments=segments)

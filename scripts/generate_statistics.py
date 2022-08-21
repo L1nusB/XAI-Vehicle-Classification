@@ -4,12 +4,10 @@ import os
 import numpy as np
 import copy
 
-from .utils.io import get_samples, save_result_figure_data, save_to_excel
-from .utils.prepareData import prepareInput, get_pipeline_cfg, prepare_generate_stats
-from .utils.pipeline import get_pipeline_torchvision
+from .utils.io import get_samples, save_result_figure_data, save_excel_auto_name
+from .utils.prepareData import prepareInput, prepare_generate_stats
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats
 from .utils.plot import plot_bar, plot_errorbar
-from .utils.preprocessing import load_classes
 from .utils.model import get_wrongly_classified
 
 def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
@@ -80,8 +78,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , **kwargs):
         'PercActivations' : summarizedPercSegmentedCAMActivations,
         'totalActivation' : [totalActivation]
     }
-    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
-
+    save_excel_auto_name(saveDic, save_dir=saveDir, segments=classArray)
 
 
 
@@ -164,7 +161,7 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
         'PercActivations' : summarizedPercSegmentedCAMActivations,
         'PercSegmentAreas' : summarizedPercSegmentAreas
     }
-    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
+    save_excel_auto_name(saveDic, fileNamePrefix='prop', save_dir=saveDir, path_intermediate='statsProp', segments=classArray)
 
 def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, **kwargs):
     """Generates a plot with average relative CAM Activations, the covered segment area as well as a normalized display 
@@ -263,7 +260,7 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
         'RelativeCAMImportance':relImportance,
         'PercActivationsRescaled':rescaledSummarizedPercActivions
     }
-    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
+    save_excel_auto_name(saveDic, fileNamePrefix='normalized', save_dir=saveDir, path_intermediate='normalized', segments=classArray)
     
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False,  **kwargs):
@@ -377,7 +374,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         'totalMean':[totalMean],
         'totalStd':[totalStd]
     }
-    save_to_excel(saveDic, filename='results.xlsx', saveDir=saveDir, segments=classArray)
+    save_excel_auto_name(saveDic, fileNamePrefix='meanStdTotal', save_dir=saveDir, path_intermediate='meanStdTotal', segments=classArray)
 
 def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camCheckpoint, saveDir='', fileNamePrefix="", annfileCorrect="", annfileIncorrect="", **kwargs):
     """
@@ -502,4 +499,4 @@ def generate_statistics_missclassified(imgRoot, annfile, method, camConfig, camC
         'PercActivationsCorrected' : summarizedPercCAMActivationsCorrected,
         'PercActivationsFixed' : summarizedPercCAMActivationsFixed,
     }
-    save_to_excel(saveDic, filename='wronlyClassifiedResults.xlsx', saveDir=saveDir, segments=classArray)
+    save_excel_auto_name(saveDic, fileNamePrefix='wronglyClassified', save_dir=saveDir, path_intermediate='wronglyClassifications', segments=classArray)
