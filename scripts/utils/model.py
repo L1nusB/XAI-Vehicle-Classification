@@ -53,6 +53,7 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     cfg.data.test['data_prefix'] = imgRoot
 
     dataset = build_dataset(cfg.data.test)
+    return dataset
     data_loader = build_dataloader(
         dataset,
         samples_per_gpu=cfg.data.samples_per_gpu,

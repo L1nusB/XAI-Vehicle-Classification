@@ -1,5 +1,8 @@
 from mmseg.models.segmentors import CascadeEncoderDecoder
 
+from mmcls.datasets.compcars import CompCars
+from mmcls.datasets.compcarsWeb import CompCarsWeb
+
 RESULTS_PATH='./results'
 RESULTS_PATH_ANN='./results/annfiles'
 RESULTS_PATH_DATACLASS='./results/dataClasses'
@@ -113,3 +116,8 @@ TYPES=[
 MODELWRAPPERS={
     'CascadeEncoderDecoder':CascadeEncoderDecoder
     }
+
+DATASETWRAPPERS = {
+    'CompCars': CompCars,
+    'CompCarsWeb': CompCarsWeb
+}
