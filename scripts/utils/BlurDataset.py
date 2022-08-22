@@ -3,11 +3,10 @@ import cv2
 from mmcv import Config
 import copy
 
-from mmseg.datasets.builder import build_dataset, DATASETS
+from mmseg.datasets.builder import DATASETS
 from mmcls.datasets.pipelines import Compose
 
 from .preprocessing import load_classes
-from ..ImageDataset import ImageDataset
 from .constants import DATASETWRAPPERS
 from .imageProcessing import convert_numpy_to_PIL
 from .io import savePIL

@@ -8,7 +8,7 @@ import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
-from .ImageDataset import ImageDataset
+from .utils.CAMGenDataset import ImageDataset, BlurredImageDataset
 from .utils.io import  generate_split_file, get_dir_and_file_path
 from torch.utils.data import DataLoader
 
@@ -126,6 +126,38 @@ def parse_args(args):
         const=True,
         help='Return the results.'
     )
+    parser.add_argument(
+        '--blurredSegments',
+        default=[],
+        nargs='+',
+        help='Segments to be blurred out. Either by name of segment or index. '
+        'Multiple Segments may be specified.'
+    )
+    parser.add_argument(
+        '--segData',
+        type=str,
+        help='Path to numpy file containing segmentation data. '
+        'Required if --blurredSegments is specified'
+    )
+    parser.add_argument(
+        '--segConfig',
+        type=str,
+        help='Path to config File for segmentation model. '
+        'Required if --blurredSegments is specified'
+    )
+    parser.add_argument(
+        '--segCheckpoint',
+        type=str,
+        help='Path to checkpoint File for segmentation model. '
+        'Required if --blurredSegments is specified'
+    )
+    parser.add_argument(
+        '--saveBlurred',
+        type=bool,
+        default=False,
+        help='Save the blurred images over which the cams are computed. '
+        'Required if --blurredSegments is specified'
+    )
     args = parser.parse_args(args)
     if args.method.lower() not in METHOD_MAP.keys():
         raise ValueError(f'invalid CAM type {args.method},'
@@ -189,6 +221,13 @@ def generate_cam_overlay(sourceImg, camHeatmap):
 
 def main(args):
     args = parse_args(args)
+    useBlurredDataset = False
+    if len(args.blurredSegments) > 0:
+        assert args.segData and os.path.isfile(args.segData), f'segData must be specified when using --blurredSegments and lead to file.'
+        assert args.segConfig and os.path.isfile(args.segConfig), f'segConfig must be specified when using --blurredSegments and lead to file.'
+        assert args.segCheckpoint and os.path.isfile(args.segCheckpoint), f'segCheckpoint must be specified when using --blurredSegments and lead to file.'
+        print('Generating CAMs using blurred images.')
+        useBlurredDataset = True
     cams = {}
     if args.preview_model:
         cfg = Config.fromfile(args.config)
@@ -201,10 +240,19 @@ def main(args):
         if args.ann_file:
             raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
-        imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
+        if useBlurredDataset:
+            imgDataset = BlurredImageDataset(os.path.dirname(args.img), args.blurredSegments, args.segData, imgNames=[os.path.basename(args.img)], 
+                                            get_gt=args.use_ann_labels, segConfig=args.segConfig, segCheckpoint=args.segCheckpoint, saveImgs=args.saveBlurred)
+        else:
+            imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
-        imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
+        if useBlurredDataset:
+            imgDataset = BlurredImageDataset(args.img, args.blurredSegments, args.segData, imgNames=[os.path.basename(args.img)], 
+                                            annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels, 
+                                            segConfig=args.segConfig, segCheckpoint=args.segCheckpoint, saveImgs=args.saveBlurred)
+        else:
+            imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
 
     print(f'Method for CAM generation: {args.method}, eigen-smooth:{args.eigen_smooth}, aug-smooth:{args.aug_smooth}, vit-like:{args.vit_like}')
     if args.use_ann_labels:
