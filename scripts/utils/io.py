@@ -212,7 +212,7 @@ def savePIL(img, fileName, dir='./', logSave=True):
     img.save(absPath)
 
 
-def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradcam', additional = '', **kwargs):
+def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradcam', additional = '', fileExtension='.jpg', **kwargs):
     """
     Determines the name under which the figure and potential other files will be saved.
     Determines if another file must be saved.
@@ -224,6 +224,7 @@ def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradca
     :param annfile: Annotation file containing all samples used. Will be saved
     :param method: Method used to generate the CAMs
     :param additional: Additional statistics information see Excel Sheet.
+    :param fileExtension: FileExtension added in the end to figure_name (default .jpg)
 
     :return: Tuple (figure_name, saveDataClasses, saveAnnfile)
     """
@@ -285,7 +286,7 @@ def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradca
 
     components = [statType, selectionCriterion, camMethod, camDataset, camModel, segModel, segDataset, additional, dateStr]
 
-    figure_name = "_".join([component for component in components if component != '']) + '.jpg'
+    figure_name = "_".join([component for component in components if component != '']) + fileExtension
 
     return figure_name, saveDataClasses, saveAnnfile
 
@@ -396,7 +397,7 @@ def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate
     :type segments: List(str), optional
     """
 
-    file_name, _, _ = get_save_figure_name(**kwargs)
+    file_name, _, _ = get_save_figure_name(fileExtension='.xlsx',**kwargs)
     if fileNamePrefix:
         file_name = fileNamePrefix + "_" + file_name
 
