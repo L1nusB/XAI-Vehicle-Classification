@@ -121,3 +121,7 @@ DATASETWRAPPERS = {
     'CompCars': CompCars,
     'CompCarsWeb': CompCarsWeb
 }
+DATASETWRAPPERSBLURRED = {
+    'CompCars': 'BlurredCompCars',
+    'CompCarsWeb': 'BlurredCompCarsWeb'
+}

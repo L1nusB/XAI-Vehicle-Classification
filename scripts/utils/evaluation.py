@@ -1,4 +1,3 @@
-import numpy as np
 import pandas
 import json
 import os
@@ -11,8 +10,8 @@ from mmcv.parallel import MMDataParallel
 from .io import save_json
 
 def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, filename="evalBlurred.xlsx", saveDir='./',
-                            evaluate_original=True, eval_data_original="", use_gpu=True, save_json=True,
-                            metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support']):
+                            evaluate_original=True, eval_data_original="", use_gpu=True, saveJson=True,
+                            metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support'],**kwargs):
     """Evaluates the original dataset and the blurred dataset and saves the resulting
     metrics into an excel file.
 
@@ -26,7 +25,7 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
     :param eval_data_original: Path to file containing results for original dataset. 
         Only relevant if evaluate_original=False. File must be a .json
     :param use_gpu: Compute evaluations on GPU. Otherwise CPU will be used(MUCH SLOWER).
-    :param save_json: Save evaluation results into json files.
+    :param saveJson: Save evaluation results into json files.
     :param metrics: List of metrics for which the datasets will be evaluated against.
     """
     filePath = os.path.join(saveDir, filename)
@@ -37,8 +36,11 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
         cols = cols + ['accuracy_top-1', 'accuracy_top-5']
     df = pandas.DataFrame(columns=cols)
     if use_gpu:
-        print('Evaluating Model on GPU')
-        model = MMDataParallel(model, device_ids=[0])
+        if isinstance(model, MMDataParallel):
+            print('Model already on GPU')
+        else:
+            print('Evaluating Model on GPU')
+            model = MMDataParallel(model, device_ids=[0])
     else:
         print("Evaluating Model on CPU")
     if evaluate_original:
@@ -59,14 +61,15 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
         (Well depending on metrics parameter)
         """
         pandas.concat((df, pandas.DataFrame.from_records([eval_results_original], index=['Evaluation_Original'])))
-        if save_json:
+        if saveJson:
             save_json(eval_results_original, save_dir=saveDir, fileName='eval_results_original')
     else:
         if eval_data_original:
+            print('Using given evaluation data of original model.')
             with open(eval_data_original, 'r') as f:
                 if eval_data_original[-5:] == '.json':
                     print(f'Loading data from Json {eval_data_original}')
-                    eval_data_original = json.load(f)
+                    eval_results_original = json.load(f)
                 else:
                     raise TypeError(f'Cannot load data from {eval_data_original}. Supported types are .json')
                 df = pandas.concat((df, pandas.DataFrame.from_records([eval_results_original], index=['Evaluation_Original'])))
@@ -91,7 +94,7 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
     (Well depending on metrics parameter)
     """
     df = pandas.concat((df, pandas.DataFrame.from_records([eval_results_blurred], index=['Evaluation_Blurred'])))
-    if save_json:
+    if saveJson:
             save_json(eval_results_blurred, save_dir=saveDir, fileName='eval_results_blurred')
     if additionalEvals:
         print('Add total Change and improvement of original over blurred')

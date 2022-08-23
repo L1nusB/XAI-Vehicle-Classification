@@ -60,12 +60,12 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
         shuffle=False
     )
     model = build_classifier(cfg.model)
+    checkpoint = load_checkpoint(model, camCheckpoint, map_location='cpu')
     if use_gpu:
         print('Evaluating Model on GPU')
         model = MMDataParallel(model, device_ids=[0])
     else:
         print("Evaluating Model on CPU")
-    checkpoint = load_checkpoint(model, camCheckpoint, map_location='cpu')
     print("Determining wrongly classified samples.")
     results = single_gpu_test(model, data_loader)
     print("") # Just a new line after the progress bar
