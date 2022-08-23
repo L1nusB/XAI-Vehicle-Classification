@@ -8,8 +8,10 @@ from mmcls.apis.test import single_gpu_test
 from mmcls.datasets.builder import build_dataloader
 from mmcv.parallel import MMDataParallel
 
+from .io import save_json
+
 def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, filename="evalBlurred.xlsx", saveDir='./',
-                            evaluate_original=True, eval_data_original="", use_gpu=True,
+                            evaluate_original=True, eval_data_original="", use_gpu=True, save_json=True,
                             metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support']):
     """Evaluates the original dataset and the blurred dataset and saves the resulting
     metrics into an excel file.
@@ -24,8 +26,10 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
     :param eval_data_original: Path to file containing results for original dataset. 
         Only relevant if evaluate_original=False. File must be a .json
     :param use_gpu: Compute evaluations on GPU. Otherwise CPU will be used(MUCH SLOWER).
+    :param save_json: Save evaluation results into json files.
     :param metrics: List of metrics for which the datasets will be evaluated against.
     """
+    filePath = os.path.join(saveDir, filename)
     additionalEvals = True
     # Remove accuracy since that will get top-1 and top-5
     cols = [metric for metric in metrics if metric != 'accuracy'] 
@@ -55,6 +59,8 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
         (Well depending on metrics parameter)
         """
         pandas.concat((df, pandas.DataFrame.from_records([eval_results_original], index=['Evaluation_Original'])))
+        if save_json:
+            save_json(eval_results_original, save_dir=saveDir, fileName='eval_results_original')
     else:
         if eval_data_original:
             with open(eval_data_original, 'r') as f:
@@ -85,12 +91,13 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
     (Well depending on metrics parameter)
     """
     df = pandas.concat((df, pandas.DataFrame.from_records([eval_results_blurred], index=['Evaluation_Blurred'])))
+    if save_json:
+            save_json(eval_results_blurred, save_dir=saveDir, fileName='eval_results_blurred')
     if additionalEvals:
         print('Add total Change and improvement of original over blurred')
         df = pandas.concat((df, pandas.DataFrame.from_records([df.loc['Evaluation_Original'] - df.loc['Evaluation_Blurred']], index=['Advantage_Original_over_Blurred'])))
         df = pandas.concat((df, pandas.DataFrame.from_records([abs(df.loc['Evaluation_Original'] - df.loc['Evaluation_Blurred'])], index=['Absolute_Difference_Original_Blurred'])))
 
-    filePath = os.path.join(saveDir, filename)
     if filePath[-5:] != '.xlsx':
         filePath = filePath + '.xlsx'
     Path(os.path.dirname(filePath)).mkdir(parents=True, exist_ok=True)

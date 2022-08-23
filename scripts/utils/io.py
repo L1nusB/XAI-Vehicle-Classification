@@ -7,6 +7,7 @@ import os
 import numpy as np
 import warnings
 import pandas
+import json
 
 from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
 
@@ -407,3 +408,28 @@ def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate
         results_path = osp.join(RESULTS_PATH, path_intermediate)
 
     save_to_excel(arrs, filename=file_name, saveDir=results_path, segments=segments)
+
+def save_json(data, save_dir="", fileName="", fullPath="", fileNamePrefix=""):
+    """Saves the given data into a json file at the given path.
+
+    :param data: Data to be saved in json
+    :type data: dict
+    :param save_dir: Path to save directory 
+    :type save_dir: str | Path
+    :param fileName: Name of the file
+    :type fileName: str
+    :param fullPath: Fully specified Path if specified ignore save_dir and fileName
+    :type fullPath: str | Path, optional
+    :param fileNamePrefix: Prefix that will be used when fullPath is given.
+    :type fileNamePrefix: str
+    """
+    if fullPath:
+        save_path = osp.join(osp.dirname(fullPath), fileNamePrefix + '_' + osp.basename(fullPath))
+    else:
+        save_path = osp.join(save_dir, fileName)
+    if save_path[-5:] != '.json':
+        save_path = save_path + ".json"
+    Path(osp.dirname(save_path)).mkdir(parents=True, exist_ok=True)
+    with open(save_path, 'w', encoding='utf-8') as f:
+        print(f'Saving json data to {save_path}')
+        json.dump(data, f)
