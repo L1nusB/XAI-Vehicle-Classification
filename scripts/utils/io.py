@@ -364,11 +364,11 @@ def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
     if isinstance(arrs, dict):
         print("Using specified dictionary keys as column names")
         for key, value in arrs.items():
-            df[key] = value
+            df[key] = pandas.Series(value, index=df.index[:len(value)])
     elif isinstance(arrs, list):
         print("No names specified default indices will be used for columns.")
         for arr in arrs:
-            df = pandas.concat((df, arr), axis=1)
+            df = pandas.concat((df, pandas.Series(arr, index=df.index[:len(arr)])), axis=1)
     else:
         assert isinstance(arrs, np.ndarray), f'Unsupported type passed for objects to be saved: {type(arrs)}'
         df = pandas.DataFrame(arrs, index=segments)
