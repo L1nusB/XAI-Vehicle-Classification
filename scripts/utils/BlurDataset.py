@@ -90,6 +90,8 @@ def get_blurred_dataset(cfg, imgRoot, annfile, blurredSegments, segData, classes
             self.saveDir = saveDir
             self.blurKernel = blurKernel
             self.blurSigmaX = blurSigmaX
+            if saveImgs:
+                print(f'Blurred Images will be saved to {saveDir}')
 
         def __getitem__(self, idx):
             results = copy.deepcopy(self.data_infos[idx])
@@ -209,6 +211,8 @@ class CompCarsBlurred(CompCars):
         self.saveDir = saveDir
         self.blurKernel = blurKernel
         self.blurSigmaX = blurSigmaX
+        if saveImgs:
+            print(f'Blurred Images will be saved to {saveDir}')
 
     def __getitem__(self, idx):
         results = copy.deepcopy(self.data_infos[idx])
@@ -273,6 +277,8 @@ class BlurredCompCars(CompCarsWeb):
         self.saveDir = saveDir
         self.blurKernel = blurKernel
         self.blurSigmaX = blurSigmaX
+        if saveImgs:
+            print(f'Blurred Images will be saved to {saveDir}')
 
     def __getitem__(self, idx):
         results = copy.deepcopy(self.data_infos[idx])

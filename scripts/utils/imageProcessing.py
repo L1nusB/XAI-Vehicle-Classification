@@ -41,7 +41,7 @@ def concatenate_images(img1, img2, direction='horizontal'):
         newImg.paste(img2, (0, img1.height))
     return newImg
 
-def convert_numpy_to_PIL(arr, colormap='viridis'):
+def convert_numpy_to_PIL(arr, colormap='viridis', channel_order='bgr'):
     """Converts a given numpy array into a PIL image.
     If the arr has a floating dtype it is assumed the values lie in the range [0,1]
     and will be multiplied by 255 and then converted to type uint8
@@ -51,11 +51,15 @@ def convert_numpy_to_PIL(arr, colormap='viridis'):
     :type arr: np.ndarray
     :param colormap: Colormap that will be used if img has 2D Shape. Must be in matplotlib.cm
     :type colormap: str
+    :param channel_order: (defaults to 'bgr') Order in which channels are arranged in numpy array.
+                        Ignored if arr is only two dimensional
+    :type channel_order: str
     """
     if len(arr.shape) == 2:
         # Convert to 3-Channel Image so we do not get grayscales.
         cmmap = getattr(cm, colormap)
         arr = cmmap(arr)
+        channel_order = 'rgb' # Manually override channel_order since we add the channel here.
     assert len(arr.shape) == 3, f'Shape of array {arr.shape} is not 3 dimensional.'
 
     if np.issubdtype(arr.dtype, np.floating):
@@ -63,5 +67,10 @@ def convert_numpy_to_PIL(arr, colormap='viridis'):
     
     assert arr.dtype == np.uint8, f'Type of array {arr.dtype} is invalid. Must be np.uint8 or np.float32'
 
+    rawImg = Image.fromarray(arr)
+    channels = rawImg.split()
+    r = channels[channel_order.index('r')]
+    g = channels[channel_order.index('g')]
+    b = channels[channel_order.index('b')]
 
-    return Image.fromarray(arr)
+    return Image.merge('RGB', (r,g,b))

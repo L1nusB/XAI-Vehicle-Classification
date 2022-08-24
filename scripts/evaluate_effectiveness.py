@@ -13,10 +13,12 @@ from mmseg.datasets.builder import build_dataset, DATASETS
 
 from mmcls.models.builder import build_classifier
 
-def evaluate_blurred_background(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, saveImgs=False, saveDir='./', use_gpu=True, **kwargs):
+def evaluate_blurred_background(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, saveImgs=False, saveDir='./', use_gpu=True, imgRootBlurred="", **kwargs):
     """
     Compares the original model on the original dataset compared to
     the model on a modified dataset, where the background is blurred out.
+
+    IF LOADING BLURRED IMAGES THE RESULTS ARE SLIGHTY DIFFERENT FROM THE ON DEMAND BLURRED ONES BECAUSE OF IMAGE COMPRESSION
 
     :param imgRoot: Directory of where sample data lies.
     :param classifierConfig: Path to config for Classifier
@@ -25,6 +27,7 @@ def evaluate_blurred_background(imgRoot, classifierConfig, classifierCheckpoint,
     :param segData: Path to numpy file containing the segmentation data. Must match to original image data shape.
     :param saveImgs: Save blurred images.
     :param saveDir: Path where results will be saved to.
+    :param imgRootBlurred: Path to directory where blurred image data is. If specified original dataset will be used on that dataset.
 
     For kwargs:
     segCheckpoint: Path to Checkpoint for segmentation model.
@@ -41,12 +44,14 @@ def evaluate_blurred_background(imgRoot, classifierConfig, classifierCheckpoint,
     """
     print('Evaluating original model vs blurred background.')
 
-    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, 'background', saveImgs, saveDir, use_gpu, **kwargs)
+    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, 'background', saveImgs, saveDir, use_gpu, imgRootBlurred, **kwargs)
 
-def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegments, saveImgs=False, saveDir='./', use_gpu=True, **kwargs):
+def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegments, saveImgs=False, saveDir='./', use_gpu=True, imgRootBlurred="", **kwargs):
     """
     Compares the original model on the original dataset compared to
     the model on a modified dataset, where the specified Segments are blurred out.
+
+    IF LOADING BLURRED IMAGES THE RESULTS ARE SLIGHTY DIFFERENT FROM THE ON DEMAND BLURRED ONES BECAUSE OF IMAGE COMPRESSION
 
     :param imgRoot: Directory of where sample data lies.
     :param classifierConfig: Path to config for Classifier
@@ -56,6 +61,7 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
     :param blurredSegments: Which segment/-s to blur out. Can be either index, string or list of either.
     :param saveImgs: Save blurred images.
     :param saveDir: Path where results will be saved to.
+    :param imgRootBlurred: Path to directory where blurred image data is. If specified original dataset will be used on that dataset.
 
     For kwargs:
     segCheckpoint: Path to Checkpoint for segmentation model.
@@ -85,11 +91,17 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
         model = MMDataParallel(model, device_ids=[0])
     if 'eval_data_original' in kwargs:
         kwargs['evaluate_original'] = False
-    blur_cfg = setup_config_blurred(cfg=cfg, imgRoot=imgRoot, annfile=annfile,saveDir=osp.join(saveDir, 'blurredImgs'), 
-                                        segData=segData, saveImgs=saveImgs, blurredSegments=blurredSegments,**kwargs)
-    #dataset_blurred = build_dataset(blur_cfg.data.test)
-    #print(blur_cfg.data.test)
-    dataset_blurred = build_dataset(blur_cfg.data.test)
+    if imgRootBlurred:
+        print(f'Using standard dataset on blurred data at directory {imgRootBlurred}')
+        cfg.data.test['data_prefix'] = imgRootBlurred
+        dataset_blurred = build_dataset(cfg.data.test)
+    else:
+        print('Computing blurred images on demand.')
+        blur_cfg = setup_config_blurred(cfg=cfg, imgRoot=imgRoot, annfile=annfile,saveDir=osp.join(saveDir, 'blurredImgs'), 
+                                            segData=segData, saveImgs=saveImgs, blurredSegments=blurredSegments,**kwargs)
+        #dataset_blurred = build_dataset(blur_cfg.data.test)
+        #print(blur_cfg.data.test)
+        dataset_blurred = build_dataset(blur_cfg.data.test)
     #dataset_blurred = get_blurred_dataset(cfg=cfg, imgRoot=imgRoot, annfile=annfile, blurredSegments=[0,1], segData=segData, **kwargs)
 
     compare_original_blurred(model=model, cfg=cfg, dataset_original=dataset_original, dataset_blurred=dataset_blurred, saveDir=saveDir, use_gpu=use_gpu, **kwargs)
