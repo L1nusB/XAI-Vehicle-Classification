@@ -8,7 +8,7 @@ import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
-from .utils.CAMGenDataset import ImageDataset, BlurredImageDataset
+from .utils.CAMGenDataset import ImageDataset, add_blurring_pipeline_step
 from .utils.io import  generate_split_file, get_dir_and_file_path
 from torch.utils.data import DataLoader
 
@@ -155,6 +155,8 @@ def parse_args(args):
         '--saveBlurred',
         type=bool,
         default=False,
+        nargs='?',
+        const=True,
         help='Save the blurred images over which the cams are computed. '
         'Required if --blurredSegments is specified'
     )
@@ -182,9 +184,11 @@ def getCAMConfig(args):
 
     return cfg,model,use_cuda,target_layers,reshape_transform
 
-def generateCAMs(dataset, args):
+def generateCAMs(dataset, args, custom_cfg=None):
     print(f'Generate Results for specified files')
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
+    if custom_cfg is not None:
+        cfg = custom_cfg
     imgLoader = DataLoader(dataset)
 
     cams={}
@@ -221,6 +225,7 @@ def generate_cam_overlay(sourceImg, camHeatmap):
 
 def main(args):
     args = parse_args(args)
+    cfg = Config.fromfile(args.config)
     useBlurredDataset = False
     if len(args.blurredSegments) > 0:
         assert args.segData and os.path.isfile(args.segData), f'segData must be specified when using --blurredSegments and lead to file.'
@@ -230,7 +235,6 @@ def main(args):
         useBlurredDataset = True
     cams = {}
     if args.preview_model:
-        cfg = Config.fromfile(args.config)
         model = init_model(cfg, args.checkpoint, device=args.device)
         print(model)
         print('\n Please remove `--preview-model` to get the CAM.')
@@ -241,23 +245,28 @@ def main(args):
             raise ValueError(f'img Parameter does not specify a directory {args.img}')
         print(f'Generate Results for file: {args.img}')
         if useBlurredDataset:
-            imgDataset = BlurredImageDataset(os.path.dirname(args.img), args.blurredSegments, args.segData, imgNames=[os.path.basename(args.img)], 
-                                            get_gt=args.use_ann_labels, segConfig=args.segConfig, segCheckpoint=args.segCheckpoint, saveImgs=args.saveBlurred)
-        else:
-            imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
+            print(f'Modifying pipeline cfg so that specified segments {",".join(args.blurredSegments)} will be blurred out.')
+            saveDir = os.path.join(args.save, 'blurredImgs') if args.save else 'blurredImgs/'
+            cfg = add_blurring_pipeline_step(cfg, args.blurredSegments, args.segData, args.segConfig, args.segCheckpoint,
+                                            saveDir=saveDir, saveImgs=args.saveBlurred)
+
+        imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
     else:
         assert os.path.isdir(args.img), f'Provided path is no file or directory: {args.img}'
         if useBlurredDataset:
-            imgDataset = BlurredImageDataset(args.img, args.blurredSegments, args.segData, imgNames=[os.path.basename(args.img)], 
-                                            annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels, 
-                                            segConfig=args.segConfig, segCheckpoint=args.segCheckpoint, saveImgs=args.saveBlurred)
-        else:
-            imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
+            print(f'Modifying pipeline cfg so that specified segments {",".join(args.blurredSegments)} will be blurred out.')
+            saveDir = os.path.join(args.save, 'blurredImgs') if args.save else 'blurredImgs/'
+            cfg = add_blurring_pipeline_step(cfg, args.blurredSegments, args.segData, args.segConfig, args.segCheckpoint,
+                                            saveDir=saveDir, saveImgs=args.saveBlurred)
+        
+        imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
 
     print(f'Method for CAM generation: {args.method}, eigen-smooth:{args.eigen_smooth}, aug-smooth:{args.aug_smooth}, vit-like:{args.vit_like}')
     if args.use_ann_labels:
         print('Using annotation labels provided by the annfile.')
-    cams = generateCAMs(imgDataset, args)
+    
+    cams = generateCAMs(imgDataset, args, custom_cfg=cfg)
+    print("")
 
     if args.save:
         work_dir, result_file_prefix = get_dir_and_file_path(args.save, defaultName='resultsCAM', removeFileExtensions=True)

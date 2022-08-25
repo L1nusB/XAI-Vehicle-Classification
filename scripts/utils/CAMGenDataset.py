@@ -8,8 +8,12 @@ import cv2
 
 from .io import get_samples
 from .preprocessing import load_classes
-from .imageProcessing import convert_numpy_to_PIL
-from .io import savePIL
+
+from mmcls.datasets.builder import PIPELINES
+
+if 'BlurSegments' not in PIPELINES:
+    print('Importing BlurSegments step into Pipeline')
+    from .customPipelineSteps import BlurSegments
 
 class ImageDataset(Dataset):
 
@@ -54,61 +58,41 @@ class ImageDataset(Dataset):
 
         return item
 
-class BlurredImageDataset(ImageDataset):
+def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segCheckpoint, 
+                                blurKernel=(33,33), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False):
+    """
+    Adds the BlurSegment Step into the Pipeline for the given cfg (under cfg.data.test.pipeline)
+    This step is inserted directly after the LoadFromFile step.
 
-    def __init__(self, imgRoot, blurredSegments, segData, annfile=None, imgNames=None, dataClasses=[], pipeline=None, get_gt=False,
-                blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None,saveDir='blurredImgs/', saveImgs=False):
-        super().__init__(imgRoot, annfile, imgNames, dataClasses, pipeline, get_gt)
-        assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if classes not given.'
-        classes = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
-        self.classes = classes
-        if isinstance(blurredSegments, str):
-            assert blurredSegments in classes, f'{blurredSegments} not in classes: {",".join(classes)}'
-            self.blurredSegments = [classes.index(blurredSegments)]
-        elif isinstance(blurredSegments, int):
-            assert blurredSegments < len(classes), f'Can not blur segment no. {blurredSegments}. Only {len(classes)} present.'
-            self.blurredSegments = [blurredSegments]
-        elif isinstance(blurredSegments, list | np.ndarray):
-            self.blurredSegments = []
-            for segment in blurredSegments:
-                if isinstance(segment, str):
-                    assert segment in classes, f'{segment} not in classes: {",".join(classes)}'
-                    self.blurredSegments.append(classes.index(segment))
-                elif isinstance(segment, int):
-                    assert segment < len(classes), f'Can not blur segment no. {segment}. Only {len(classes)} present.'
-                    self.blurredSegments.append(segment)
-                else:
-                    raise ValueError(f'Encounter invalid type {type(segment)} for {segment}')
-            # Remove potential duplicates
-            self.blurredSegments = list(set(self.blurredSegments))
-        else:
-            raise ValueError(f'blurredSegments must be of type "str" or "int" or "list" or "np.ndarray" not {type(blurredSegments)}')
-        self.segData = np.load(segData)
-        self.saveImgs = saveImgs
-        self.saveDir = saveDir
-        self.blurKernel = blurKernel
-        self.blurSigmaX = blurSigmaX
+    :param cfg: Config into which the step is added
+    :type cfg: _type_
+    :param blurredSegments: Blurred Segments. Will be passed to constructor of pipeline which will adapt to the format given
+    :type blurredSegments: str | int | List(str|int)
+    :param segData: Path to file containing the segmentation data. The data must match the original size at it will be applied on the original image
+    :type segData: str | Path
+    :param blurKernel: Kernel used for gaussian blurring, defaults to (33,33)
+    :type blurKernel: tuple(int,int), optional
+    :param blurSigmaX: SigmaX used for gaussian blurring, defaults to 0
+    :type blurSigmaX: int, optional
+    :param segConfig: Path to Config file of segmentation model used for loading the segmentation Categories/classes, defaults to None
+    :type segConfig: str | Path, optional
+    :param segCheckpoint: Path to Checkpoint file of segmentation model used for loading the segmentation Categories/classes, defaults to None
+    :type segCheckpoint: str | Path, optional
+    :param saveDir: Directory where blurred images will be saved to if saveImgs=True, defaults to 'blurredImgs/'
+    :type saveDir: str | Path, optional
+    :param saveImgs: Whether or not to save the blurred images, defaults to False
+    :type saveImgs: bool, optional
 
-    def __getitem__(self, idx):
-        item = super().__getitem__(idx)
-        ori_img = item['img']
-
-        segmentation = self.segData[item['name']]
-
-        assert segmentation.shape == ori_img.shape[:-1], f'Shape of Segmentation {segmentation.shape} does not match image shape {ori_img.shape[:-1]}'
-
-        mask = np.zeros_like(ori_img)
-        for blur in self.blurredSegments:
-            mask[segmentation==blur, :] = np.array([255,255,255])
-
-        blur_img = cv2.GaussianBlur(ori_img, self.blurKernel, self.blurSigmaX)
-
-        img = np.where(mask==np.array([255,255,255]), blur_img, ori_img)
-
-        item['img'] = img
-
-        if self.saveImgs:
-            pil = convert_numpy_to_PIL(item['img'])
-            savePIL(pil, fileName=item['name'], dir=self.saveDir, logSave=False)
-
-        return item
+    :return Modified config
+    """
+    pipeline = cfg.data.test.pipeline
+    indexLoad = pipeline.index({'type': 'LoadImageFromFile'}) + 1
+    assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if classes not given.'
+    classes = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
+    pipeline = pipeline[:indexLoad] + \
+                [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
+                'segCategories':classes, 'blurKernel':blurKernel, 
+                'blurSigmaX':blurSigmaX, 'saveImgs':saveImgs, 'saveDir':saveDir}] + \
+                pipeline[indexLoad:]
+    cfg.data.test.pipeline = pipeline # Not necessary since this is a reference and no copy
+    return cfg
