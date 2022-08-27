@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import heapq
 
@@ -110,8 +111,7 @@ def generate_stats_abs(segmentedActivations, totalActivation=1, get_std=False):
     # summedActivations = segmentedActivations.sum(axis=0)
     # summarizedSegmentedCAMActivations = summedActivations / totalActivation
 
-    dominantSegmentsRaw = heapq.nlargest(3,summarizedSegmentedCAMActivations)
-    dominantMask = summarizedSegmentedCAMActivations >= np.min(dominantSegmentsRaw)
+    dominantMask = get_top_k(summarizedSegmentedCAMActivations)
 
     if get_std:
         segmentedCAMActivationStd = np.std(segmentedActivations, axis=0)
@@ -147,8 +147,7 @@ def generate_stats_rel(percentualActivations, get_std=False):
 
     summarizedPercSegmentedCAMActivations = percentualActivations.mean(axis=0)
 
-    dominantSegmentsPercRaw = heapq.nlargest(3,summarizedPercSegmentedCAMActivations)
-    dominantMaskPercentual = summarizedPercSegmentedCAMActivations >= np.min(dominantSegmentsPercRaw)
+    dominantMaskPercentual = get_top_k(summarizedPercSegmentedCAMActivations)
 
     if get_std:
         percSegmentedActivationStd = percentualActivations.std(axis=0)
@@ -350,3 +349,19 @@ def get_area_normalized_stats(percentualActivations, percentualAreas):
     dominantMaskRescaled = rescaledActivations >= np.min(dominantMaskRescaledRaw)
 
     return relCAMImportance, dominantMaskRelImportance, rescaledActivations, dominantMaskRescaled
+
+def get_top_k(arr,k=3):
+    """Determines the a boolean mask for the k largest elements of the given array
+
+    Args:
+        arr (np.ndarray): Array from which the top k is determined
+        k (int, optional): How many largest values to be computed. Defaults to 3.
+    """
+    if k > len(arr):
+        warnings.simplefilter('always')
+        warnings.warn(f'Can not compute {k} largest elements in a list of only {len(arr)} elements. Returns all True map')
+        return np.array([True]*len(arr))
+    
+    rawMask = heapq.nlargest(k,arr)
+    mask = arr >= np.min(rawMask)
+    return mask

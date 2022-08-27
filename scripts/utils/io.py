@@ -1,3 +1,4 @@
+from fileinput import filename
 import os.path as osp
 import shutil
 import mmcv
@@ -291,7 +292,8 @@ def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradca
 
     return figure_name, saveDataClasses, saveAnnfile
 
-def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNamePrefix="", default_Path=RESULTS_PATH, default_Ann_Path=RESULTS_PATH_ANN, default_DataClasses_Path=RESULTS_PATH_DATACLASS, **kwargs):
+def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNamePrefix="", default_Path=RESULTS_PATH, 
+                            default_Ann_Path=RESULTS_PATH_ANN, default_DataClasses_Path=RESULTS_PATH_DATACLASS, fileName='', **kwargs):
     """Saves the given figure and potential corresponding annfile and dataClasses File in the given base saveDir.
     An optional intermediate can be specified which will create a directory after the saveDir in which results will be saved to.
 
@@ -302,9 +304,15 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
     :param default_Path: Default Path where the figure will be saved to
     :param default_Ann_Path: Default Path where the annfiles will be saved to
     :param default_DataClasses_Path: Default Path where the dataClasses file will be saved to
+    :param fileName: Given filename. If specified no further inference for the name will be done and no additional files saved.
     """
 
-    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
+    if fileName:
+        figure_name = fileName
+        saveDataClasses = False
+        saveAnnfile = False
+    else:
+        figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
     if fileNamePrefix:
         figure_name = fileNamePrefix + "_" + figure_name
 
@@ -313,9 +321,9 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
         results_path_ann = os.path.join(save_dir, path_intermediate, 'annfiles')
         results_path_dataclasses = os.path.join(save_dir, path_intermediate, 'dataClasses')
     else:
-        results_path = os.path.join(RESULTS_PATH, path_intermediate)
-        results_path_ann = os.path.join(RESULTS_PATH_ANN, path_intermediate)
-        results_path_dataclasses = os.path.join(RESULTS_PATH_DATACLASS, path_intermediate)
+        results_path = os.path.join(default_Path, path_intermediate)
+        results_path_ann = os.path.join(default_Ann_Path, path_intermediate)
+        results_path_dataclasses = os.path.join(default_DataClasses_Path, path_intermediate)
 
     saveFigure(savePath=os.path.join(results_path, figure_name), figure=figure)
     if saveAnnfile:
@@ -381,7 +389,7 @@ def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
     print(f'Saving excel to {savePath}.')
     df.to_excel(savePath, index=segments is not None)
 
-def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, **kwargs):
+def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, fileName='', **kwargs):
     """Saves the given arrays into an excel file.
     The filename will be determined dynamically based on the passed arguments like camConfig, camCheckpoint,
     camData, segConfig, segCheckpoint, segData using the get_save_figure_name function.
@@ -396,9 +404,12 @@ def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate
     :type path_intermediate: str | Path, optional
     :param segments: If specified will use the given list of segments as indices (RowNames), defaults to None
     :type segments: List(str), optional
+    :param fileName: Given filename. If specified no further inference for the name will be done and no additional files saved.
     """
-
-    file_name, _, _ = get_save_figure_name(fileExtension='.xlsx',**kwargs)
+    if fileName:
+        file_name = fileName
+    else:
+        file_name, _, _ = get_save_figure_name(fileExtension='.xlsx',**kwargs)
     if fileNamePrefix:
         file_name = fileNamePrefix + "_" + file_name
 
@@ -433,3 +444,19 @@ def save_json(data, save_dir="", fileName="", fullPath="", fileNamePrefix=""):
     with open(save_path, 'w', encoding='utf-8') as f:
         print(f'Saving json data to {save_path}')
         json.dump(data, f)
+
+def load_results_excel(path, columnMap, index_col=0):
+    """
+    Loads the results from an excel file and returns the specified columns in a dictionary.
+    containing the values in np.arrays under the key of the columnMap Dictionary.
+    Additionally the index/categories will be returned as the first return value.
+
+    Args:
+        path (str|Path): Path to excel file
+        columnMap (Dict(str,str)): List of column Names that should be loaded.
+        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to 0.
+    """
+    df = pandas.read_excel(path, index_col=index_col)
+    categories = np.array(df.index)
+    results = {name:np.array(df[column]) for name, column in columnMap.items()}
+    return categories, results

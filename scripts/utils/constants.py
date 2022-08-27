@@ -125,3 +125,42 @@ DATASETWRAPPERSBLURRED = {
     'CompCars': 'BlurredCompCars',
     'CompCarsWeb': 'BlurredCompCarsWeb'
 }
+
+EXCELCOLNAMESSTANDARD = {
+    'summarizedSegmentedCAMActivations':'RawActivations',
+    'summarizedPercSegmentedCAMActivations':'PercActivations',
+    'totalActivation':'totalActivation'
+}
+
+EXCELCOLNAMESPROPORTIONAL = {
+    'summarizedPercSegmentedCAMActivations':'PercActivations',
+    'summarizedPercSegmentAreas':'PercSegmentAreas'
+}
+
+EXCELCOLNAMESNORMALIZED = {
+    'summarizedPercSegmentedCAMActivations':'PercActivations',
+    'summarizedPercSegmentAreas':'PercSegmentAreas',
+    'relImportance':'RelativeCAMImportance',
+    'rescaledSummarizedPercActivions':'PercActivationsRescaled'
+}
+
+EXCELCOLNAMESMEANSTDTOTAL = {
+    'summarizedPercSegmentCAMActivations':'PercActivations',
+    'stdPercSegmentCAMActivations':'PercActivationsStd',
+    'summarizedSegmentCAMActivations':'RawActivations',
+    'stdSegmentCAMActivations':'RawActivationsStd',
+    'summarizedPercSegmentAreas':'PercSegmentAreas',
+    'stdPercSegmentAreas':'PercSegmentAreasStd',
+    'summarizedSegmentAreas':'RawSegmentAreas',
+    'stdSegmentAreas':'RawSegmentAreasStd',
+    'totalMean':'totalMean',
+    'totalStd':'totalStd'
+}
+
+EXCELCOLNAMESMISSCLASSIFIED = {
+    'summarizedPercCAMActivationsOriginal':'PercActivationsOriginal',
+    'summarizedPercCAMActivationsCorrect':'PercActivationsCorrect',
+    'summarizedPercCAMActivationsIncorrect':'PercActivationsIncorrect',
+    'summarizedPercCAMActivationsCorrected':'PercActivationsCorrected',
+    'summarizedPercCAMActivationsFixed':'PercActivationsFixed'
+}
