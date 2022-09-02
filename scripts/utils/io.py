@@ -364,12 +364,13 @@ def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'
     
     return filePath
 
-def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
+def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None, categoryKey='segments'):
     """Saves the given arrays into an excel file. 
     If the arrays are passed in a dictionary the keys will be used as column names.
     """
     print("Generate excel file for results.")
-    df = pandas.DataFrame(index=segments)
+    df = pandas.DataFrame()
+    df[categoryKey] = segments
     if isinstance(arrs, dict):
         print("Using specified dictionary keys as column names")
         for key, value in arrs.items():
@@ -380,16 +381,16 @@ def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None):
             df = pandas.concat((df, pandas.Series(arr, index=df.index[:len(arr)])), axis=1)
     else:
         assert isinstance(arrs, np.ndarray), f'Unsupported type passed for objects to be saved: {type(arrs)}'
-        df = pandas.DataFrame(arrs, index=segments)
+        df = pandas.concate((df, pandas.Series(arrs)), axis=1)
     
     savePath = osp.join(saveDir, filename)
     if savePath[-5:] != '.xlsx':
         savePath = savePath + '.xlsx'
     Path(osp.dirname(savePath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving excel to {savePath}.')
-    df.to_excel(savePath, index=segments is not None)
+    df.to_excel(savePath)
 
-def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, fileName='', **kwargs):
+def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, fileName='', categoryKey='segments', **kwargs):
     """Saves the given arrays into an excel file.
     The filename will be determined dynamically based on the passed arguments like camConfig, camCheckpoint,
     camData, segConfig, segCheckpoint, segData using the get_save_figure_name function.
@@ -405,6 +406,9 @@ def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate
     :param segments: If specified will use the given list of segments as indices (RowNames), defaults to None
     :type segments: List(str), optional
     :param fileName: Given filename. If specified no further inference for the name will be done and no additional files saved.
+    :type fileName: str
+    :param categoriesKey: If index_col=None the categories will be loaded under that column. Defaults to 'segments'
+    :type categoriesKey: str
     """
     if fileName:
         file_name = fileName
@@ -418,7 +422,7 @@ def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate
     else:
         results_path = osp.join(RESULTS_PATH, path_intermediate)
 
-    save_to_excel(arrs, filename=file_name, saveDir=results_path, segments=segments)
+    save_to_excel(arrs, filename=file_name, saveDir=results_path, segments=segments, categoryKey=categoryKey)
 
 def save_json(data, save_dir="", fileName="", fullPath="", fileNamePrefix=""):
     """Saves the given data into a json file at the given path.
@@ -445,7 +449,7 @@ def save_json(data, save_dir="", fileName="", fullPath="", fileNamePrefix=""):
         print(f'Saving json data to {save_path}')
         json.dump(data, f)
 
-def load_results_excel(path, columnMap, index_col=0, sort=False):
+def load_results_excel(path, columnMap, index_col=None, sort=False, categoriesKey='segments'):
     """
     Loads the results from an excel file and returns the specified columns in a dictionary.
     containing the values in np.arrays under the key of the columnMap Dictionary.
@@ -459,10 +463,14 @@ def load_results_excel(path, columnMap, index_col=0, sort=False):
     Args:
         path (str|Path): Path to excel file
         columnMap (Dict(str,str)): List of column Names that should be loaded.
-        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to 0.
+        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to None.
+        categoriesKey (str): If index_col=None the categories will be loaded under that column. Defaults to 'segments'
     """
     df = pandas.read_excel(path, index_col=index_col)
-    categories = np.array(df.index)
+    if index_col:
+        categories = np.array(df.index)
+    else:
+        categories = np.array(df[categoriesKey])
     if sort:
         if isinstance(columnMap, dict):
             results = {name:zip(np.array(df[column].sort_values(column, ascending=False).index, dtype=int),
