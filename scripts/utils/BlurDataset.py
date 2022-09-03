@@ -125,7 +125,7 @@ def get_blurred_dataset(cfg, imgRoot, annfile, blurredSegments, segData, classes
     return BlurDataset(**params)
 
 def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segClasses=None, saveDir='blurredImgs/', saveImgs=False,
-                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, **kwargs):
+                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, randomBlur=False, **kwargs):
     """
     Sets the fields in cfg.data.test required for BlurDataset
 
@@ -152,6 +152,8 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segCla
     :type segConfig: str | Path
     :param segCheckpoint: Path to segmentation Checkpoint. Required to load classes if not specified.
     :type segCheckpoint: str | Path
+    :param randomBlur: Blur random pixels with the same area as the blurred segments
+    :type randomBlur: bool
     """
     print('Setting up configs for Blurred Dataset')
     datasetType = cfg.data.test.type
@@ -171,13 +173,14 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segCla
     params.data.test['blurSigmaX'] = blurSigmaX
     params.data.test['segConfig'] = segConfig
     params.data.test['segCheckpoint'] = segCheckpoint
+    params.data.test['randomBlur'] = randomBlur
     
     return params
 
 @DATASETS.register_module('BlurredCompCars')
 class CompCarsBlurred(CompCars):
     def __init__(self, ann_file, blurredSegments, segData, data_prefix, segClasses=None, saveDir='blurredImgs/', saveImgs=False,
-                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, **kwargs):
+                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, randomBlur=False, **kwargs):
         super().__init__(data_prefix=data_prefix, ann_file=ann_file, **kwargs)
         if segClasses is None:
             assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segClasses not given.'
@@ -208,6 +211,9 @@ class CompCarsBlurred(CompCars):
             self.blurredSegments = list(set(self.blurredSegments))
         else:
             raise ValueError(f'blurredSegments must be of type "str" or "int" or "list" or "np.ndarray" not {type(blurredSegments)}')
+        self.randomBlur = randomBlur
+        if self.randomBlur:
+            print('Blurring random parts of the image')
         self.segData = segData
         self.saveImgs = saveImgs
         self.saveDir = saveDir
@@ -227,8 +233,16 @@ class CompCarsBlurred(CompCars):
         assert segmentation.shape == ori_img.shape[:-1], f'Shape of Segmentation {segmentation.shape} does not match image shape {ori_img.shape[:-1]}'
 
         mask = np.zeros_like(ori_img)
-        for blur in self.blurredSegments:
-            mask[segmentation==blur, :] = np.array([255,255,255])
+        if self.randomBlur:
+                blurredPixels = np.sum([np.prod((segmentation==blur).shape) for blur in self.blurredSegments])
+                rawMask = np.zeros_like(segmentation)
+                rawMask[:blurredPixels] = 1
+                np.random.shuffle(rawMask)
+                rawMask = rawMask.astype(bool)
+                mask[rawMask==1,:] = np.array([255,255,255])
+        else:
+            for blur in self.blurredSegments:
+                mask[segmentation==blur, :] = np.array([255,255,255])
 
         blur_img = cv2.GaussianBlur(ori_img, self.blurKernel, self.blurSigmaX)
 
@@ -245,7 +259,7 @@ class CompCarsBlurred(CompCars):
 @DATASETS.register_module('BlurredCompCarsWeb')
 class BlurredCompCars(CompCarsWeb):
     def __init__(self, ann_file, blurredSegments, segData, data_prefix, segClasses=None, saveDir='blurredImgs/', saveImgs=False,
-                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, **kwargs):
+                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, randomBlur=False, **kwargs):
         super().__init__(data_prefix=data_prefix, ann_file=ann_file, **kwargs)
         if segClasses is None:
             assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segClasses not given.'
@@ -274,6 +288,9 @@ class BlurredCompCars(CompCarsWeb):
             self.blurredSegments = list(set(self.blurredSegments))
         else:
             raise ValueError(f'blurredSegments must be of type "str" or "int" or "list" or "np.ndarray" not {type(blurredSegments)}')
+        self.randomBlur = randomBlur
+        if self.randomBlur:
+            print('Blurring random parts of the image')
         self.segData = segData
         self.saveImgs = saveImgs
         self.saveDir = saveDir
@@ -287,18 +304,32 @@ class BlurredCompCars(CompCarsWeb):
         results = self.prepipeline(results)
         ori_img = results['img']
 
-        with np.load(self.segData) as segData:
-            segmentation = segData[results['ori_filename']]
+        if self.randomBlur:
+            mask = np.zeros(10000, dtype=int)
+            mask[:1000] = 1
+            np.random.shuffle(mask)
+            mask = mask.astype(bool)
+        else:
+            with np.load(self.segData) as segData:
+                segmentation = segData[results['ori_filename']]
 
-        assert segmentation.shape == ori_img.shape[:-1], f'Shape of Segmentation {segmentation.shape} does not match image shape {ori_img.shape[:-1]}'
+            assert segmentation.shape == ori_img.shape[:-1], f'Shape of Segmentation {segmentation.shape} does not match image shape {ori_img.shape[:-1]}'
 
-        mask = np.zeros_like(ori_img)
-        for blur in self.blurredSegments:
-            mask[segmentation==blur, :] = np.array([255,255,255])
+            mask = np.zeros_like(ori_img)
+            if self.randomBlur:
+                blurredPixels = np.sum([np.prod((segmentation==blur).shape) for blur in self.blurredSegments])
+                rawMask = np.zeros_like(segmentation)
+                rawMask[:blurredPixels] = 1
+                np.random.shuffle(rawMask)
+                rawMask = rawMask.astype(bool)
+                mask[rawMask==1,:] = np.array([255,255,255])
+            else:
+                for blur in self.blurredSegments:
+                    mask[segmentation==blur, :] = np.array([255,255,255])
 
-        blur_img = cv2.GaussianBlur(ori_img, self.blurKernel, self.blurSigmaX)
+            blur_img = cv2.GaussianBlur(ori_img, self.blurKernel, self.blurSigmaX)
 
-        img = np.where(mask==np.array([255,255,255]), blur_img, ori_img)
+            img = np.where(mask==np.array([255,255,255]), blur_img, ori_img)
 
         results['img'] = img
 
