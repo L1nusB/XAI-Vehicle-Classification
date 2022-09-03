@@ -449,7 +449,7 @@ def save_json(data, save_dir="", fileName="", fullPath="", fileNamePrefix=""):
         print(f'Saving json data to {save_path}')
         json.dump(data, f)
 
-def load_results_excel(path, columnMap, index_col=None, sort=False, categoriesKey='segments'):
+def load_results_excel(path, columnMap, index_col=0, sort=False, categoriesKey='segments'):
     """
     Loads the results from an excel file and returns the specified columns in a dictionary.
     containing the values in np.arrays under the key of the columnMap Dictionary.
@@ -463,25 +463,22 @@ def load_results_excel(path, columnMap, index_col=None, sort=False, categoriesKe
     Args:
         path (str|Path): Path to excel file
         columnMap (Dict(str,str)): List of column Names that should be loaded.
-        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to None.
+        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to 0.
         categoriesKey (str): If index_col=None the categories will be loaded under that column. Defaults to 'segments'
     """
     df = pandas.read_excel(path, index_col=index_col)
-    if index_col:
-        categories = np.array(df.index)
-    else:
-        categories = np.array(df[categoriesKey])
+    categories = np.array(df[categoriesKey])
     if sort:
         if isinstance(columnMap, dict):
-            results = {name:zip(np.array(df[column].sort_values(column, ascending=False).index, dtype=int),
-                                np.array(df[column].sort_values(column, ascending=False))) 
+            results = {name:zip(np.array(df.sort_values(column, ascending=False)[column].index, dtype=int),
+                                np.array(df.sort_values(column, ascending=False)[column])) 
                                 for name, column in columnMap.items()}
         elif isinstance(columnMap, list):
-            results = [zip(np.array(df[column].sort_values(column, ascending=False).index, dtype=int),
-                                np.array(df[column].sort_values(column, ascending=False))) 
+            results = [zip(np.array(df.sort_values(column, ascending=False)[column].index, dtype=int),
+                                np.array(df.sort_values(column, ascending=False)[column])) 
                                 for column in columnMap]
         elif isinstance(columnMap, str):
-            results = zip(np.array(df[columnMap].sort_values(columnMap, ascending=False).index), np.array(df[columnMap].sort_values(columnMap, ascending=False)))
+            results = zip(np.array(df.sort_values(columnMap, ascending=False)[columnMap].index), np.array(df.sort_values(columnMap, ascending=False)[columnMap]))
         else:
             raise ValueError(f'Unsupported type for columnMap: {type(columnMap)}. Allowed is dict,list, str')
     else:

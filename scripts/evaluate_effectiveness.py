@@ -151,7 +151,7 @@ def evaluate_blurred_rel_importance(imgRoot, classifierConfig, classifierCheckpo
 
     blurredSegmentIndices = [index for index, _ in relImportanceScores][:numBlurred]
 
-    print(f'Blurring segment with index {",".join(blurredSegmentIndices)}')
+    print(f'Blurring segment with index {",".join([str(index) for index in blurredSegmentIndices])}')
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
     return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, **kwargs)
@@ -199,7 +199,7 @@ def evaluate_blurred_normalized_by_rel_importance(imgRoot, classifierConfig, cla
 
     blurredSegmentIndices = [index for index, _ in percActivationsNormalized][:numBlurred]
 
-    print(f'Blurring segment with index {",".join(blurredSegmentIndices)}')
+    print(f'Blurring segment with index {",".join([str(index) for index in blurredSegmentIndices])}')
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
     return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, **kwargs)

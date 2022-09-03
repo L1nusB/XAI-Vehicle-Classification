@@ -36,7 +36,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
     """
     if results_file:
         print(f'Using given results from file {results_file}')
-        assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
+        assert set(EXCELCOLNAMESSTANDARD.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESSTANDARD.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
         summarizedSegmentedCAMActivations = loadedResults['RawActivations']
         summarizedPercSegmentedCAMActivations = loadedResults['PercActivations']
@@ -135,7 +135,7 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
     """
     if results_file:
         print(f'Using given results from file {results_file}')
-        assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
+        assert set(EXCELCOLNAMESPROPORTIONAL.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESPROPORTIONAL.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
         summarizedPercSegmentedCAMActivations = loadedResults['PercActivations']
         summarizedPercSegmentAreas = loadedResults['PercSegmentAreas']
@@ -151,13 +151,13 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
         _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
         classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
-
-        fig = plt.figure(figsize=(15,5),constrained_layout=True)
-        grid = fig.add_gridspec(ncols=1, nrows=1)
         
         numSamples = len(imgNames)
 
         x_label_text = f'No.Samples:{numSamples}'
+
+    fig = plt.figure(figsize=(15,5),constrained_layout=True)
+    grid = fig.add_gridspec(ncols=1, nrows=1)
 
     ax0 = fig.add_subplot(grid[0,0])
     #ax0.text(0.9,1.02, f'No.Samples:{numSamples}',horizontalalignment='center',verticalalignment='center',transform = ax0.transAxes)
@@ -237,12 +237,12 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     """
     if results_file:
         print(f'Using given results from file {results_file}')
-        assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
+        assert set(EXCELCOLNAMESNORMALIZED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESNORMALIZED.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
-        summarizedPercSegmentedCAMActivations = loadedResults['summarizedPercCAMActivationsOriginal']
-        summarizedPercSegmentAreas = loadedResults['summarizedPercCAMActivationsCorrect']
-        relImportance = loadedResults['summarizedPercCAMActivationsIncorrect']
-        rescaledSummarizedPercActivions = loadedResults['summarizedPercCAMActivationsCorrected']
+        summarizedPercSegmentedCAMActivations = loadedResults['summarizedPercSegmentedCAMActivations']
+        summarizedPercSegmentAreas = loadedResults['summarizedPercSegmentAreas']
+        relImportance = loadedResults['relImportance']
+        rescaledSummarizedPercActivions = loadedResults['rescaledSummarizedPercActivions']
 
         dominantMaskPercentual = get_top_k(summarizedPercSegmentedCAMActivations)
         dominantMaskRelImportance = get_top_k(relImportance)
@@ -258,12 +258,12 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
         relImportance, dominantMaskRelImportance, rescaledSummarizedPercActivions, dominantMaskRescaledActivations = get_area_normalized_stats(percentualActivations=summarizedPercSegmentedCAMActivations, percentualAreas=summarizedPercSegmentAreas)
 
-        fig = plt.figure(figsize=(15,10),constrained_layout=True)
-        grid = fig.add_gridspec(ncols=1, nrows=2)
-
         numSamples = len(imgNames)
 
         x_label_text = f'No.Samples:{numSamples}'
+
+    fig = plt.figure(figsize=(15,10),constrained_layout=True)
+    grid = fig.add_gridspec(ncols=1, nrows=2)
 
     ax0 = fig.add_subplot(grid[0,0])
     ax0.xaxis.set_label_position('top')
@@ -358,7 +358,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     """
     if results_file:
         print(f'Using given results from file {results_file}')
-        assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
+        assert set(EXCELCOLNAMESMEANSTDTOTAL.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMEANSTDTOTAL.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
         summarizedPercSegmentCAMActivations = loadedResults['PercActivations']
         stdPercSegmentCAMActivations = loadedResults['PercActivationsStd']
