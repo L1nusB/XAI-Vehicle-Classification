@@ -60,7 +60,7 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
         dictionary of ['accuracy_top-1', 'accuracy_top-5', 'support', 'precision', 'recall', 'f1_score']
         (Well depending on metrics parameter)
         """
-        pandas.concat((df, pandas.DataFrame.from_records([eval_results_original], index=['Evaluation_Original'])))
+        df = pandas.concat((df, pandas.DataFrame.from_records([eval_results_original], index=['Evaluation_Original'])))
         if saveJson:
             save_json(eval_results_original, save_dir=saveDir, fileName='eval_results_original')
     else:

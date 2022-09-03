@@ -124,7 +124,7 @@ def get_blurred_dataset(cfg, imgRoot, annfile, blurredSegments, segData, classes
 
     return BlurDataset(**params)
 
-def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, classes=None, saveDir='blurredImgs/', saveImgs=False,
+def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segClasses=None, saveDir='blurredImgs/', saveImgs=False,
                         blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, **kwargs):
     """
     Sets the fields in cfg.data.test required for BlurDataset
@@ -137,9 +137,9 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, classe
     :type blurredSegments: str | int | list(str|int)
     :param segData: Path to numpy file containig the segmentation data
     :type segData: str | Path
-    :param classes: List or array containing the classes of the segmentation. Used for ensuring blurredSegment is valid
+    :param segClasses: List or array containing the classes of the segmentation. Used for ensuring blurredSegment is valid
                     If not specified classes will be loaded from segConfig and segCheckpoint
-    :type classes: list(str) | np.ndarray(str)
+    :type segClasses: list(str) | np.ndarray(str)
     :param saveDir: Path where to save blurredImages to, defaults to './'
     :type saveDir: str | Path, optional
     :param saveImgs: Whether to save the blurredImages to saveDir, defaults to False
@@ -164,7 +164,7 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, classe
     params.data.test['type'] = datasetType
     params.data.test['blurredSegments'] = blurredSegments
     params.data.test['segData'] = segData
-    params.data.test['classes'] = classes
+    params.data.test['segClasses'] = segClasses
     params.data.test['saveDir'] = saveDir
     params.data.test['saveImgs'] = saveImgs
     params.data.test['blurKernel'] = blurKernel
@@ -181,7 +181,9 @@ class CompCarsBlurred(CompCars):
         super().__init__(data_prefix=data_prefix, ann_file=ann_file, **kwargs)
         if segClasses is None:
             assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segClasses not given.'
-            self.segClasses = ['background', 'front_bumper', 'front_left_light', 'front_right_light']
+            self.segClasses = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
+        else:
+            self.segClasses = segClasses
         
         self.prepipeline = Compose([{'type':'LoadImageFromFile'}])
         self.postpipeline = Compose([step for step in kwargs['pipeline'] if step['type'] != 'LoadImageFromFile'])
@@ -197,7 +199,7 @@ class CompCarsBlurred(CompCars):
                 if isinstance(segment, str):
                     assert segment in self.segClasses, f'{segment} not in segClasses: {",".join(self.segClasses)}'
                     self.blurredSegments.append(self.segClasses.index(segment))
-                elif isinstance(segment, int):
+                elif isinstance(segment, int | np.integer):
                     assert segment < len(self.segClasses), f'Can not blur segment no. {segment}. Only {len(self.segClasses)} present.'
                     self.blurredSegments.append(segment)
                 else:
@@ -263,7 +265,7 @@ class BlurredCompCars(CompCarsWeb):
                 if isinstance(segment, str):
                     assert segment in self.segClasses, f'{segment} not in segClasses: {",".join(self.segClasses)}'
                     self.blurredSegments.append(self.segClasses.index(segment))
-                elif isinstance(segment, int):
+                elif isinstance(segment, int| np.integer):
                     assert segment < len(self.segClasses), f'Can not blur segment no. {segment}. Only {len(self.segClasses)} present.'
                     self.blurredSegments.append(segment)
                 else:

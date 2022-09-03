@@ -110,7 +110,7 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
     os.remove(filteredAnnfilePath)
 
 def evaluate_blurred_rel_importance(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, importanceScoreFile, importanceScoreColumnName='RelativeCAMImportance', 
-                                    numBlurred=3, saveImgs=False, saveDir='./', use_gpu=True, imgRootBlurred="", **kwargs):
+                                    numBlurred=3, saveImgs=False, saveDir='./evalBlurRelImportance', use_gpu=True, imgRootBlurred="", **kwargs):
     """
     Compares the original model on the original dataset compared to
     the model on a modified dataset, where the segments with the highest relative importance are blurred out.
@@ -154,10 +154,10 @@ def evaluate_blurred_rel_importance(imgRoot, classifierConfig, classifierCheckpo
     print(f'Blurring segment with index {",".join([str(index) for index in blurredSegmentIndices])}')
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
-    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, **kwargs)
+    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, segClasses=categories, **kwargs)
 
 def evaluate_blurred_normalized_by_rel_importance(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, importanceScoreFile, importanceScoreColumnName='PercActivationsRescaled', 
-                                    numBlurred=3, saveImgs=False, saveDir='./', use_gpu=True, imgRootBlurred="", **kwargs):
+                                    numBlurred=3, saveImgs=False, saveDir='./evalBlurNormalizedRelImportance', use_gpu=True, imgRootBlurred="", **kwargs):
     """
     Compares the original model on the original dataset compared to
     the model on a modified dataset, where the segments with the highest rescaled/normalized CAM Activation
@@ -202,4 +202,4 @@ def evaluate_blurred_normalized_by_rel_importance(imgRoot, classifierConfig, cla
     print(f'Blurring segment with index {",".join([str(index) for index in blurredSegmentIndices])}')
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
-    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, **kwargs)
+    return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, segClasses=categories, **kwargs)
