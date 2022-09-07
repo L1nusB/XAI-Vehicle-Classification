@@ -76,7 +76,7 @@ def get_blurred_dataset(cfg, imgRoot, annfile, blurredSegments, segData, classes
                     if isinstance(segment, str):
                         assert segment in classes, f'{segment} not in classes: {",".join(classes)}'
                         self.blurredSegments.append(classes.index(segment))
-                    elif isinstance(segment, int):
+                    elif isinstance(segment, int| np.integer):
                         assert segment < len(classes), f'Can not blur segment no. {segment}. Only {len(classes)} present.'
                         self.blurredSegments.append(segment)
                     else:

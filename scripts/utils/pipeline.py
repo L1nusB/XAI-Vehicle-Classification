@@ -14,6 +14,7 @@ IMAGE_TRANSFORMS = {
 }
 
 from .constants import PIPELINEMAPS,PIPELINES,PIPELINETRANSFORMS
+from .preprocessing import load_classes
 
 def get_transform_instance(cls):
     """
@@ -141,3 +142,48 @@ def apply_pipeline(pipeline, *args):
         assert isinstance(obj, np.ndarray) or isinstance(obj, torch.Tensor), f"object {obj} must be a np.ndarray or Tensor"
         results.append(pipeline(obj))
     return results
+
+def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, segCheckpoint=None, segCategories=None,
+                                blurKernel=(33,33), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False,
+                                randomBlur=False, **kwargs):
+    """
+    Adds the BlurSegment Step into the Pipeline for the given cfg (under cfg.data.test.pipeline)
+    This step is inserted directly after the LoadFromFile step.
+
+    :param cfg: Config into which the step is added
+    :type cfg: _type_
+    :param blurredSegments: Blurred Segments. Will be passed to constructor of pipeline which will adapt to the format given
+    :type blurredSegments: str | int | List(str|int)
+    :param segData: Path to file containing the segmentation data. The data must match the original size at it will be applied on the original image
+    :type segData: str | Path
+    :param blurKernel: Kernel used for gaussian blurring, defaults to (33,33)
+    :type blurKernel: tuple(int,int), optional
+    :param blurSigmaX: SigmaX used for gaussian blurring, defaults to 0
+    :type blurSigmaX: int, optional
+    :param segConfig: Path to Config file of segmentation model used for loading the segmentation Categories/classes, defaults to None
+    :type segConfig: str | Path, optional
+    :param segCheckpoint: Path to Checkpoint file of segmentation model used for loading the segmentation Categories/classes, defaults to None
+    :type segCheckpoint: str | Path, optional
+    :param saveDir: Directory where blurred images will be saved to if saveImgs=True, defaults to 'blurredImgs/'
+    :type saveDir: str | Path, optional
+    :param saveImgs: Whether or not to save the blurred images, defaults to False
+    :type saveImgs: bool, optional
+    :param randomBlur: Blur random pixels with the same area as the blurred segments
+    :type randomBlur: bool, optional 
+    :param segCategories: List of segment categories. Used to validate blurred Segments are valid.
+    :type segCategories: list | np.ndarray
+
+    :return Modified config
+    """
+    pipeline = cfg.data.test.pipeline
+    indexLoad = pipeline.index({'type': 'LoadImageFromFile'}) + 1
+    if segCategories is None:
+        assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segCategories not given.'
+        segCategories = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
+    pipeline = pipeline[:indexLoad] + \
+                [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
+                'segCategories':segCategories, 'blurKernel':blurKernel, 'randomBlur' : randomBlur,
+                'blurSigmaX':blurSigmaX, 'saveImgs':saveImgs, 'saveDir':saveDir}] + \
+                pipeline[indexLoad:]
+    cfg.data.test.pipeline = pipeline
+    return cfg

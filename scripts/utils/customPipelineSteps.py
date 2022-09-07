@@ -17,13 +17,19 @@ class BlurSegments(object):
     def __init__(self, blurredSegments, 
                 segData, segCategories, 
                 blurKernel=(33,33), blurSigmaX=0, 
-                saveImgs=False, saveDir='blurredImgs/'):
+                saveImgs=False, saveDir='blurredImgs/',
+                randomBlur=False):
         self.segCategories = segCategories
-        self.segData = np.load(segData)
+        self.segData = segData
         self.blurKernel = blurKernel
         self.blurSigmaX = blurSigmaX
         self.saveImgs = saveImgs
         self.saveDir = saveDir
+        self.randomBlur = randomBlur
+        if randomBlur:
+            print('Blurring random parts of the image')
+        if saveImgs:
+            print(f'Blurred Images will be saved to {saveDir}')
         if isinstance(blurredSegments, str):
             assert blurredSegments in segCategories, f'{blurredSegments} not in segCategories: {",".join(segCategories)}'
             self.blurredSegments = [segCategories.index(blurredSegments)]
@@ -36,7 +42,7 @@ class BlurSegments(object):
                 if isinstance(segment, str):
                     assert segment in segCategories, f'{segment} not in segCategories: {",".join(segCategories)}'
                     self.blurredSegments.append(segCategories.index(segment))
-                elif isinstance(segment, int):
+                elif isinstance(segment, int| np.integer):
                     assert segment < len(segCategories), f'Can not blur segment no. {segment}. Only {len(segCategories)} present.'
                     self.blurredSegments.append(segment)
                 else:
@@ -58,13 +64,22 @@ class BlurSegments(object):
     def __call__(self, results):
         img = results['img']
 
-        segmentation = self.segData[osp.basename(results['filename'])]
+        with np.load(self.segData) as segData:
+            segmentation = segData[osp.basename(results['filename'])]
 
         assert segmentation.shape == img.shape[:-1], f'Shape of Segmentation {segmentation.shape} does not match image shape {img.shape[:-1]}'
 
         mask = np.zeros_like(img)
-        for blur in self.blurredSegments:
-            mask[segmentation==blur, :] = np.array([255,255,255])
+        if self.randomBlur:
+            blurredPixels = np.sum([np.prod((segmentation==blur).shape) for blur in self.blurredSegments])
+            rawMask = np.zeros_like(segmentation)
+            rawMask[:blurredPixels] = 1
+            np.random.shuffle(rawMask)
+            rawMask = rawMask.astype(bool)
+            mask[rawMask==1,:] = np.array([255,255,255])
+        else:
+            for blur in self.blurredSegments:
+                mask[segmentation==blur, :] = np.array([255,255,255])
 
         blur_img = cv2.GaussianBlur(img, self.blurKernel, self.blurSigmaX)
 

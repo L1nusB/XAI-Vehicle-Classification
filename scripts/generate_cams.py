@@ -194,7 +194,6 @@ def generateCAMs(dataset, args, custom_cfg=None):
     cams={}
     prog_bar = mmcv.ProgressBar(len(dataset))
 
-
     for item in imgLoader:
         path = args.img if os.path.isfile(args.img) else os.path.join(args.img, item['name'][0])
         target_category = args.target_category

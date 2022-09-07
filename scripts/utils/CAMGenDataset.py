@@ -26,39 +26,44 @@ class ImageDataset(Dataset):
                 warnings.warn("Currently gt_labels are not supported when giving imgNames parameter!")
             self.gt_targets = [0] * len(imgNames)
             if len(dataClasses)>0:
-                self.data = [name for name in imgNames if any(name.startswith(s) for s in dataClasses) and os.path.isfile(os.path.join(imgRoot, name))]
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+                #self.data = [name for name in imgNames if any(name.startswith(s) for s in dataClasses) and os.path.isfile(os.path.join(imgRoot, name))]
+                #self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+                self.imgPaths = np.array([name for name in imgNames if any(name.startswith(s) for s in dataClasses) and os.path.isfile(os.path.join(imgRoot, name))])
             else:
-                self.data = [name for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))]
-                self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+                # self.data = [name for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))]
+                # self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+                self.imgPaths = np.array([name for name in imgNames if os.path.isfile(os.path.join(imgRoot, name))])
         else:
             samples = [sample for sample in get_samples(annfile, imgRoot, None, dataClasses, splitSamples=not(get_gt))]
             if get_gt:
-                self.data = [sample.split(" ")[0] for sample in samples]
+                # self.data = [sample.split(" ")[0] for sample in samples]
                 self.gt_targets = [int(sample.split(" ")[-1].split("_")[0]) for sample in samples]
             else:
-                self.data = [sample.split(" ")[0] for sample in samples]
+                # self.data = [sample.split(" ")[0] for sample in samples]
                 self.gt_targets = [0] * len(samples)
-            self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+            # self.imgPaths = np.array([os.path.join(imgRoot, name) for name in self.data])
+            self.imgPaths = np.array([sample.split(" ")[0] for sample in get_samples(annfile, imgRoot, None, dataClasses, splitSamples=not(get_gt))])
         self.pipeline = pipeline
 
     def __len__(self):
         return self.imgPaths.size
 
     def __getitem__(self, idx):
-        if torch.is_tensor(idx):
-            idx = idx.tolist()
+        # if torch.is_tensor(idx):
+        #     idx = idx.tolist()
 
-        imgArray = mmcv.imread(self.imgPaths[idx])
+        # imgArray = mmcv.imread(self.imgPaths[idx])
 
-        if self.pipeline:
-            imgArray = self.pipeline(imgArray)
+        # if self.pipeline:
+        #     imgArray = self.pipeline(imgArray)
 
-        item = {'img':imgArray, 'name':os.path.basename(self.imgPaths[idx]), 'gt_target':self.gt_targets[idx]}
+        # item = {'img':imgArray, 'name':os.path.basename(self.imgPaths[idx]), 'gt_target':self.gt_targets[idx]}
+
+        item = {'img':[], 'name':os.path.basename(self.imgPaths[idx]), 'gt_target':self.gt_targets[idx]}
 
         return item
 
-def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segCheckpoint, 
+def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segCheckpoint, classes=None,
                                 blurKernel=(33,33), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False):
     """
     Adds the BlurSegment Step into the Pipeline for the given cfg (under cfg.data.test.pipeline)
@@ -87,12 +92,13 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segChec
     """
     pipeline = cfg.data.test.pipeline
     indexLoad = pipeline.index({'type': 'LoadImageFromFile'}) + 1
-    assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if classes not given.'
-    classes = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
+    if classes is None:
+        assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if classes not given.'
+        classes = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
     pipeline = pipeline[:indexLoad] + \
                 [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
                 'segCategories':classes, 'blurKernel':blurKernel, 
                 'blurSigmaX':blurSigmaX, 'saveImgs':saveImgs, 'saveDir':saveDir}] + \
                 pipeline[indexLoad:]
-    cfg.data.test.pipeline = pipeline # Not necessary since this is a reference and no copy
+    cfg.data.test.pipeline = pipeline
     return cfg

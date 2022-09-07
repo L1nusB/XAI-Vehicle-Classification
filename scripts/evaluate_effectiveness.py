@@ -4,6 +4,7 @@ import os
 from .utils.evaluation import compare_original_blurred
 from .utils.io import get_samples, generate_filtered_annfile, load_results_excel
 from .utils.BlurDataset import setup_config_blurred
+from .utils.pipeline import add_blurring_pipeline_step
 
 from mmcv import Config
 from mmcv.runner import load_checkpoint
@@ -12,6 +13,12 @@ from mmcv.parallel import MMDataParallel
 from mmseg.datasets.builder import build_dataset
 
 from mmcls.models.builder import build_classifier
+
+# from mmcls.datasets.builder import PIPELINES
+
+# if 'BlurSegments' not in PIPELINES:
+#     print('Importing BlurSegments step into Pipeline')
+#     from .utils.customPipelineSteps import BlurSegments
 
 def evaluate_blurred_background(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, saveImgs=False, saveDir='./', use_gpu=True, imgRootBlurred="",
                                 randomBlur=False, **kwargs):
@@ -99,8 +106,12 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
         dataset_blurred = build_dataset(cfg.data.test)
     else:
         print('Computing blurred images on demand.')
-        blur_cfg = setup_config_blurred(cfg=cfg, imgRoot=imgRoot, annfile=annfile,saveDir=osp.join(saveDir, 'blurredImgs'), 
-                                            segData=segData, saveImgs=saveImgs, blurredSegments=blurredSegments, randomBlur=randomBlur,**kwargs)
+        blur_cfg = add_blurring_pipeline_step(cfg, blurredSegments, segData, saveDir=osp.join(saveDir, 'blurredImgs'),
+                                            saveImgs=saveImgs, randomBlur=randomBlur, **kwargs)
+        blur_cfg.data.test['data_prefix'] = imgRoot
+        blur_cfg.data.test['ann_file'] = annfile
+        # blur_cfg = setup_config_blurred(cfg=cfg, imgRoot=imgRoot, annfile=annfile,saveDir=osp.join(saveDir, 'blurredImgs'), 
+        #                                     segData=segData, saveImgs=saveImgs, blurredSegments=blurredSegments, randomBlur=randomBlur,**kwargs)
         #dataset_blurred = build_dataset(blur_cfg.data.test)
         #print(blur_cfg.data.test)
         dataset_blurred = build_dataset(blur_cfg.data.test)
@@ -157,7 +168,7 @@ def evaluate_blurred_rel_importance(imgRoot, classifierConfig, classifierCheckpo
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
     return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred,
-                        randomBlur=randomBlur, segClasses=categories, **kwargs)
+                        randomBlur=randomBlur, segCategories=categories, **kwargs)
 
 def evaluate_blurred_normalized_by_rel_importance(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, importanceScoreFile, importanceScoreColumnName='PercActivationsRescaled', 
                                     numBlurred=3, saveImgs=False, saveDir='./evalBlurNormalizedRelImportance', use_gpu=True, imgRootBlurred="", randomBlur=False, **kwargs):
@@ -206,4 +217,4 @@ def evaluate_blurred_normalized_by_rel_importance(imgRoot, classifierConfig, cla
     print(f'Blurring segments {",".join(categories[blurredSegmentIndices])}')
 
     return evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, segData, blurredSegmentIndices, saveImgs, saveDir, use_gpu, imgRootBlurred, 
-                            segClasses=categories, randomBlur=randomBlur, **kwargs)
+                            segCategories=categories, randomBlur=randomBlur, **kwargs)
