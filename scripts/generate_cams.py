@@ -272,7 +272,7 @@ def main(args):
         mmcv.mkdir_or_exist(os.path.abspath(work_dir))
 
         print(f'Save Split file for Cams')
-        generate_split_file(imgDataset.data, work_dir, fileprefix=result_file_prefix)
+        generate_split_file(imgDataset.imgPaths, work_dir, fileprefix=result_file_prefix)
         
         path = os.path.join(work_dir, result_file_prefix + ".npz")
         print(f'Save generated CAMs to {path}')

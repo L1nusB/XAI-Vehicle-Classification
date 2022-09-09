@@ -5,6 +5,8 @@ import numpy as np
 import os.path as osp
 from .generate_cams import generate_cam_overlay
 
+import mmcv
+
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.plot import plot_bar
@@ -156,6 +158,7 @@ def plot(imgName, **kwargs):
 
     :param imgName: Name of the Image.
     :param imgRoot: Path to the directory containing the image.
+    :param imgPath: Alternative to combining imgName and imgRoot
     :param imgData: (np.ndarray) Array containing the image data. Must match shape (_,_,1) or (_,_,3)
     :param camData: (Dictionary or np.ndarray) Raw CAM Data. If not given will be generated.
     :param segConfig: Path to Config file used for Segmentation. Required if no segmentationImgData is provided.
@@ -164,12 +167,14 @@ def plot(imgName, **kwargs):
     :param camConfig: Path to Config File used for generating the CAM. Required if no camData is provided.
     :param camCheckpoint: Path tot Checkpoint File used for generating the CAM. Required if no camData is provided.
     :param camDevice: Device used for generating the CAM. (default 'cuda')
+    :param channel_order: Order of channels when loading an image. Default here is rgb
     """
     kwargs['imgName'] = imgName # Add imgName to kwargs for consolidation in input.
     if 'segData' in kwargs:
         warnings.simplefilter('always')
         warnings.warn('Specifiyng segData will lead to image Data not being generated. Ignoring parameter.')
         kwargs['segData'] = None
+    kwargs['channel_order'] = kwargs.get('channel_order', 'rgb')  # Specify rgb order since default is bgr
     sourceImgDict, _, segmentationImgData, camData = prepareInput(**kwargs)
     sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
     if isinstance(segmentationImgData, dict):
@@ -191,4 +196,57 @@ def plot(imgName, **kwargs):
     camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
     generate_overview(transformedSourceImg,transformedSegmentationImg,camHeatmap,camOverlay)
 
-    
+def plot_cam(fileName='CamOverview', **kwargs):
+    """
+    Plots cam that is generated based on given parameters along side its overlay on top of the original image
+
+    :param pipelineCfg: Path to config from which to load the pipeline.
+    :param camConfig: Path from which the cam model will be loaded and pipeline is loaded if pipelineCfg not given.
+    :param camCheckpoint: Path from which the cam checkpoint will be loaded.
+    :param camData: (Dictionary or np.ndarray) Raw CAM Data. If not given will be generated.
+    :param camDevice: Device used for generating the CAM. (default 'cuda')
+    :param imgPath: Full path to image.
+    :param imgName: Name of the image.
+    :param imgRoot: Path to directory where image is located at.
+    :param channel_order: Order of channels when loading an image. Default here is rgb
+    :param targetCategory: For what class the CAM is generated.
+    """
+    if kwargs.get('imgPath'):
+        imgName = osp.basename(kwargs['imgPath'])
+    else:
+        assert 'imgName' in kwargs and 'imgRoot' in kwargs, 'If imgPath is not specified imgName and imgRoot must be given.'
+        imgName = kwargs.get('imgName')
+
+    cfg = get_pipeline_cfg(**kwargs)
+    assert cfg is not None, 'No pipeline could be determined. Specify either pipelineCfg or camConfig'
+    pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
+
+    kwargs['channel_order'] = kwargs.get('channel_order', 'rgb')  # Specify rgb order since default is bgr
+    sourceImgDict, camData = prepareInput(prepSeg=False, **kwargs)
+    sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
+    camHeatmap = camData[imgName]
+
+    transformedSourceImg = apply_pipeline(pipeline, sourceImg)[0] # Need to index here because we return a list
+    camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
+
+    fig = plt.figure(constrained_layout=True)
+    gs = fig.add_gridspec(1,3)
+    aximg = fig.add_subplot(gs[0,0])
+    axcam = fig.add_subplot(gs[0,1])
+    axoverlay = fig.add_subplot(gs[0,2])
+
+    aximg.imshow(transformedSourceImg, interpolation='nearest')
+    aximg.axis('off')
+
+    axcam.imshow(camHeatmap, interpolation='nearest')
+    axcam.axis('off')
+
+    axoverlay.imshow(camOverlay, interpolation='nearest')
+    axoverlay.axis('off')
+
+    if osp.basename(fileName)[-4:] == ".jpg" or osp.basename(fileName)[-4:] == ".png" or osp.basename(fileName)[-4:] == ".svg":
+        fileName = fileName
+    else:
+        fileName = fileName + '.svg'
+
+    saveFigure(osp.join(RESULTS_PATH, fileName), fig)

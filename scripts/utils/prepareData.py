@@ -46,7 +46,7 @@ def prepareSegmentation(imgRoot='', segConfig='', segCheckpoint='', segData=None
             print("") # New line to clear progress bar
     return segmentationMasks, segmentationImgData
 
-def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
+def prepareImg(imgPath='', imgData=None, imgNames=None, channel_order='bgr', **kwargs):
     if imgData is not None:
         # assert isinstance(imgData, np.ndarray), f'Expected type np.ndarray got {type(imgData)}'
         # assert len(imgData.shape) == 3 and (imgData.shape[-1]==1 or imgData.shape[-1]==3), f'expected Shape (_,_,1) or (_,_,3) for imgData but got {imgData.shape}'
@@ -56,7 +56,7 @@ def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
 
 
     if os.path.isfile(imgPath):
-        return {os.path.basename(imgPath):mmcv.imread(imgPath)}
+        return {os.path.basename(imgPath):mmcv.imread(imgPath, channel_order=channel_order)}
     elif os.path.isdir(imgPath):
         imgs = {}
         if imgNames is None:
@@ -65,14 +65,29 @@ def prepareImg(imgPath='', imgData=None, imgNames=None, **kwargs):
             imgNames = [imgNames]
         assert isinstance(imgNames, list|np.ndarray), f'Unexpected type {type(imgNames)} for imgNames'
         for name in imgNames:
-            imgs[name] = mmcv.imread(os.path.join(imgPath, name))
+            imgs[name] = mmcv.imread(os.path.join(imgPath, name), channel_order=channel_order)
         return imgs
     else:
         raise ValueError('imgPath must be specified through imgRoot and imgName if no imgData is provided.')
 
 def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDevice='cpu', vitLike=False,
-                method='gradcam', dataClasses=[], annfile='', useAnnLabels=False, **kwargs):
+                method='gradcam', dataClasses=[], annfile='', useAnnLabels=False, targetCategory='', **kwargs):
     assert (camConfig and camCheckpoint) or (camData is not None), 'Either config + checkpoint or data must be provided for CAM generation.'
+    classParamAddition=[]
+    if len(dataClasses)>0:
+        classParamAddition=['--classes'] + dataClasses
+    annfileParamAddition=[]
+    if annfile:
+        annfileParamAddition=['--ann-file', annfile]
+        if useAnnLabels:
+            annfileParamAddition=annfileParamAddition + ['--use-ann-labels']
+    vitLikeAddition = []
+    if vitLike:
+        vitLikeAddition = ['--vit-like']
+    targetCategoryAddition = []
+    if targetCategory:
+        targetCategoryAddition = ['--target-category', targetCategory]
+
     if camData is not None:
         print('Using given CAM Data.')
         if isinstance(camData, dict):
@@ -85,26 +100,12 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
     if os.path.isfile(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        vitLikeAddition = []
-        if vitLike:
-            vitLikeAddition = ['--vit-like']
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method] + vitLikeAddition)
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint, '-r','--device',camDevice, '--method', method] + vitLikeAddition + targetCategoryAddition)
         print("") # New line to clear progress bar
     elif os.path.isdir(imgPath):
         assert os.path.isfile(camConfig), f'camConfig:{camConfig} does not lead to a file'
         assert os.path.isfile(camCheckpoint), f'camCheckpoint:{camCheckpoint} does not lead to a file'
-        classParamAddition=[]
-        if len(dataClasses)>0:
-            classParamAddition=['--classes'] + dataClasses
-        annfileParamAddition=[]
-        if annfile:
-            annfileParamAddition=['--ann-file', annfile]
-            if useAnnLabels:
-                annfileParamAddition=annfileParamAddition + ['--use-ann-labels']
-        vitLikeAddition = []
-        if vitLike:
-            vitLikeAddition = ['--vit-like']
-        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition + vitLikeAddition)
+        camData = generate_cams.main([imgPath, camConfig, camCheckpoint,'-r','--device',camDevice, '--method', method] + classParamAddition + annfileParamAddition + vitLikeAddition + targetCategoryAddition)
         print("") # New line to clear progress bar
     else:
         raise ValueError('imgName must be a file or directory if no camData is provided.')
@@ -112,6 +113,15 @@ def prepareCams(imgPath='', camConfig='', camCheckpoint='', camData=None, camDev
 
 
 def get_pipeline_cfg(**kwargs):
+    """
+    Relevant parameters are:
+    :param pipelineCfg: If given load pipeline from here.
+    :param camConfig: Load pipeline from this config file.
+    :param segData: If given and config is loaded from camConfig nothing will be loaded
+        because it is assumed that segmantations must not be transformed by a pipeline.
+
+    :return: cfg object of the pipeline.
+    """
     cfg = None
     if 'pipelineCfg' in kwargs and os.path.isfile(kwargs['pipelineCfg']):
         cfg = Config.fromfile(kwargs['pipelineCfg'])
@@ -147,11 +157,13 @@ def prepareInput(prepImg=True, prepSeg=True, prepCam=True, **kwargs):
     vitLike: (default False) Generate CAMs using --vit-like Option
     method: (default gradcam) Method by which the CAMs are generated
     dataClasses: (default []) List classes for which data will be generated. [] results in everything.
+    channel_order: Channel order in which to load sourceImages. Default is 'bgr'
+    targetCategory: Optional Target Category for which the CAM is generated.
 
     :return List of specified data objects. [sourceImg, segmentationsMasks, segmentationsImages, cam]
     """
     if 'imgName' in kwargs:
-        imgPath = os.path.join(kwargs['imgRoot'], kwargs['imgName'])
+        imgPath = os.path.join(kwargs['imgRoot'], kwargs['imgName']) if 'imgPath' not in kwargs else kwargs['imgPath']
         kwargs['imgPath'] = imgPath
         assert os.path.isfile(imgPath), f'Specified Path does not yield valid file:{imgPath}'
     else:

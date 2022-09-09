@@ -173,14 +173,14 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     Saves the given figure under the specified Path.
     If the Basename of savePath is not a directory its base will be used.
     If savePath is a directory the defaultName will be added as the filename into that directory.
-    Otherwise it is ensured that it is .jpg or .png and if necessary a .jpg extension is added.
+    Otherwise it is ensured that it is .jpg or .png .svg and if necessary a .jpg extension is added.
     """
     Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
     base = os.path.dirname(savePath)
     if not os.path.isdir(savePath):
         print(f'Output path is not a directory. Using base directory: {os.path.dirname(savePath)}.')
         if os.path.basename(savePath):
-            if os.path.basename(savePath)[-4:] == ".jpg" or os.path.basename(savePath)[-4:] == ".png":
+            if os.path.basename(savePath)[-4:] == ".jpg" or os.path.basename(savePath)[-4:] == ".png" or os.path.basename(savePath)[-4:] == ".svg":
                 outPath = savePath
             else:
                 outPath = savePath + ".jpg"
