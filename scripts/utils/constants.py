@@ -16,6 +16,12 @@ DATASETSDATAPREFIX={
     'CarPartsNoLeftRight':'carparts_noleftright',
 }
 
+FIGUREFORMATS=[
+    'jpg',
+    'png',
+    'svg',
+    'pdf'
+]
 
 PALETTES={
     'Comp_Original_Ocrnet_Carparts_Noflip':

@@ -10,7 +10,7 @@ import warnings
 import pandas
 import json
 
-from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS
+from .constants import DATASETSDATAPREFIX, RESULTS_PATH_ANN,RESULTS_PATH, RESULTS_PATH_DATACLASS, FIGUREFORMATS
 
 def get_dir_and_file_path(path, defaultName='results.npz', defaultDir='./output/', removeFileExtensions=False):
     """Splits the given path into directory and basename covering the case, that the
@@ -180,7 +180,7 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
     if not os.path.isdir(savePath):
         print(f'Output path is not a directory. Using base directory: {os.path.dirname(savePath)}.')
         if os.path.basename(savePath):
-            if os.path.basename(savePath)[-4:] == ".jpg" or os.path.basename(savePath)[-4:] == ".png" or os.path.basename(savePath)[-4:] == ".svg":
+            if os.path.basename(savePath).split(".")[-1] in FIGUREFORMATS:
                 outPath = savePath
             else:
                 outPath = savePath + ".jpg"
@@ -191,7 +191,7 @@ def saveFigure(savePath, figure, defaultName='figure.jpg'):
             
     Path(os.path.dirname(outPath)).mkdir(parents=True, exist_ok=True)
     print(f'Saving images to: {outPath}')
-    figure.savefig(outPath)
+    figure.savefig(outPath, bbox_inches='tight')
 
 def savePIL(img, fileName, dir='./', logSave=True):
     """Saves the given PIL Image under the fileName in the specified diretory

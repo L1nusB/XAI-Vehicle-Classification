@@ -2,6 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+from mmseg.apis import init_segmentor
+from mmcv.runner import load_checkpoint
+
+from .utils.preprocessing import load_classes
+
 def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     """Generate binary segmentation masks for each segment in the given Segmentation.
     Index in the resulting list corresponds to original segment value.
@@ -29,12 +34,15 @@ def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     return masks
 
 
-def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segmentImageOverlay =None, scaleValues=False, width=224, height=224, palette=None):
-    """Generates plots of the segmentation Masks over the original image.
+def show_segmentation_Masks_Overlay(segmentation, imgData , model=None , classes=None, segmentImageOverlay =None, scaleValues=False, 
+                                    palette=None, segConfig=None, segCheckpoint=None):
+    """
+    Generates a figure showing for each category of the segmentation an individual plot showing that categories area of the original
+    image as an overlay over the original image.
 
-    :param classes: List of Classes of the segmentation.
+    :param classes: List of Classes of the segmentation. If not specified segConfig and segCheckpoint are required.
     :type classes: tuple or list
-    :param segmentation: Segmentation Data. Must match shape (h,w) or (h,w,1)
+    :param segmentation: Segmentation Data. Must match the shape of the image that will be loaded.
     :type segmentation: np.ndarray
     :param model: Model to be used.
     :param imgData: Path to the image.
@@ -49,10 +57,16 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
     :type heatmap: bool, optional
     :param palette: Palette to be used..
     """
-    assert width == segmentation.shape[1], f'Specified width {width} does not match segmentation width {segmentation.shape[1]}'
-    assert height == segmentation.shape[0], f'Specified height {height} does not match segmentation height {segmentation.shape[0]}'
-    
-    assert model is not None, "Model must be specified when not using Heatmaps."
+
+    if model is None:
+        assert segConfig and segCheckpoint, 'If model not given, segConfig and segCheckpoint must be provided.'
+        model = init_segmentor(segConfig, segCheckpoint)
+    else:
+        assert model is not None, "Model must be specified when not using Heatmaps."
+
+    if classes is None:
+        assert segConfig and segCheckpoint, 'If classes not given, segConfig and segCheckpoint must be provided.'
+        classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
     if len(segmentation.shape) == 3:
         assert segmentation.shape[-1] == 1, f'Segmentation does not match expected shape: {segmentation.shape}. Expected (h,w) or (h,w,1)'
@@ -89,14 +103,19 @@ def show_segmentation_Masks_Overlay(classes, segmentation, imgData , model,segme
     ax.imshow(segmentation)
     ax.set_title('Segmentation')
     if segmentImageOverlay is not None:
-        ax = fig.add_subplot(grid[totalPlots//ncols, (len(classes)+1) % ncols])
+        ax = fig.add_subplot(grid[len(classes)//ncols, (len(classes)+1) % ncols])
         ax.imshow(segmentImageOverlay)
         ax.set_title('Segmentation Overlay')
 
-def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, scaleValues=False, width=224, height=224):
-    """Generates binary plots of the segmentation Masks.
+def show_segmentation_Masks(segmentation, classes=None, segmentImageOverlay =None, scaleValues=False,
+                            segConfig=None, segCheckpoint=None):
+    """
+    Generates a individual plot for each segment category showing the parts of the image which fall into each 
+    category of the segmentation. 
+    Optionally an additional image can be specified via segmentImageOverlay which will be plotted alongside
+    all other (This image is not modified in any way just plotted directly)
 
-    :param classes: List of Classes of the segmentation.
+    :param classes: List of Classes of the segmentation. If not specified segConfig and segCheckpoint are required.
     :type classes: tuple or list
     :param segmentation: Segmentation Data. Must match shape (h,w) or (h,w,1)
     :type segmentation: np.ndarray
@@ -108,8 +127,10 @@ def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, sc
     :param height: Heigt of the binary masks. Must match segmentation height, defaults to 224
     :type height: int, optional
     """
-    assert width == segmentation.shape[1], f'Specified width {width} does not match segmentation width {segmentation.shape[1]}'
-    assert height == segmentation.shape[0], f'Specified height {height} does not match segmentation height {segmentation.shape[0]}'
+
+    if classes is None:
+        assert segConfig and segCheckpoint, 'If classes not given, segConfig and segCheckpoint must be provided.'
+        classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
     if len(segmentation.shape) == 3:
         assert segmentation.shape[-1] == 1, f'Segmentation does not match expected shape: {segmentation.shape}. Expected (h,w) or (h,w,1)'
@@ -141,7 +162,7 @@ def show_segmentation_Masks(classes, segmentation, segmentImageOverlay =None, sc
     ax.imshow(segmentation)
     ax.set_title('Segmentation')
     if segmentImageOverlay is not None:
-        ax = fig.add_subplot(grid[totalPlots//ncols, (len(classes)+1) % ncols])
+        ax = fig.add_subplot(grid[len(classes)//ncols, (len(classes)+1) % ncols])
         ax.imshow(segmentImageOverlay)
         ax.set_title('Segmentation Overlay')
     

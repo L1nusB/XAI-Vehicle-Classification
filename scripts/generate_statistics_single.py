@@ -13,7 +13,7 @@ from .utils.plot import plot_bar
 from .utils.preprocessing import load_classes
 from .utils.calculations import generate_stats_single
 from .utils.io import get_save_figure_name, saveFigure
-from .utils.constants import RESULTS_PATH
+from .utils.constants import RESULTS_PATH, FIGUREFORMATS
 
 def generate_bar_cam_intersection(classes=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
@@ -147,7 +147,7 @@ def generate_overview(sourceImg, segmentationImg, camHeatmap, camOverlay):
     axr.imshow(sourceImg)
     axr.axis('off')
 
-    saveFigure(osp.join(RESULTS_PATH, "Overview.jpg"), fig)
+    saveFigure(osp.join(RESULTS_PATH, "Overview.pdf"), fig)
 
 #def plot(imgName, imgRoot,camConfig, camCheckpoint=None, camData=None,  imgData=None, annfile='', method='gradcam', 
 #    segmentationImgData=None, segConfig=None, segCheckpoint=None, segDevice='cuda',  camDevice='cpu'):
@@ -222,31 +222,72 @@ def plot_cam(fileName='CamOverview', **kwargs):
     pipeline = get_pipeline_torchvision(cfg.data.test.pipeline, scaleToInt=False , workPIL=True)
 
     kwargs['channel_order'] = kwargs.get('channel_order', 'rgb')  # Specify rgb order since default is bgr
-    sourceImgDict, camData = prepareInput(prepSeg=False, **kwargs)
-    sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
-    camHeatmap = camData[imgName]
-
-    transformedSourceImg = apply_pipeline(pipeline, sourceImg)[0] # Need to index here because we return a list
-    camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
 
     fig = plt.figure(constrained_layout=True)
-    gs = fig.add_gridspec(1,3)
-    aximg = fig.add_subplot(gs[0,0])
-    axcam = fig.add_subplot(gs[0,1])
-    axoverlay = fig.add_subplot(gs[0,2])
 
-    aximg.imshow(transformedSourceImg, interpolation='nearest')
-    aximg.axis('off')
+    if isinstance(kwargs.get('targetCategory'), list):
+        categories = [''] + kwargs.get('targetCategory') # Add default class at front
+        count = len(categories)
+        gs = fig.add_gridspec(count,3)
 
-    axcam.imshow(camHeatmap, interpolation='nearest')
-    axcam.axis('off')
+        for index, category in enumerate(categories):
+            kwargs['targetCategory'] = category
+            sourceImgDict, camData = prepareInput(prepSeg=False, **kwargs)
+            sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
+            camHeatmap = camData[imgName]
 
-    axoverlay.imshow(camOverlay, interpolation='nearest')
-    axoverlay.axis('off')
+            transformedSourceImg = apply_pipeline(pipeline, sourceImg)[0] # Need to index here because we return a list
+            camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
 
-    if osp.basename(fileName)[-4:] == ".jpg" or osp.basename(fileName)[-4:] == ".png" or osp.basename(fileName)[-4:] == ".svg":
+            aximg = fig.add_subplot(gs[index,0])
+            axcam = fig.add_subplot(gs[index,1])
+            axoverlay = fig.add_subplot(gs[index,2])
+
+            aximg.imshow(transformedSourceImg, interpolation='nearest')
+            #aximg.axis('off')
+            aximg.set_xlabel(f'({3*index+1})')
+            aximg.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+
+            axcam.imshow(camHeatmap, interpolation='nearest')
+            #axcam.axis('off')
+            axcam.set_xlabel(f'({3*index+2})')
+            axcam.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+
+            axoverlay.imshow(camOverlay, interpolation='nearest')
+            #axoverlay.axis('off')
+            axoverlay.set_xlabel(f'({3*index+3})')
+            axoverlay.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+    else:
+        sourceImgDict, camData = prepareInput(prepSeg=False, **kwargs)
+        sourceImg = list(sourceImgDict.values())[0] # Need to key index here because we now return dictionaries
+        camHeatmap = camData[imgName]
+
+        transformedSourceImg = apply_pipeline(pipeline, sourceImg)[0] # Need to index here because we return a list
+        camOverlay = generate_cam_overlay(transformedSourceImg, camHeatmap)
+
+        gs = fig.add_gridspec(1,3)
+        aximg = fig.add_subplot(gs[0,0])
+        axcam = fig.add_subplot(gs[0,1])
+        axoverlay = fig.add_subplot(gs[0,2])
+
+        aximg.imshow(transformedSourceImg, interpolation='nearest')
+        #aximg.axis('off')
+        aximg.set_xlabel('(1)')
+        aximg.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+
+        axcam.imshow(camHeatmap, interpolation='nearest')
+        #axcam.axis('off')
+        axcam.set_xlabel('(2)')
+        axcam.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+
+        axoverlay.imshow(camOverlay, interpolation='nearest')
+        #axoverlay.axis('off')
+        axoverlay.set_xlabel('(3)')
+        axoverlay.tick_params(which='both', bottom=False, labelbottom=False, left=False, labelleft=False, length=0)
+
+    if osp.basename(fileName).split(".")[-1] in FIGUREFORMATS:
         fileName = fileName
     else:
-        fileName = fileName + '.svg'
+        fileName = fileName + '.pdf'
 
     saveFigure(osp.join(RESULTS_PATH, fileName), fig)

@@ -24,7 +24,7 @@ from mmcv.parallel import MMDataParallel
 # def CompCarsWrapper(**kwargs):
 #     return CompCarsWeb(**kwargs)
 
-if not('CompCars' in DATASETS and 'CompCarsWeb' in DATASETS):
+if not('CompCars' in DATASETS and 'CompCarsWeb' in DATASETS and 'StanfordCarsOriginal' in DATASETS):
     from .registrerDatasets import *
 
 
