@@ -3,9 +3,6 @@ import matplotlib.pyplot as plt
 import math
 
 from mmseg.apis import init_segmentor
-from mmcv.runner import load_checkpoint
-
-from .utils.preprocessing import load_classes
 
 def generateUnaryMasks(segmentation, width=224,height=224, segmentCount=None):
     """Generate binary segmentation masks for each segment in the given Segmentation.
@@ -65,6 +62,7 @@ def show_segmentation_Masks_Overlay(segmentation, imgData , model=None , classes
         assert model is not None, "Model must be specified when not using Heatmaps."
 
     if classes is None:
+        from .utils.preprocessing import load_classes
         assert segConfig and segCheckpoint, 'If classes not given, segConfig and segCheckpoint must be provided.'
         classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
@@ -129,6 +127,7 @@ def show_segmentation_Masks(segmentation, classes=None, segmentImageOverlay =Non
     """
 
     if classes is None:
+        from .utils.preprocessing import load_classes
         assert segConfig and segCheckpoint, 'If classes not given, segConfig and segCheckpoint must be provided.'
         classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
