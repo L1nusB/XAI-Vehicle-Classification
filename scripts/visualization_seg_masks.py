@@ -148,7 +148,7 @@ def show_segmentation_Masks(segmentation, classes=None, segmentImageOverlay =Non
     
     grid = fig.add_gridspec(nrows,ncols)
 
-    masks = generateUnaryMasks(segmentation=segmentation, width=width, height=height, segmentCount=len(classes))
+    masks = generateUnaryMasks(segmentation=segmentation, segmentCount=len(classes))
 
     for row in range(nrows):
         for col in range(ncols):

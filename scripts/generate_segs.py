@@ -15,9 +15,10 @@ from mmseg.datasets import build_dataloader, build_dataset
 
 from .utils.pipeline import get_pipeline_pre_post
 from .utils.constants import PALETTES, TYPES
-from .utils.io import generate_split_file, get_dir_and_file_path
+from .utils.io import generate_split_file, get_dir_and_file_path, savePIL
 from .utils.modelWrapper import wrap_model
 from .utils.preprocessing import load_classes
+from .utils.imageProcessing import convert_numpy_to_PIL
 
 def parse_args(args):
     parser = argparse.ArgumentParser()
@@ -279,3 +280,18 @@ def main(args):
 if __name__ == '__main__':
     import sys
     main(sys.argv[1:])
+
+def saveImgsFromFile(path, saveDir='./segmentationImages/'):
+    """
+    Saves the images of all segmentations that are stored in a file.
+    """
+    assert osp.isfile(path), f'No such file {path}'
+    file = np.load(path)
+    m = 0
+    for key in file:
+        # Multiply each value so the segments can be distinguished in PIL
+        # since original segmentation values are just one apart.
+        m = max(m, np.max(file[key]) + 1)
+    for key in file:
+        pil = convert_numpy_to_PIL(file[key]*m)
+        savePIL(pil, fileName=key, dir=saveDir, logSave=False)

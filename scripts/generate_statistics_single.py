@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 import numpy as np
 import os.path as osp
-from .generate_cams import generate_cam_overlay
 
 import mmcv
 
+from .generate_cams import generate_cam_overlay
 from .utils.pipeline import get_pipeline_torchvision, apply_pipeline
 from .utils.prepareData import prepareInput, get_pipeline_cfg
 from .utils.plot import plot_bar
