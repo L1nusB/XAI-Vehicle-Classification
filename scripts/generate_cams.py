@@ -291,6 +291,9 @@ def saveImgsFromFile(path, saveDir='./CAMImages/'):
     """
     assert os.path.isfile(path), f'No such file {path}'
     file = np.load(path)
+    progBar = mmcv.ProgressBar(len(file))
     for key in file:
         pil = convert_numpy_to_PIL(file[key])
         savePIL(pil, fileName=key, dir=saveDir, logSave=False)
+        progBar.update()
+    print("")

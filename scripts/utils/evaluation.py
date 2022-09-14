@@ -47,7 +47,7 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
     if evaluate_original:
         print('Computing Evaluation Metrics for Original Dataset')
         df = run_evaluation(dataset=dataset_original, cfg=cfg, model=model, metrics=metrics, saveJson=saveJson,
-                            saveDir=saveDir, df=df, fileName='eval_results_original')
+                            saveDir=saveDir, df=df, fileName='eval_results_original', dfKey='Evaluation_Original')
     else:
         if eval_data_original:
             print('Using given evaluation data of original model.')
@@ -64,7 +64,7 @@ def compare_original_blurred(model, cfg, dataset_original, dataset_blurred, file
 
     print('Computing Evaluation Metrics for Blurred Dataset')
     df = run_evaluation(dataset=dataset_blurred, cfg=cfg, model=model, metrics=metrics, saveJson=saveJson,
-                            saveDir=saveDir, df=df, fileName='eval_results_blurred')
+                            saveDir=saveDir, df=df, fileName='eval_results_blurred', dfKey='Evaluation_Blurred')
     if additionalEvals:
         print('Add total Change and improvement of original over blurred')
         df = pandas.concat((df, pandas.DataFrame.from_records([df.loc['Evaluation_Original'] - df.loc['Evaluation_Blurred']], index=['Advantage_Original_over_Blurred'])))
@@ -122,11 +122,12 @@ def prepare_dataframe(metrics):
     df = pandas.DataFrame(columns=cols)
     return df
 
-def run_evaluation(dataset, cfg, model, metrics, saveJson=False, saveDir='./', fileName='eval_results',  df=None):
+def run_evaluation(dataset, cfg, model, metrics, dfKey, saveJson=False, saveDir='./', fileName='eval_results',  df=None):
     """
     Runs the evaluation on the given Model with the same dataloader configuration
     as the cfg object specifies.
     The results will be written into the given dataframe object.
+    In the dataframe the results will be saved as a row under the name specified by dfKey
     If no dataframe is given a new one will be created.
     If specified the results will be saved in a json file.
     The dataframe containing the results will be returned.
@@ -136,6 +137,8 @@ def run_evaluation(dataset, cfg, model, metrics, saveJson=False, saveDir='./', f
     :param model: Loaded model to be evaluted
     :param metrics: List of metrics to be evaluted
     :type metrics: List(str)
+    :param dfKey: Name of the row the results will be saved in the dataframe
+    :param dfKey: str
     :param df: dataframe object. If not specified a new one will be created.
     :type df: None or pandas.Dataframe
     :param saveJson: Save an additional Json file for the results
@@ -163,9 +166,9 @@ def run_evaluation(dataset, cfg, model, metrics, saveJson=False, saveDir='./', f
     (Well depending on metrics parameter)
     """
     if df is not None:
-        df = pandas.concat((df, pandas.DataFrame.from_records([eval_results], index=['Evaluation_Original'])))
+        df = pandas.concat((df, pandas.DataFrame.from_records([eval_results], index=[dfKey])))
     else: 
-        df = pandas.DataFrame.from_records([eval_results], index=['Evaluation_Original'])
+        df = pandas.DataFrame.from_records([eval_results], index=[dfKey])
     if saveJson:
         save_json(eval_results, save_dir=saveDir, fileName=fileName)
     return df
@@ -181,5 +184,5 @@ def get_eval_metrics(modelCfg, modelCheckpoint, imgRoot, annfile, metrics=['accu
     print('Evaluating metrics on model.')
     model, dataset, cfg, filteredAnnfilePath = get_model_and_dataset(imgRoot, modelCfg, modelCheckpoint, annfile, use_gpu=use_gpu, **kwargs)
     df = prepare_dataframe(metrics)
-    run_evaluation(dataset, cfg, model, metrics, saveJson=True, saveDir=saveDir, fileName=fileName, df=df)
+    run_evaluation(dataset, cfg, model, metrics, dfKey='Evaluation', saveJson=True, saveDir=saveDir, fileName=fileName, df=df)
     os.remove(filteredAnnfilePath)

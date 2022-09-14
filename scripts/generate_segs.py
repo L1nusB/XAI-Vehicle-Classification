@@ -288,6 +288,7 @@ def saveImgsFromFile(path, saveDir='./segmentationImages/'):
     assert osp.isfile(path), f'No such file {path}'
     file = np.load(path)
     m = 0
+    progBar = mmcv.ProgressBar(len(file))
     for key in file:
         # Multiply each value so the segments can be distinguished in PIL
         # since original segmentation values are just one apart.
@@ -296,3 +297,5 @@ def saveImgsFromFile(path, saveDir='./segmentationImages/'):
     for key in file:
         pil = convert_numpy_to_PIL(file[key]*step)
         savePIL(pil, fileName=key, dir=saveDir, logSave=False)
+        progBar.update()
+    print("")
