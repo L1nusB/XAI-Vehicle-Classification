@@ -104,7 +104,7 @@ def get_model_and_dataset(imgRoot, cfg, checkpoint, annfile, use_gpu=True, saveD
     load_checkpoint(model, checkpoint)
     if use_gpu:
         model = MMDataParallel(model, device_ids=[0])
-    return model, dataset, filteredAnnfilePath
+    return model, dataset, cfg, filteredAnnfilePath
 
 def prepare_dataframe(metrics):
     """
@@ -171,13 +171,15 @@ def run_evaluation(dataset, cfg, model, metrics, saveJson=False, saveDir='./', f
     return df
 
 
-def get_eval_metrics(cfg, checkpoint, imgRoot, annfile, metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support'], 
+def get_eval_metrics(modelCfg, modelCheckpoint, imgRoot, annfile, metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support'], 
                     use_gpu=True, saveDir='./', fileName='eval_results', **kwargs):
     """
     Evaluted the model on the specified metrics given by the path to config and checkpoint on the dataset based 
     on the specified annotation file / dataClasses from the imgRoot directory.
     The results will be saved as a json file.
     """
-    model, dataset, _, filteredAnnfilePath = get_model_and_dataset(imgRoot, cfg, checkpoint, annfile, use_gpu=use_gpu, **kwargs)
+    print('Evaluating metrics on model.')
+    model, dataset, cfg, filteredAnnfilePath = get_model_and_dataset(imgRoot, modelCfg, modelCheckpoint, annfile, use_gpu=use_gpu, **kwargs)
     df = prepare_dataframe(metrics)
     run_evaluation(dataset, cfg, model, metrics, saveJson=True, saveDir=saveDir, fileName=fileName, df=df)
+    os.remove(filteredAnnfilePath)

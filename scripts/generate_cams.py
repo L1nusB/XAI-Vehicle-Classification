@@ -9,7 +9,8 @@ from pytorch_grad_cam.utils.image import show_cam_on_image
 
 from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
 from .utils.CAMGenDataset import ImageDataset, add_blurring_pipeline_step
-from .utils.io import  generate_split_file, get_dir_and_file_path
+from .utils.io import  generate_split_file, get_dir_and_file_path, savePIL
+from .utils.imageProcessing import convert_numpy_to_PIL
 from torch.utils.data import DataLoader
 
 try:
@@ -283,3 +284,13 @@ def main(args):
 if __name__ == '__main__':
     import sys
     main(sys.argv[1:])
+
+def saveImgsFromFile(path, saveDir='./CAMImages/'):
+    """
+    Saves the images of all CAMs that are stored in a file.
+    """
+    assert os.path.isfile(path), f'No such file {path}'
+    file = np.load(path)
+    for key in file:
+        pil = convert_numpy_to_PIL(file[key])
+        savePIL(pil, fileName=key, dir=saveDir, logSave=False)

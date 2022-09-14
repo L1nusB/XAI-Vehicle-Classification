@@ -292,6 +292,7 @@ def saveImgsFromFile(path, saveDir='./segmentationImages/'):
         # Multiply each value so the segments can be distinguished in PIL
         # since original segmentation values are just one apart.
         m = max(m, np.max(file[key]) + 1)
+    step = 255 // m
     for key in file:
-        pil = convert_numpy_to_PIL(file[key]*m)
+        pil = convert_numpy_to_PIL(file[key]*step)
         savePIL(pil, fileName=key, dir=saveDir, logSave=False)
