@@ -1,18 +1,12 @@
 import os.path as osp
 import os
 
-from .utils.evaluation import compare_original_blurred
-from .utils.io import get_samples, generate_filtered_annfile, load_results_excel
-from .utils.BlurDataset import setup_config_blurred
+from .utils.evaluation import compare_original_blurred, get_model_and_dataset
+from .utils.io import load_results_excel
 from .utils.pipeline import add_blurring_pipeline_step
 
-from mmcv import Config
-from mmcv.runner import load_checkpoint
-from mmcv.parallel import MMDataParallel
 
 from mmseg.datasets.builder import build_dataset
-
-from mmcls.models.builder import build_classifier
 
 # from mmcls.datasets.builder import PIPELINES
 
@@ -87,17 +81,9 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
     """
     print(f'Evaluating original model vs blurred where segments {blurredSegments} are blurred.')
 
-    imgNames = get_samples(imgRoot=imgRoot, annfile=annfile, **kwargs)
-    filteredAnnfilePath = generate_filtered_annfile(annfile=annfile, imgNames=imgNames, saveDir=saveDir)
-
-    cfg = Config.fromfile(classifierConfig)
-    cfg.data.test['ann_file'] = filteredAnnfilePath
-    cfg.data.test['data_prefix'] = imgRoot
-    dataset_original = build_dataset(cfg.data.test)
-    model = build_classifier(cfg.model)
-    load_checkpoint(model, classifierCheckpoint)
-    if use_gpu:
-        model = MMDataParallel(model, device_ids=[0])
+    model, dataset_original, cfg, filteredAnnfilePath = get_model_and_dataset(imgRoot=imgRoot, annfile=annfile, cfg=classifierConfig,
+                                                                        checkpoint=classifierCheckpoint, use_gpu=use_gpu, saveDir=saveDir,
+                                                                        **kwargs)
     if 'eval_data_original' in kwargs:
         kwargs['evaluate_original'] = False
     if imgRootBlurred:
