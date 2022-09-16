@@ -10,10 +10,11 @@ from .utils.prepareData import prepareInput, prepare_generate_stats
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats, get_top_k
 from .utils.plot import plot_bar, plot_errorbar
 from .utils.model import get_wrongly_classified
+from .utils.preprocessing import load_classes
 
 from .utils.constants import EXCELCOLNAMESSTANDARD, EXCELCOLNAMESPROPORTIONAL, EXCELCOLNAMESNORMALIZED, EXCELCOLNAMESMEANSTDTOTAL, EXCELCOLNAMESMISSCLASSIFIED
 
-def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_file='', columnMap=EXCELCOLNAMESSTANDARD, filename='',**kwargs):
+def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_file='', columnMap=EXCELCOLNAMESSTANDARD, filename='', saveFigureFormat='.jpg',**kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
@@ -100,17 +101,18 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
         warnings.warn('No filename is set. Using default: results')
         filename = 'results'
 
-    save_result_figure_data(figure=fig, save_dir=saveDir, fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
+    save_result_figure_data(figure=fig, save_dir=saveDir, fileNamePrefix=fileNamePrefix, fileExtension=saveFigureFormat, fileName=filename, **kwargs)
     saveDic = {
         'RawActivations':summarizedSegmentedCAMActivations,
         'PercActivations' : summarizedPercSegmentedCAMActivations,
         'totalActivation' : [totalActivation]
     }
-    save_excel_auto_name(saveDic, save_dir=saveDir, segments=classArray, fileName=filename, **kwargs)
+    save_excel_auto_name(saveDic, save_dir=saveDir, fileNamePrefix=fileNamePrefix, segments=classArray, fileName=filename, **kwargs)
 
 
 
-def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPropPercent=False, results_file='', columnMap=EXCELCOLNAMESPROPORTIONAL, filename='',**kwargs):
+def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPropPercent=False, results_file='', columnMap=EXCELCOLNAMESPROPORTIONAL,
+                            saveFigureFormat='.jpg', filename='',**kwargs):
     """Generates a plot with average averaged relative CAM Activations and the corresponding area that each segment covered. 
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
@@ -203,14 +205,15 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
         warnings.warn('No filename is set. Using default: resultsProportional')
         filename = 'resultsProportional'
 
-    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='statsProp', fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='statsProp', fileNamePrefix=fileNamePrefix, fileExtension=saveFigureFormat, fileName=filename, **kwargs)
     saveDic = {
         'PercActivations' : summarizedPercSegmentedCAMActivations,
         'PercSegmentAreas' : summarizedPercSegmentAreas
     }
-    save_excel_auto_name(saveDic, fileNamePrefix='prop', save_dir=saveDir, path_intermediate='statsProp', segments=classArray, fileName=filename, **kwargs)
+    save_excel_auto_name(saveDic, fileNamePrefix=fileNamePrefix + 'prop', save_dir=saveDir, path_intermediate='statsProp', segments=classArray, fileName=filename, **kwargs)
 
-def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, results_file='', columnMap=EXCELCOLNAMESNORMALIZED, filename='',**kwargs):
+def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, results_file='', columnMap=EXCELCOLNAMESNORMALIZED,
+                                        saveFigureFormat='.jpg', filename='',**kwargs):
     """Generates a plot with average relative CAM Activations, the covered segment area as well as a normalized display 
     showing the CAM normliazed w.r.t the importance of the covered area of the segment.
     In a second plot the importance of CAM Activations w.r.t the covered segment area is shown.
@@ -321,17 +324,18 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
         warnings.warn('No filename is set. Using default: resultsNormalized')
         filename = 'resultsNormalized'
 
-    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='normalized', fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='normalized', fileNamePrefix=fileNamePrefix, fileExtension=saveFigureFormat, fileName=filename, **kwargs)
     saveDic = {
         'PercActivations' : summarizedPercSegmentedCAMActivations,
         'PercSegmentAreas' : summarizedPercSegmentAreas,
         'RelativeCAMImportance':relImportance,
         'PercActivationsRescaled':rescaledSummarizedPercActivions
     }
-    save_excel_auto_name(saveDic, fileNamePrefix='normalized', save_dir=saveDir, path_intermediate='normalized', segments=classArray, fileName=filename, **kwargs)
+    save_excel_auto_name(saveDic, fileNamePrefix=fileNamePrefix + 'normalized', save_dir=saveDir, path_intermediate='normalized', segments=classArray, fileName=filename, **kwargs)
     
 
-def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False, results_file='', columnMap=EXCELCOLNAMESMEANSTDTOTAL, filename='', **kwargs):
+def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False, results_file='', columnMap=EXCELCOLNAMESMEANSTDTOTAL,
+                                            saveFigureFormat='.jpg', filename='', **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -457,7 +461,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         warnings.warn('No filename is set. Using default: resultsMeanStdTotal')
         filename = 'resultsMeanStdTotal'
 
-    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='meanStdTotal', fileNamePrefix=fileNamePrefix, fileExtension=saveFigureFormat, fileName=filename, **kwargs)
     saveDic = {
         'PercActivations' : summarizedPercSegmentCAMActivations,
         'PercActivationsStd':stdPercSegmentCAMActivations,
@@ -470,10 +474,11 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         'totalMean':[totalMean],
         'totalStd':[totalStd]
     }
-    save_excel_auto_name(saveDic, fileNamePrefix='meanStdTotal', save_dir=saveDir, path_intermediate='meanStdTotal', segments=classArray, fileName=filename, **kwargs)
+    save_excel_auto_name(saveDic, fileNamePrefix=fileNamePrefix + 'meanStdTotal', save_dir=saveDir, path_intermediate='meanStdTotal', segments=classArray, fileName=filename, **kwargs)
 
-def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam", camConfig="", camCheckpoint="", saveDir='', fileNamePrefix="", 
-                                        annfileCorrect="", annfileIncorrect="", results_file='', columnMap=EXCELCOLNAMESMISSCLASSIFIED, filename='', **kwargs):
+def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam", camConfig="", camCheckpoint="", saveDir='', fileNamePrefix="", classes=None,
+                                        annfileCorrect="", annfileIncorrect="", results_file='', columnMap=EXCELCOLNAMESMISSCLASSIFIED, filename='',
+                                        saveFigureFormat='.jpg', **kwargs):
     """
     Generates plots showing the activations for only the correctly classified samples for the given dataset,
     A plot showing the activations of the wrongly classified samples.
@@ -520,11 +525,11 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         kwargsCorrected['camData'] = None # Set camData to none so that it must generate new cams
 
         imgNamesOriginal, transformedSegmentationsOriginal, camsOriginal, classes = prepare_generate_stats(
-            imgRoot=imgRoot, annfile=annfile, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+            classes=classes, imgRoot=imgRoot, annfile=annfile, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
         imgNamesCorrect, transformedSegmentationsCorrect, camsCorrect, _ = prepare_generate_stats(
-            imgRoot=imgRoot, annfile=annfileCorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+            classes=classes, imgRoot=imgRoot, annfile=annfileCorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
         imgNamesIncorrect, transformedSegmentationsIncorrect, camsIncorrect, _ = prepare_generate_stats(
-            imgRoot=imgRoot, annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+            classes=classes, imgRoot=imgRoot, annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
         # Index here at the end because we get a list as return value
         camsCorrected = prepareInput(prepImg=False, prepSeg=False, prepCam=True, imgRoot=imgRoot, useAnnLabels=True,
                         annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargsCorrected)[0]
@@ -620,7 +625,7 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         warnings.warn('No filename is set. Using default: resultsMissclassified')
         filename = 'resultsMissclassified'
 
-    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='wronglyClassifications', fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
+    save_result_figure_data(figure=fig, save_dir=saveDir, path_intermediate='wronglyClassifications', fileExtension=saveFigureFormat, fileNamePrefix=fileNamePrefix, fileName=filename, **kwargs)
     saveDic = {
         'PercActivationsOriginal':summarizedPercCAMActivationsOriginal,
         'PercActivationsCorrect' : summarizedPercCAMActivationsCorrect,
@@ -628,5 +633,66 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         'PercActivationsCorrected' : summarizedPercCAMActivationsCorrected,
         'PercActivationsFixed' : summarizedPercCAMActivationsFixed,
     }
-    save_excel_auto_name(saveDic, fileNamePrefix='wronglyClassified', save_dir=saveDir, path_intermediate='wronglyClassifications', segments=classArray, 
+    save_excel_auto_name(saveDic, fileNamePrefix=fileNamePrefix + 'wronglyClassified', save_dir=saveDir, path_intermediate='wronglyClassifications', segments=classArray, 
                         camConfig=camConfig, camCheckpoint=camCheckpoint, annfile=annfile, fileName=filename, **kwargs)
+
+
+def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoint, camData,
+                                segConfig, segCheckpoint, segData, saveDir, annfile, method, vitLike, **kwargs):
+    """
+    This function generates a collection of all statistics for the given model and dataset.
+    All required data must already be generated and given i.e. cams and segmentations.
+
+    Generated statistics are:
+        generate_statistics
+        generate_statistic_prop
+        generate_statistic_prop_normalized
+        generate_statistics_mean_variance_total (without percScale)
+        generate_statistics_mean_variance_total (with percScale)
+        generate_statistics_missclassified
+
+
+    kwargs:
+        annfile
+        dataClasses
+    """
+    print(f'Creating all statistics and saving into {saveDir}')
+    # Load classes one time and pass it to functions in order to not always initialze segmentation model
+    classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
+
+    # From kwargs possibly relevant here:
+    # annfileCorrect, annfileIncorrect (generate_statistics_missclassified)
+    # dataClasses (get_samples)
+    # pipelineCfg (get_pipeline_cfg)
+    # segDevice, dataClasses (prepareSegmentation)
+    # camDevice, dataClasses (prepareCams)
+    generate_statistic(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                        camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                        segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                        method=method, vitLike=vitLike,
+                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    generate_statistic_prop(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                            camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                            segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                            method=method, vitLike=vitLike, showPropPercent=True,
+                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    generate_statistic_prop_normalized(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                                        camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                                        segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                                        method=method, vitLike=vitLike, showPercent=True,
+                                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                                            camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                                            segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                                            method=method, vitLike=vitLike, fileNamePrefix='absScale',
+                                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                                            camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                                            segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                                            method=method, vitLike=vitLike, fileNamePrefix='percScale', usePercScale=True,
+                                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    generate_statistics_missclassified(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
+                                        camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
+                                        segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
+                                        method=method, vitLike=vitLike,
+                                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)

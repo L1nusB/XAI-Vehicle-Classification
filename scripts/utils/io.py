@@ -168,22 +168,25 @@ def writeArrayToFile(path, arr, seperator=','):
         f.write(seperator.join(arr))
 
 
-def saveFigure(savePath, figure, defaultName='figure.jpg'):
+def saveFigure(savePath, figure, defaultName='figure.jpg', fileExtension='.jpg'):
     """
     Saves the given figure under the specified Path.
     If the Basename of savePath is not a directory its base will be used.
     If savePath is a directory the defaultName will be added as the filename into that directory.
-    Otherwise it is ensured that it is .jpg or .png .svg and if necessary a .jpg extension is added.
+    Otherwise it is ensured that it is .jpg or .png or .svg or .pdf and if necessary a extension is added.
     """
     Path(os.path.dirname(savePath)).mkdir(parents=True, exist_ok=True)
     base = os.path.dirname(savePath)
+    # Ensure format works if no dot is specified.
+    fileExtension = "." + fileExtension.split(".")[-1]
+    assert fileExtension.split(".")[-1] in FIGUREFORMATS, f'Given fileExtension {fileExtension} is not supported.'
     if not os.path.isdir(savePath):
         print(f'Output path is not a directory. Using base directory: {os.path.dirname(savePath)}.')
         if os.path.basename(savePath):
             if os.path.basename(savePath).split(".")[-1] in FIGUREFORMATS:
                 outPath = savePath
             else:
-                outPath = savePath + ".jpg"
+                outPath = savePath + fileExtension
         else:
             outPath = os.path.join(base, defaultName)
     else:
@@ -292,8 +295,9 @@ def get_save_figure_name(statType='' ,dataClasses=[], annfile='', method='gradca
 
     return figure_name, saveDataClasses, saveAnnfile
 
-def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNamePrefix="", default_Path=RESULTS_PATH, 
-                            default_Ann_Path=RESULTS_PATH_ANN, default_DataClasses_Path=RESULTS_PATH_DATACLASS, fileName='', **kwargs):
+def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNamePrefix="", default_Path=RESULTS_PATH, saveAdditional=True,
+                            default_Ann_Path=RESULTS_PATH_ANN, default_DataClasses_Path=RESULTS_PATH_DATACLASS, fileName='',
+                            fileExtension='.jpg', **kwargs):
     """Saves the given figure and potential corresponding annfile and dataClasses File in the given base saveDir.
     An optional intermediate can be specified which will create a directory after the saveDir in which results will be saved to.
 
@@ -301,10 +305,12 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
     :param save_dir: Path to base directory to which results will be saved to.
     :param path_intermediate: Optional intermediate that will add a directory after save_dir
     :param fileNamePrefix: Optional prefix that will be added in front of the fileName
+    :param saveAdditional: save annfile and dataClasses if they were specified.
     :param default_Path: Default Path where the figure will be saved to
     :param default_Ann_Path: Default Path where the annfiles will be saved to
     :param default_DataClasses_Path: Default Path where the dataClasses file will be saved to
     :param fileName: Given filename. If specified no further inference for the name will be done and no additional files saved.
+    :param fileExtension: Extension under which the figure will be saved as.
     """
 
     if fileName:
@@ -312,7 +318,7 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
         saveDataClasses = False
         saveAnnfile = False
     else:
-        figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(**kwargs)
+        figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(fileExtension=fileExtension, **kwargs)
     if fileNamePrefix:
         figure_name = fileNamePrefix + "_" + figure_name
 
@@ -325,10 +331,10 @@ def save_result_figure_data(figure, save_dir="", path_intermediate="", fileNameP
         results_path_ann = os.path.join(default_Ann_Path, path_intermediate)
         results_path_dataclasses = os.path.join(default_DataClasses_Path, path_intermediate)
 
-    saveFigure(savePath=os.path.join(results_path, figure_name), figure=figure)
-    if saveAnnfile:
+    saveFigure(savePath=os.path.join(results_path, figure_name), figure=figure, fileExtension=fileExtension)
+    if saveAnnfile and saveAdditional:
         copyFile(kwargs['annfile'], os.path.join(results_path_ann, figure_name))
-    if saveDataClasses:
+    if saveDataClasses and saveAdditional:
         writeArrayToFile(os.path.join(results_path_dataclasses, figure_name), kwargs['dataClasses'])
 
 def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt', saveDir="./"):

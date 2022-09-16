@@ -26,6 +26,7 @@ evalResultsCPUvsGPU/
 *.png
 *.txt
 split*
+*.pdf
 
 # C extensions
 *.so
