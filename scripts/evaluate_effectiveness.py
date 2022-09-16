@@ -96,12 +96,7 @@ def evaluate_blurred(imgRoot, classifierConfig, classifierCheckpoint, annfile, s
                                             saveImgs=saveImgs, randomBlur=randomBlur, **kwargs)
         blur_cfg.data.test['data_prefix'] = imgRoot
         blur_cfg.data.test['ann_file'] = annfile
-        # blur_cfg = setup_config_blurred(cfg=cfg, imgRoot=imgRoot, annfile=annfile,saveDir=osp.join(saveDir, 'blurredImgs'), 
-        #                                     segData=segData, saveImgs=saveImgs, blurredSegments=blurredSegments, randomBlur=randomBlur,**kwargs)
-        #dataset_blurred = build_dataset(blur_cfg.data.test)
-        #print(blur_cfg.data.test)
         dataset_blurred = build_dataset(blur_cfg.data.test)
-    #dataset_blurred = get_blurred_dataset(cfg=cfg, imgRoot=imgRoot, annfile=annfile, blurredSegments=[0,1], segData=segData, **kwargs)
 
     compare_original_blurred(model=model, cfg=cfg, dataset_original=dataset_original, dataset_blurred=dataset_blurred, saveDir=saveDir, use_gpu=use_gpu, **kwargs)
 

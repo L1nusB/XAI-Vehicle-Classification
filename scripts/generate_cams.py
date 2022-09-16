@@ -161,6 +161,15 @@ def parse_args(args):
         help='Save the blurred images over which the cams are computed. '
         'Required if --blurredSegments is specified'
     )
+    parser.add_argument(
+        '--blurWhite',
+        type=bool,
+        default=False,
+        nargs='?',
+        const=True,
+        help='Whether to make the blurred segments completly white. '
+        'If not specified gaussian blur will be applied.'
+    )
     args = parser.parse_args(args)
     if args.method.lower() not in METHOD_MAP.keys():
         raise ValueError(f'invalid CAM type {args.method},'
@@ -248,7 +257,7 @@ def main(args):
             print(f'Modifying pipeline cfg so that specified segments {",".join(args.blurredSegments)} will be blurred out.')
             saveDir = os.path.join(args.save, 'blurredImgs') if args.save else 'blurredImgs/'
             cfg = add_blurring_pipeline_step(cfg, args.blurredSegments, args.segData, args.segConfig, args.segCheckpoint,
-                                            saveDir=saveDir, saveImgs=args.saveBlurred)
+                                            saveDir=saveDir, saveImgs=args.saveBlurred, singleColor=args.blurBlack)
 
         imgDataset = ImageDataset(os.path.dirname(args.img), imgNames=[os.path.basename(args.img)], get_gt=args.use_ann_labels)
     else:
@@ -257,7 +266,7 @@ def main(args):
             print(f'Modifying pipeline cfg so that specified segments {",".join(args.blurredSegments)} will be blurred out.')
             saveDir = os.path.join(args.save, 'blurredImgs') if args.save else 'blurredImgs/'
             cfg = add_blurring_pipeline_step(cfg, args.blurredSegments, args.segData, args.segConfig, args.segCheckpoint,
-                                            saveDir=saveDir, saveImgs=args.saveBlurred)
+                                            saveDir=saveDir, saveImgs=args.saveBlurred, singleColor=args.blurWhite)
         
         imgDataset = ImageDataset(args.img, annfile=args.ann_file, dataClasses=args.classes, get_gt=args.use_ann_labels)
 
@@ -273,7 +282,7 @@ def main(args):
         mmcv.mkdir_or_exist(os.path.abspath(work_dir))
 
         print(f'Save Split file for Cams')
-        generate_split_file(imgDataset.imgPaths, work_dir, fileprefix=result_file_prefix)
+        generate_split_file(imgDataset.imgNames, work_dir, fileprefix=result_file_prefix)
         
         path = os.path.join(work_dir, result_file_prefix + ".npz")
         print(f'Save generated CAMs to {path}')

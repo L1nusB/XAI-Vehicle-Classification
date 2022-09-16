@@ -10,15 +10,19 @@ from .imageProcessing import convert_numpy_to_PIL
 @PIPELINES.register_module()
 class BlurSegments(object):
     """
-    Blurs the specified segments out using gaussian blurring from cv2
+    Blurs the specified segments out.
+    Options for blurring are gaussian blur or fill with simple color
 
+    singleColor must be given as a rgb list. If invalid format but given
+    it will be filled white.
     """
 
     def __init__(self, blurredSegments, 
                 segData, segCategories, 
                 blurKernel=(33,33), blurSigmaX=0, 
                 saveImgs=False, saveDir='blurredImgs/',
-                randomBlur=False):
+                randomBlur=False, singleColor=None,
+                logInfos=True):
         self.segCategories = segCategories
         self.segData = segData
         self.blurKernel = blurKernel
@@ -26,10 +30,16 @@ class BlurSegments(object):
         self.saveImgs = saveImgs
         self.saveDir = saveDir
         self.randomBlur = randomBlur
-        if randomBlur:
-            print('Blurring random parts of the image')
-        if saveImgs:
-            print(f'Blurred Images will be saved to {saveDir}')
+        self.singleColor = singleColor
+        if logInfos:
+            if singleColor is not None:
+                print('Blurring segments into single color')
+                if not(isinstance(self.singleColor, list | np.ndarray)):
+                    print(f'Unknown format {type(self.singleColor)} given. Fill with only white.')
+            if randomBlur:
+                print('Blurring random parts of the image')
+            if saveImgs:
+                print(f'Blurred Images will be saved to {saveDir}')
         if isinstance(blurredSegments, str):
             assert blurredSegments in segCategories, f'{blurredSegments} not in segCategories: {",".join(segCategories)}'
             self.blurredSegments = [segCategories.index(blurredSegments)]
@@ -81,7 +91,15 @@ class BlurSegments(object):
             for blur in self.blurredSegments:
                 mask[segmentation==blur, :] = np.array([255,255,255])
 
-        blur_img = cv2.GaussianBlur(img, self.blurKernel, self.blurSigmaX)
+        if self.singleColor is not None:
+            if isinstance(self.singleColor, list | np.ndarray):
+                assert len(self.singleColor) == 3, f'List/array must be 3 elements long not {len(self.singleColor)}'
+                fillColor = self.singleColor
+            else:
+                fillColor = [255,255,255]
+            blur_img = np.full_like(img, fillColor)
+        else:
+            blur_img = cv2.GaussianBlur(img, self.blurKernel, self.blurSigmaX)
 
         img = np.where(mask==np.array([255,255,255]), blur_img, img)
 

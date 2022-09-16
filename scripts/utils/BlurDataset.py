@@ -125,7 +125,7 @@ def get_blurred_dataset(cfg, imgRoot, annfile, blurredSegments, segData, classes
     return BlurDataset(**params)
 
 def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segClasses=None, saveDir='blurredImgs/', saveImgs=False,
-                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, randomBlur=False, **kwargs):
+                        blurKernel=(33,33), blurSigmaX=0, segConfig=None, segCheckpoint=None, randomBlur=False, singleColor=None, **kwargs):
     """
     Sets the fields in cfg.data.test required for BlurDataset
 
@@ -154,6 +154,8 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segCla
     :type segCheckpoint: str | Path
     :param randomBlur: Blur random pixels with the same area as the blurred segments
     :type randomBlur: bool
+    :param singleColor: Maked blurred segments of single color
+    :type singleColor: list(int) | np.ndarray(int) | None
     """
     print('Setting up configs for Blurred Dataset')
     datasetType = cfg.data.test.type
@@ -174,6 +176,7 @@ def setup_config_blurred(cfg, imgRoot, annfile, blurredSegments, segData, segCla
     params.data.test['segConfig'] = segConfig
     params.data.test['segCheckpoint'] = segCheckpoint
     params.data.test['randomBlur'] = randomBlur
+    params.data.test['singleColor'] = singleColor
     
     return params
 

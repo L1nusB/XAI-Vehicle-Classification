@@ -202,6 +202,7 @@ def prepare_generate_stats(classes=None, **kwargs):
 
     :return Tuple (imgNames, transformedSegmentations, cams, classes)
     """
+    assert 'imgRoot' in kwargs, 'imgRoot must be specified'
     assert os.path.isdir(kwargs['imgRoot']), f'imgRoot does not lead to a directory {kwargs["imgRoot"]}'
 
     if 'imgNames' in kwargs:

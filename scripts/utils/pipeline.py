@@ -145,7 +145,7 @@ def apply_pipeline(pipeline, *args):
 
 def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, segCheckpoint=None, segCategories=None,
                                 blurKernel=(33,33), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False,
-                                randomBlur=False, **kwargs):
+                                randomBlur=False, singleColor=None, logInfos=False, **kwargs):
     """
     Adds the BlurSegment Step into the Pipeline for the given cfg (under cfg.data.test.pipeline)
     This step is inserted directly after the LoadFromFile step.
@@ -172,6 +172,10 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, se
     :type randomBlur: bool, optional 
     :param segCategories: List of segment categories. Used to validate blurred Segments are valid.
     :type segCategories: list | np.ndarray
+    :param singleColor: Maked blurred segments of single color
+    :type singleColor: list(int) | np.ndarray(int) | None
+    :param logInfos: Log pipeline step config upon creation
+    :type logInfos: bool
 
     :return Modified config
     """
@@ -180,10 +184,14 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, se
     if segCategories is None:
         assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segCategories not given.'
         segCategories = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
+    # If just boolean is given set it to all white.
+    if singleColor == True:
+        singleColor = [255,255,255]
     pipeline = pipeline[:indexLoad] + \
                 [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
                 'segCategories':segCategories, 'blurKernel':blurKernel, 'randomBlur' : randomBlur,
-                'blurSigmaX':blurSigmaX, 'saveImgs':saveImgs, 'saveDir':saveDir}] + \
+                'blurSigmaX':blurSigmaX, 'saveImgs':saveImgs, 'saveDir':saveDir, 'singleColor':singleColor,
+                'logInfos':logInfos}] + \
                 pipeline[indexLoad:]
     cfg.data.test.pipeline = pipeline
     return cfg
