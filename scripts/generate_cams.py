@@ -7,7 +7,7 @@ import numpy as np
 import mmcv
 from pytorch_grad_cam.utils.image import show_cam_on_image
 
-from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform
+from .vis_cam_custom import getCAM_without_build, get_default_traget_layers, get_layer, build_reshape_transform, get_formatting_pipeline
 from .utils.CAMGenDataset import ImageDataset, add_blurring_pipeline_step
 from .utils.io import  generate_split_file, get_dir_and_file_path, savePIL
 from .utils.imageProcessing import convert_numpy_to_PIL
@@ -197,6 +197,7 @@ def getCAMConfig(args):
 def generateCAMs(dataset, args, custom_cfg=None):
     print(f'Generate Results for specified files')
     cfg,model,use_cuda,target_layers,reshape_transform = getCAMConfig(args)
+    pipelineObj = get_formatting_pipeline(cfg.data.test.pipeline)
     if custom_cfg is not None:
         cfg = custom_cfg
     imgLoader = DataLoader(dataset)
@@ -211,8 +212,8 @@ def generateCAMs(dataset, args, custom_cfg=None):
             if target_category:
                 warnings.warn('Both use-ann-labels and target-category are specified. Target-category will be ignored.')
             target_category = item['gt_target']
-        cam = getCAM_without_build(path, cfg.data.test.pipeline,
-            args.method, model, target_layers, use_cuda, reshape_transform, args.eigen_smooth, args.aug_smooth, target_category)
+        cam = getCAM_without_build(path, cfg.data.test.pipeline, args.method, model, target_layers, use_cuda, 
+                                    reshape_transform, args.eigen_smooth, args.aug_smooth, target_category, pipelineObj)
         cams[item['name'][0]] = cam.squeeze()
         prog_bar.update()
     return cams

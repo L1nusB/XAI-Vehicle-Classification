@@ -129,6 +129,15 @@ def apply_transforms(img_path, pipeline_cfg):
     return format_data, inference_img
 
 
+def get_formatting_pipeline(pipeline_cfg):
+    """Gets the pipeline used for formatting the data and returns it."""
+    if pipeline_cfg[0]['type'] != 'LoadImageFromFile':
+            pipeline_cfg.insert(0, dict(type='LoadImageFromFile'))
+    dataPipeline = Compose(pipeline_cfg)
+
+    return dataPipeline
+
+
 class MMActivationsAndGradients(ActivationsAndGradients):
     """Activations and gradients manager for mmcls models."""
 
@@ -228,8 +237,13 @@ def get_default_traget_layers(model, args):
     return target_layers
 
 
-def getCAM_without_build(img, pipeline, method, model, target_layers, use_cuda, reshape_transform, eigen_smooth, aug_smooth, target_category):
-    data, _ = apply_transforms(img, pipeline)
+def getCAM_without_build(img, pipelineCfg, method, model, target_layers, use_cuda, reshape_transform,
+                         eigen_smooth, aug_smooth, target_category, pipelineObj=None):
+    if pipelineObj is None:
+        pipelineObj = get_formatting_pipeline(pipelineCfg)
+        
+    data = pipelineObj(dict(img_info=dict(filename=img), img_prefix=None))
+
     cam = init_cam(method, model, target_layers, use_cuda, reshape_transform)
     targets = None
     if target_category:
