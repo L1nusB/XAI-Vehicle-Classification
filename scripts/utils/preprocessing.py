@@ -1,6 +1,7 @@
 from mmseg.apis import init_segmentor
 import warnings
 import numpy as np
+import os
 
 from .calculations import accumulate_statistics
 
@@ -84,3 +85,44 @@ def batch_statistics(classes, imgNames, cams, segmentations, forceAll=False, lim
         results.append(percentualSegmentAreas)
 
     return results
+
+def remap_annfile(annfile, indexMap):
+    """
+    Remaps the class indices of the given annotation file based on the
+    provided indexMap.
+    indexMap a list of tuples (originalIndex, updatedIndex)
+    If an index is not included as a originalIndex it will be REMOVED.
+    Often many indices will be removed because classes have the same prefix but one 
+    differentiates afterwards e.g. BWM_BWM_3_Series in one model
+    and BWM_BWM_3_Series_GT, BWM_BWM_3_Series_convertible
+    as these are not the same class they will be removed.
+    The amount of removed classes is announced at the end.
+
+    :param annfile: Path to the annotation file to be modified
+    :type annfile: str | Path
+    :param indexMap: Mapping from original Index to updated Index
+    :type indexMap: List((int,int))
+    """
+    assert os.path.isfile(annfile), f'No such file {annfile}'
+    filteredEntries = []
+    skippedClasses = []
+    print('Remapping annotation file')
+    with open(annfile, encoding='utf-8') as f:
+        for entry in f.readlines():
+            mappingFound = False
+            classIndex = int(entry.strip().rsplit(' ', 1)[1].rsplit('_', 1)[0])
+            for originalIndex, updatedIndex in indexMap:
+                if classIndex == originalIndex:
+                    mappingFound = True
+                    classIndex = updatedIndex
+                    break
+            if mappingFound:
+                filteredEntries.append(f'{entry.strip().rsplit(" ", 1)[0]} {classIndex}_{entry.strip().rsplit(" ", 1)[1].split("_")[1]}')
+            else:
+                if classIndex not in skippedClasses:
+                    # print(f'No mapping found for index {classIndex} to class {"_".join(entry.strip().rsplit(" ", 1)[0].split("_")[:-1])}')
+                    skippedClasses.append(classIndex)
+
+    with open(annfile, mode='w', encoding='utf-8') as f:
+        f.write("\n".join(filteredEntries))
+    print(f'Removed {len(skippedClasses)} classes because of unexact match.')

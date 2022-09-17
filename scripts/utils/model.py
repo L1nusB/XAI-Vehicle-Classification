@@ -91,3 +91,35 @@ def get_wrongly_classified(imgRoot, camConfig, camCheckpoint, annfile, imgNames,
     annfileCorrectPath = generate_ann_file(correctClassifiedList, work_dir=saveDir, fileprefix="annfile_correct")
     annfileIncorrectPath = generate_ann_file(incorrectClassifiedList, work_dir=saveDir, fileprefix="annfile_incorrect")
     return annfileCorrectPath, annfileIncorrectPath
+
+def get_shared_classes(cfg1, checkpoint1, cfg2, checkpoint2):
+    """
+    Determines what classes are shared between the models that are specified by
+    cfg1, checkpoint1 and cfg2, checkpoint2
+    The results are returned as a list of tuples (name, index1, index2)
+    where index1 gives the index of the class in cfg1 and index2 in cfg2
+
+    :param cfg1: Path to config File for first model
+    :type cfg1: str | Path
+    :param checkpoint1: Path to checkpoint File for first model
+    :type checkpoint1: str | Path
+    :param cfg2: Path to config File for second model
+    :type cfg2: str | Path
+    :param checkpoint2: Path to checkpoint File for second model
+    :type checkpoint2: str | Path
+    """
+    print('Determining shared classes between given model configurations.')
+    cfgFirst = mmcv.Config.fromfile(cfg1)
+    cfgSecond = mmcv.Config.fromfile(cfg2)
+    modelFirst = build_classifier(cfgFirst.model)
+    modelSecond = build_classifier(cfgSecond.model)
+    checkpointFirst = load_checkpoint(modelFirst, checkpoint1)
+    checkpointSecond = load_checkpoint(modelSecond, checkpoint2)
+
+    shared = []
+    for index1, className in enumerate(checkpointFirst['meta']['CLASSES']):
+        if className in checkpointSecond['meta']['CLASSES']:
+            shared.append((className, index1, checkpointSecond['meta']['CLASSES'].index(className)))
+
+    print(f'{len(shared)} potential shared classes found.')
+    return shared

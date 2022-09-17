@@ -107,16 +107,6 @@ def generate_split_file(sample_iterator, work_dir, dataClasses=[], fileprefix='r
     """
     warnings.warn("Using generate_split_files will redirect the call to generate_ann_file. Consider directly calling that function")
     return generate_ann_file(sample_iterator, work_dir, dataClasses, fileprefix)
-    sample_list = list(sample_iterator)
-    if len(dataClasses)>0:
-        sample_list = [sample for sample in sample_list if any(sample.startswith(c) for c in dataClasses)]
-    # Remove .txt file extension if given.
-    if fileprefix[-4:] == '.txt':
-        fileprefix = fileprefix[-4:]
-    filePath = osp.join(work_dir, f'{fileprefix}.txt')
-    with open(filePath,'w') as f:
-        f.write('\n'.join(sample_list))
-    return filePath
 
 
 def saveResults(savePath, defaultName='generated_result.npz', **results):
@@ -369,6 +359,37 @@ def generate_filtered_annfile(annfile, imgNames, fileName='annfile_filtered.txt'
         f.write("".join(filteredEntries))
     
     return filePath
+
+def generate_shared_annotation_file(annfile, cfg1, checkpoint1, cfg2, checkpoint2, saveDir='./'):
+    """Creates an annotation file that only contains the entries of classes
+    that exist in both models that are specified by the given configuration and checkpoint files.
+    In addition the classIndices in the annotation file is remapped from model1 to model2
+    The annfile must point to the annotation file that is the basis for the filtered file 
+    and which will be reduced. It is assumed that this corresponds to an annfile of model 2
+
+    :param annfile: Path to annotation file that is used as basis for the filtered file.
+    :type annfile: str | Path
+    :param cfg1: Path to config File for first model
+    :type cfg1: str | Path
+    :param checkpoint1: Path to checkpoint File for first model
+    :type checkpoint1: str | Path
+    :param cfg2: Path to config File for second model
+    :type cfg2: str | Path
+    :param checkpoint2: Path to checkpoint File for second model
+    :type checkpoint2: str | Path
+    :param saveDir: Where annotation file be saved to
+    :type saveDir: str | Path
+    """
+    from .model import get_shared_classes
+    from .preprocessing import remap_annfile
+    mapping = get_shared_classes(cfg1,checkpoint1, cfg2, checkpoint2)
+    dataClasses = [name for name,_,_ in mapping]
+    # Use index2, index1 order here because annfile has indices of model 2
+    indexMap = [(index2,index1) for _,index1,index2 in mapping]
+    imgNames = get_samples(annfile=annfile, dataClasses=dataClasses)
+    filteredAnnfile = generate_filtered_annfile(annfile, imgNames, fileName='annfile_shared_remapped.txt', saveDir=saveDir)
+    remap_annfile(filteredAnnfile, indexMap)
+
 
 def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None, categoryKey='segments'):
     """Saves the given arrays into an excel file. 
