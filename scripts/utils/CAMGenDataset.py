@@ -67,7 +67,7 @@ class ImageDataset(Dataset):
         return item
 
 def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segCheckpoint, classes=None,
-                                blurKernel=(33,33), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False,
+                                blurKernel=(55,55), blurSigmaX=0, saveDir='blurredImgs/', saveImgs=False,
                                 singleColor=None):
     """
     Adds the BlurSegment Step into the Pipeline for the given cfg (under cfg.data.test.pipeline)
@@ -79,7 +79,7 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segChec
     :type blurredSegments: str | int | List(str|int)
     :param segData: Path to file containing the segmentation data. The data must match the original size at it will be applied on the original image
     :type segData: str | Path
-    :param blurKernel: Kernel used for gaussian blurring, defaults to (33,33)
+    :param blurKernel: Kernel used for gaussian blurring, defaults to (55,55)
     :type blurKernel: tuple(int,int), optional
     :param blurSigmaX: SigmaX used for gaussian blurring, defaults to 0
     :type blurSigmaX: int, optional
