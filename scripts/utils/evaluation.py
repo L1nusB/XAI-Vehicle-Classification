@@ -122,7 +122,7 @@ def prepare_dataframe(metrics):
     df = pandas.DataFrame(columns=cols)
     return df
 
-def run_evaluation(dataset, cfg, model, metrics, dfKey, saveJson=False, saveDir='./', fileName='eval_results',  df=None):
+def run_evaluation(dataset, cfg, model, metrics, dfKey, saveJson=False, saveExcel=False, saveDir='./', fileName='eval_results',  df=None):
     """
     Runs the evaluation on the given Model with the same dataloader configuration
     as the cfg object specifies.
@@ -143,6 +143,8 @@ def run_evaluation(dataset, cfg, model, metrics, dfKey, saveJson=False, saveDir=
     :type df: None or pandas.Dataframe
     :param saveJson: Save an additional Json file for the results
     :type saveJson: bool
+    :param saveExcel: Save an excel file. The file will be constructed as saveDir/fileName.xlsx
+    :type saveExcel: bool
     :param saveDir: Directory where the json file will be saved to.
     :type saveDir: str
     :param fileName: Name of the json file. Defaults to 'eval_results'
@@ -171,18 +173,21 @@ def run_evaluation(dataset, cfg, model, metrics, dfKey, saveJson=False, saveDir=
         df = pandas.DataFrame.from_records([eval_results], index=[dfKey])
     if saveJson:
         save_json(eval_results, save_dir=saveDir, fileName=fileName)
+    if saveExcel:
+        df.to_excel(os.path.join(saveDir, fileName + ".xlsx"))
     return df
 
 
 def get_eval_metrics(modelCfg, modelCheckpoint, imgRoot, annfile, metrics=['accuracy', 'precision', 'recall', 'f1_score', 'support'], 
-                    use_gpu=True, saveDir='./', fileName='eval_results', **kwargs):
+                    use_gpu=True, saveDir='./', fileName='eval_results', saveExcel=False, **kwargs):
     """
     Evaluted the model on the specified metrics given by the path to config and checkpoint on the dataset based 
     on the specified annotation file / dataClasses from the imgRoot directory.
     The results will be saved as a json file.
+    If specified an excel will be saved in addition.
     """
     print('Evaluating metrics on model.')
     model, dataset, cfg, filteredAnnfilePath = get_model_and_dataset(imgRoot, modelCfg, modelCheckpoint, annfile, use_gpu=use_gpu, **kwargs)
     df = prepare_dataframe(metrics)
-    run_evaluation(dataset, cfg, model, metrics, dfKey='Evaluation', saveJson=True, saveDir=saveDir, fileName=fileName, df=df)
+    run_evaluation(dataset, cfg, model, metrics, dfKey='Evaluation', saveJson=True, saveDir=saveDir, fileName=fileName, df=df, saveExcel=saveExcel)
     os.remove(filteredAnnfilePath)
