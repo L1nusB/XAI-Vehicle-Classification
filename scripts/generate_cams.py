@@ -162,12 +162,12 @@ def parse_args(args):
         'Required if --blurredSegments is specified'
     )
     parser.add_argument(
-        '--blurWhite',
+        '--blurNormal',
         type=bool,
         default=False,
         nargs='?',
         const=True,
-        help='Whether to make the blurred segments completly white. '
+        help='Whether to make the blurred segments completly normalization color. '
         'If not specified gaussian blur will be applied.'
     )
     args = parser.parse_args(args)

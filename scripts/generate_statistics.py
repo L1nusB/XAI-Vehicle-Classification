@@ -4,6 +4,7 @@ from matplotlib.patches import Patch
 import os
 import numpy as np
 import copy
+from datetime import date
 
 from .utils.io import get_samples, save_result_figure_data, save_excel_auto_name, load_results_excel
 from .utils.prepareData import prepareInput, prepare_generate_stats
@@ -638,7 +639,8 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
 
 
 def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoint, camData,
-                                segConfig, segCheckpoint, segData, saveDir, annfile, method, vitLike, **kwargs):
+                                segConfig, segCheckpoint, segData, saveDir, annfile, method, vitLike,
+                                modelName, prefix='Full', segModelName='ocrnet_hr48_carparts_noflip', **kwargs):
     """
     This function generates a collection of all statistics for the given model and dataset.
     All required data must already be generated and given i.e. cams and segmentations.
@@ -660,39 +662,48 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
     # Load classes one time and pass it to functions in order to not always initialze segmentation model
     classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
+    # Prefix_method_Model_Dataset_SegsConfig_date
+    baseName = f'{prefix}_{method}_{modelName}_{segModelName}'
+
     # From kwargs possibly relevant here:
     # annfileCorrect, annfileIncorrect (generate_statistics_missclassified)
     # dataClasses (get_samples)
     # pipelineCfg (get_pipeline_cfg)
     # segDevice, dataClasses (prepareSegmentation)
     # camDevice, dataClasses (prepareCams)
+    fileName = baseName + "_" + date.today().strftime("%d_%m_%Y")
     generate_statistic(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                        method=method, vitLike=vitLike,
+                        method=method, vitLike=vitLike, filename=fileName,
                         saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    fileName = baseName + "_ShowPropArea_" + date.today().strftime("%d_%m_%Y")
     generate_statistic_prop(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                            method=method, vitLike=vitLike, showPropPercent=True,
+                            method=method, vitLike=vitLike, showPropPercent=True, filename=fileName,
                             saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    fileName = baseName + "_normalized_PropArea_" + date.today().strftime("%d_%m_%Y")
     generate_statistic_prop_normalized(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                                        method=method, vitLike=vitLike, showPercent=True,
+                                        method=method, vitLike=vitLike, showPercent=True, filename=fileName,
                                         saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    fileName = baseName + "_Abs_Mean_Std_Total_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                                            method=method, vitLike=vitLike, fileNamePrefix='absScale',
+                                            method=method, vitLike=vitLike, filename=fileName,
                                             saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    fileName = baseName + "_Perc_Mean_Std_Total_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                                            method=method, vitLike=vitLike, fileNamePrefix='percScale', usePercScale=True,
+                                            method=method, vitLike=vitLike, usePercScale=True, filename=fileName,
                                             saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+    fileName = baseName + "_wrongClassified_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_missclassified(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
-                                        method=method, vitLike=vitLike,
+                                        method=method, vitLike=vitLike, filename=fileName,
                                         saveAdditional=False, saveFigureFormat='.pdf', **kwargs)

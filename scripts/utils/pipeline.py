@@ -172,7 +172,7 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, se
     :type randomBlur: bool, optional 
     :param segCategories: List of segment categories. Used to validate blurred Segments are valid.
     :type segCategories: list | np.ndarray
-    :param singleColor: Maked blurred segments of single color
+    :param singleColor: Maked blurred segments of single color. Channel order must be bgr
     :type singleColor: list(int) | np.ndarray(int) | None
     :param logInfos: Log pipeline step config upon creation
     :type logInfos: bool
@@ -184,9 +184,9 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig=None, se
     if segCategories is None:
         assert segConfig is not None and segCheckpoint is not None, f'segConfig and segCheckpoint must be specified if segCategories not given.'
         segCategories = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
-    # If just boolean is given set it to all white.
+    # If just boolean is given set it to normalization default.
     if singleColor == True:
-        singleColor = [255,255,255]
+        singleColor = [116.28, 103.53, 123.675]
     pipeline = pipeline[:indexLoad] + \
                 [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
                 'segCategories':segCategories, 'blurKernel':blurKernel, 'randomBlur' : randomBlur,

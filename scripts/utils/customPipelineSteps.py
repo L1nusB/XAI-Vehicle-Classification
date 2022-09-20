@@ -13,8 +13,8 @@ class BlurSegments(object):
     Blurs the specified segments out.
     Options for blurring are gaussian blur or fill with simple color
 
-    singleColor must be given as a rgb list. If invalid format but given
-    it will be filled white.
+    singleColor must be given as a bgr list. If invalid format but given
+    it will be filled default normalization values [116.28, 103.53, 123.675].
     """
 
     def __init__(self, blurredSegments, 
@@ -35,7 +35,8 @@ class BlurSegments(object):
             if singleColor is not None:
                 print('Blurring segments into single color')
                 if not(isinstance(self.singleColor, list | np.ndarray)):
-                    print(f'Unknown format {type(self.singleColor)} given. Fill with only white.')
+                    print(f'Unknown format {type(self.singleColor)} given. Fill with only normalization value.')
+                    self.singleColor = [116.28, 103.53, 123.675]
             if randomBlur:
                 print('Blurring random parts of the image')
             if saveImgs:
@@ -96,7 +97,7 @@ class BlurSegments(object):
                 assert len(self.singleColor) == 3, f'List/array must be 3 elements long not {len(self.singleColor)}'
                 fillColor = self.singleColor
             else:
-                fillColor = [255,255,255]
+                fillColor = [116.28, 103.53, 123.675]
             blur_img = np.full_like(img, fillColor)
         else:
             blur_img = cv2.GaussianBlur(img, self.blurKernel, self.blurSigmaX)

@@ -91,7 +91,7 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segChec
     :type saveDir: str | Path, optional
     :param saveImgs: Whether or not to save the blurred images, defaults to False
     :type saveImgs: bool, optional
-    :param singleColor: Maked blurred segments of single color
+    :param singleColor: Maked blurred segments of single color. Must be bgr channel order.
     :type singleColor: list(int) | np.ndarray(int) | None
 
     :return Modified config
@@ -103,7 +103,7 @@ def add_blurring_pipeline_step(cfg, blurredSegments, segData, segConfig, segChec
         classes = load_classes(segConfig = segConfig, segCheckpoint= segCheckpoint)
     # If just boolean is given set it to all white.
     if singleColor == True:
-        singleColor = [255,255,255]
+        singleColor = [116.28, 103.53, 123.675]
     pipeline = pipeline[:indexLoad] + \
                 [{'type':'BlurSegments', 'blurredSegments':blurredSegments, 'segData':segData,
                 'segCategories':classes, 'blurKernel':blurKernel, 'singleColor':singleColor,
