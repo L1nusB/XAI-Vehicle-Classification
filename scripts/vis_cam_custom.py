@@ -18,7 +18,8 @@ from mmcls.datasets.pipelines import Compose
 
 try:
     from pytorch_grad_cam import (EigenCAM, EigenGradCAM, GradCAM,
-                                  GradCAMPlusPlus, LayerCAM, XGradCAM)
+                                  GradCAMPlusPlus, LayerCAM, XGradCAM, 
+                                  EigenCAM_Custom_PC)
     from pytorch_grad_cam.activations_and_gradients import \
         ActivationsAndGradients
 except ImportError:
@@ -36,6 +37,7 @@ METHOD_MAP = {
     'eigencam': EigenCAM,
     'eigengradcam': EigenGradCAM,
     'layercam': LayerCAM,
+    'eigencam2nd':EigenCAM_Custom_PC,
 }
 
 class Arguments:

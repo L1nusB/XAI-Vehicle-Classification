@@ -15,7 +15,8 @@ from torch.utils.data import DataLoader
 
 try:
     from pytorch_grad_cam import (EigenCAM, EigenGradCAM, GradCAM,
-                                  GradCAMPlusPlus, LayerCAM, XGradCAM)
+                                  GradCAMPlusPlus, LayerCAM, XGradCAM,
+                                  EigenCAM_Custom_PC)
 except ImportError:
     raise ImportError('Please run `pip install "grad-cam>=1.3.6"` to install '
                       '3rd party package pytorch_grad_cam.')
@@ -28,6 +29,7 @@ METHOD_MAP = {
     'eigencam': EigenCAM,
     'eigengradcam': EigenGradCAM,
     'layercam': LayerCAM,
+    'eigencam2nd':EigenCAM_Custom_PC,
 }
 
 def parse_args(args):
