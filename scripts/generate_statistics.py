@@ -640,7 +640,8 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
 
 def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoint, camData,
                                 segConfig, segCheckpoint, segData, saveDir, annfile, method, vitLike,
-                                modelName, prefix='Full', segModelName='ocrnet_hr48_carparts_noflip', **kwargs):
+                                modelName, prefix='Full', segModelName='ocrnet_hr48_carparts_noflip',
+                                useGPU=True, **kwargs):
     """
     This function generates a collection of all statistics for the given model and dataset.
     All required data must already be generated and given i.e. cams and segmentations.
@@ -659,6 +660,8 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
         dataClasses
     """
     print(f'Creating all statistics and saving into {saveDir}')
+    if useGPU:
+        kwargs['camDevice']='cuda'
     # Load classes one time and pass it to functions in order to not always initialze segmentation model
     classes = load_classes(segConfig=segConfig, segCheckpoint=segCheckpoint)
 
