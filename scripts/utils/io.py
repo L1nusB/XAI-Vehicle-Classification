@@ -414,7 +414,7 @@ def save_to_excel(arrs, filename='results.xlsx', saveDir='./', segments=None, ca
     if savePath[-5:] != '.xlsx':
         savePath = savePath + '.xlsx'
     Path(osp.dirname(savePath)).mkdir(parents=True, exist_ok=True)
-    print(f'Saving excel to {savePath}.')
+    print(f'Saving excel to {savePath}')
     df.to_excel(savePath)
 
 def save_excel_auto_name(arrs, fileNamePrefix="", save_dir='', path_intermediate='', segments=None, fileName='', categoryKey='segments', **kwargs):
