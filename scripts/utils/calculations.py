@@ -127,6 +127,7 @@ def accumulate_statistics_together(allImgNames, imgNamesList, camsList, segmenta
     segmentAreas = [[None]*noSamples for noSamples in noSamplesList]
     percentualSegmentAreas = [[None]*noSamples for noSamples in noSamplesList]
 
+    print('Accumulating statistics for all CAM instances.')
     for i, name in enumerate(allImgNames):
         binaryMask = generateUnaryMasks(segmentations[name], width=segmentations[name].shape[1], height=segmentations[name].shape[0], segmentCount=segmentCount)
         for j,ls in enumerate(imgNameContainList):
