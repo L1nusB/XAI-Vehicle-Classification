@@ -15,6 +15,47 @@ from .utils.calculations import generate_stats_single
 from .utils.io import get_save_figure_name, saveFigure
 from .utils.constants import RESULTS_PATH, FIGUREFORMATS
 
+def generate_bar_cam_intersection_percOnly(classes=None, **kwargs):
+    """Generate a bar plot showing the intersection of each segmentation region 
+    with the given CAM. ONLY THE PERCENTUAL PLOT
+    :param classes: Classes corresponding to the categories of the segmentation. If not specified loaded from segConfig, segCheckpoint in kwargs.
+    :type classes: list/tuple like object.
+
+    for kwargs see :func:`prepareInput`
+    """
+    classes = load_classes(classes, **kwargs)
+    
+    segmentation,_, camHeatmap = prepareInput(prepImg=False, **kwargs)
+    # Manual pipelineCfg can be set via kwargs parameter pipelineCfg
+    cfg = get_pipeline_cfg(**kwargs)
+    if cfg:
+        pipelineScale = get_pipeline_torchvision(cfg.data.test.pipeline, workPIL=True)
+        segmentation = pipelineScale(segmentation)
+    classArray, segmentedCAMActivation, percentualSegmentedCAMActivation, dominantMask = generate_stats_single(segmentation, camHeatmap, classes)
+
+    fig = plt.figure(figsize=(8,5),constrained_layout=True)
+    grid = fig.add_gridspec(ncols=1, nrows=1)
+
+    ax = fig.add_subplot(grid[0,0])
+    #ax.set_title('Percentage CAM Activations')
+
+    # Plot Relative CAM Activations
+    plot_bar(ax=ax, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%')
+    # plot_bar(ax=ax, x_ticks=classArray, data=percentualSegmentedCAMActivation, dominantMask=dominantMask, format='.1%', addText=False)
+    # ax.tick_params(
+    #     axis='both',          # changes apply to the x-axis
+    #     which='both',      # both major and minor ticks are affected
+    #     bottom=True,      # ticks along the bottom edge are off
+    #     top=False,   
+    #     left=False,      # ticks along the top edge are off
+    #     labelbottom=False,
+    #     labelleft=False) # labels along the bottom edge are off
+
+    figure_name, saveDataClasses, saveAnnfile = get_save_figure_name(statType='Single', **kwargs)
+
+    saveFigure(savePath=osp.join(RESULTS_PATH, figure_name), figure=fig)
+
+
 def generate_bar_cam_intersection(classes=None, **kwargs):
     """Generate a bar plot showing the intersection of each segmentation region 
     with the given CAM.

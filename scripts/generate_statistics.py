@@ -8,14 +8,14 @@ from datetime import date
 
 from .utils.io import get_samples, save_result_figure_data, save_excel_auto_name, load_results_excel
 from .utils.prepareData import prepareInput, prepare_generate_stats
-from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats, get_top_k
+from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats, get_top_k, accumulate_statistics_together
 from .utils.plot import plot_bar, plot_errorbar
 from .utils.model import get_wrongly_classified
 from .utils.preprocessing import load_classes
 
 from .utils.constants import EXCELCOLNAMESSTANDARD, EXCELCOLNAMESPROPORTIONAL, EXCELCOLNAMESNORMALIZED, EXCELCOLNAMESMEANSTDTOTAL, EXCELCOLNAMESMISSCLASSIFIED
 
-def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_file='', columnMap=EXCELCOLNAMESSTANDARD, filename='', saveFigureFormat='.jpg',**kwargs):
+def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_file='', columnMap=EXCELCOLNAMESSTANDARD, filename='', saveFigureFormat='.jpg', sharedStats=None, numSamples=0, **kwargs):
     """Generates a plot with average absolute and average relative CAM Activations.
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
@@ -49,16 +49,20 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
 
         x_label_text = f'No. samples:unknown (Data from file)'
     else:
-        imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
+        if sharedStats is not None:
+            totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, _, percentualSegmentAreas = sharedStats
+        else:
+            imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
-        #totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)
+            #totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, **kwargs)
 
-        totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames=imgNames, classes=classes, cams=cams, segmentations=transformedSegmentations)
+            totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations = accumulate_statistics(imgNames=imgNames, classes=classes, cams=cams, segmentations=transformedSegmentations)
+            numSamples = len(imgNames)
 
         classArray, totalActivation, summarizedSegmentedCAMActivations, dominantMask, summarizedPercSegmentedCAMActivations, dominantMaskPercentual = generate_stats(
             segmentedActivations=segmentedCAMActivations, percentualActivations=percentualSegmentedCAMActivations, totalCAM=totalCAMActivations, classes=classes)
 
-        numSamples = len(imgNames)
+
 
         x_label_text = f'No.Samples:{numSamples}'
 
@@ -113,7 +117,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
 
 
 def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPropPercent=False, results_file='', columnMap=EXCELCOLNAMESPROPORTIONAL,
-                            saveFigureFormat='.jpg', filename='',**kwargs):
+                            saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0,**kwargs):
     """Generates a plot with average averaged relative CAM Activations and the corresponding area that each segment covered. 
 
     :param classes: Classes that the segmentation model uses. If not specified it will be loaded from segConfig and segCheckpoint, defaults to None
@@ -147,15 +151,18 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
 
         x_label_text = f'No. samples:unknown (Data from file)'
     else:
-        imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
+        if sharedStats is not None:
+            _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = sharedStats
+        else:
+            imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
+            _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+            numSamples = len(imgNames)
         #_, _, percentualSegmentedCAMActivations, percentualSegmentAreas =  batch_statistics(classes=classes, imgNames=imgNames, cams=cams, segmentations=transformedSegmentations,percentualArea=True ,**kwargs)  # forceAll can be set in kwargs if desired
 
-        _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
         classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
         
-        numSamples = len(imgNames)
 
         x_label_text = f'No.Samples:{numSamples}'
 
@@ -214,7 +221,7 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
     save_excel_auto_name(saveDic, fileNamePrefix=fileNamePrefix + 'prop', save_dir=saveDir, path_intermediate='statsProp', segments=classArray, fileName=filename, **kwargs)
 
 def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="", showPercent=False, results_file='', columnMap=EXCELCOLNAMESNORMALIZED,
-                                        saveFigureFormat='.jpg', filename='',**kwargs):
+                                        saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0,**kwargs):
     """Generates a plot with average relative CAM Activations, the covered segment area as well as a normalized display 
     showing the CAM normliazed w.r.t the importance of the covered area of the segment.
     In a second plot the importance of CAM Activations w.r.t the covered segment area is shown.
@@ -254,15 +261,20 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
         x_label_text = f'No. samples:unknown (Data from file)'
     else:
-        imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
+        if sharedStats is not None:
+            _, _, percentualSegmentedCAMActivations, _, percentualSegmentAreas = sharedStats
+        else:
 
-        _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+            imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
+
+            _, _, percentualSegmentedCAMActivations,_, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+
+            numSamples = len(imgNames)
 
         classArray, summarizedPercSegmentedCAMActivations, dominantMaskPercentual, summarizedPercSegmentAreas = generate_stats(classes=classes, percentualActivations=percentualSegmentedCAMActivations,percentualAreas=percentualSegmentAreas)
 
         relImportance, dominantMaskRelImportance, rescaledSummarizedPercActivions, dominantMaskRescaledActivations = get_area_normalized_stats(percentualActivations=summarizedPercSegmentedCAMActivations, percentualAreas=summarizedPercSegmentAreas)
 
-        numSamples = len(imgNames)
 
         x_label_text = f'No.Samples:{numSamples}'
 
@@ -336,7 +348,7 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False, results_file='', columnMap=EXCELCOLNAMESMEANSTDTOTAL,
-                                            saveFigureFormat='.jpg', filename='', **kwargs):
+                                            saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0, pregenImgNames=None, **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -378,10 +390,17 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
         x_label_text = f'No. samples:unknown (Data from file)'
     else:
-        imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
+        if sharedStats is not None:
+            totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, segmentAreas, percentualSegmentAreas = sharedStats
+            assert pregenImgNames is not None
+            imgNames = pregenImgNames
+        else:
+            imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, **kwargs)
 
-        totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, segmentAreas, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
+            totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, segmentAreas, percentualSegmentAreas = accumulate_statistics(imgNames=imgNames, cams=cams, segmentations=transformedSegmentations, classes=classes, percentualArea=True)
 
+            numSamples = len(imgNames)
+            
         stats = generate_stats(classes=classes, segmentedActivations=segmentedCAMActivations, totalCAM=totalCAMActivations, percentualActivations=percentualSegmentedCAMActivations,
                             absoluteAreas=segmentAreas, percentualAreas=percentualSegmentAreas, get_std=True, get_total_mean=True, get_total_top_low_high=True)
 
@@ -400,7 +419,6 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         summarizedPercSegmentAreas = stats[16]
         stdPercSegmentAreas = stats[17]
         
-        numSamples = len(imgNames)
 
         x_label_text = f'No.Samples:{numSamples}'
 
@@ -479,7 +497,7 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
 def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam", camConfig="", camCheckpoint="", saveDir='', fileNamePrefix="", classes=None,
                                         annfileCorrect="", annfileIncorrect="", results_file='', columnMap=EXCELCOLNAMESMISSCLASSIFIED, filename='',
-                                        saveFigureFormat='.jpg', **kwargs):
+                                        saveFigureFormat='.jpg',sharedStats=None, numSamples=0,preGenAllImgNames=None, preGenAllTransformedSegs=None,**kwargs):
     """
     Generates plots showing the activations for only the correctly classified samples for the given dataset,
     A plot showing the activations of the wrongly classified samples.
@@ -525,20 +543,45 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         kwargsCorrected = copy.copy(kwargs)
         kwargsCorrected['camData'] = None # Set camData to none so that it must generate new cams
 
-        imgNamesOriginal, transformedSegmentationsOriginal, camsOriginal, classes = prepare_generate_stats(
-            classes=classes, imgRoot=imgRoot, annfile=annfile, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
-        imgNamesCorrect, transformedSegmentationsCorrect, camsCorrect, _ = prepare_generate_stats(
+        if sharedStats is not None:
+            numSamplesOriginal = numSamples
+            _, _, percentualCAMActivationsOriginal, _, _ = sharedStats
+            imgNamesOriginal = preGenAllImgNames
+            transformedSegmentationsOriginal = preGenAllTransformedSegs
+        else:
+            imgNamesOriginal, transformedSegmentationsOriginal, camsOriginal, classes = prepare_generate_stats(
+                classes=classes, imgRoot=imgRoot, annfile=annfile, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+            numSamplesOriginal = len(imgNamesOriginal)
+            _, _, percentualCAMActivationsOriginal = accumulate_statistics(imgNames=imgNamesOriginal, classes=classes, cams=camsOriginal, segmentations=transformedSegmentationsOriginal)
+
+
+        # imgNamesCorrect, transformedSegmentationsCorrect, camsCorrect, _ = prepare_generate_stats(
+        #     classes=classes, imgRoot=imgRoot, annfile=annfileCorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+        # imgNamesIncorrect, transformedSegmentationsIncorrect, camsIncorrect, _ = prepare_generate_stats(
+        #     classes=classes, imgRoot=imgRoot, annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
+        imgNamesCorrect, _, camsCorrect, _ = prepare_generate_stats(
             classes=classes, imgRoot=imgRoot, annfile=annfileCorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
-        imgNamesIncorrect, transformedSegmentationsIncorrect, camsIncorrect, _ = prepare_generate_stats(
+        imgNamesIncorrect, _, camsIncorrect, _ = prepare_generate_stats(
             classes=classes, imgRoot=imgRoot, annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargs)
         # Index here at the end because we get a list as return value
         camsCorrected = prepareInput(prepImg=False, prepSeg=False, prepCam=True, imgRoot=imgRoot, useAnnLabels=True,
                         annfile=annfileIncorrect, method=method, camConfig=camConfig, camCheckpoint=camCheckpoint, **kwargsCorrected)[0]
 
-        _, _, percentualCAMActivationsOriginal = accumulate_statistics(imgNames=imgNamesOriginal, classes=classes, cams=camsOriginal, segmentations=transformedSegmentationsOriginal)
-        _, _, percentualCAMActivationsCorrect = accumulate_statistics(imgNames=imgNamesCorrect, classes=classes, cams=camsCorrect, segmentations=transformedSegmentationsCorrect)
-        _, _, percentualCAMActivationsIncorrect = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsIncorrect, segmentations=transformedSegmentationsIncorrect)
-        _, _, percentualCAMActivationsCorrected = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsCorrected, segmentations=transformedSegmentationsIncorrect)
+
+        # _, _, percentualCAMActivationsCorrect = accumulate_statistics(imgNames=imgNamesCorrect, classes=classes, cams=camsCorrect, segmentations=transformedSegmentationsCorrect)
+        # _, _, percentualCAMActivationsIncorrect = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsIncorrect, segmentations=transformedSegmentationsIncorrect)
+        # _, _, percentualCAMActivationsCorrected = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsCorrected, segmentations=transformedSegmentationsIncorrect)
+
+        # _, _, percentualCAMActivationsCorrect = accumulate_statistics(imgNames=imgNamesCorrect, classes=classes, cams=camsCorrect, segmentations=transformedSegmentationsOriginal)
+        # _, _, percentualCAMActivationsIncorrect = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsIncorrect, segmentations=transformedSegmentationsOriginal)
+        # _, _, percentualCAMActivationsCorrected = accumulate_statistics(imgNames=imgNamesIncorrect, classes=classes, cams=camsCorrected, segmentations=transformedSegmentationsOriginal)
+
+        collectedResults = accumulate_statistics_together(allImgNames=imgNamesOriginal, imgNamesList=[imgNamesCorrect,imgNamesIncorrect,imgNamesIncorrect], 
+                                                            camsList=[camsCorrect,camsIncorrect,camsCorrected], segmentations=transformedSegmentationsOriginal, classes=classes)
+  
+        _, _, percentualCAMActivationsCorrect = collectedResults[0]   
+        _, _, percentualCAMActivationsIncorrect = collectedResults[1]    
+        _, _, percentualCAMActivationsCorrected = collectedResults[2]   
 
         percentualCAMActivationsFixed = np.concatenate((percentualCAMActivationsCorrect, percentualCAMActivationsCorrected))
 
@@ -548,7 +591,6 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         _, summarizedPercCAMActivationsCorrected, dominantMaskPercCorrected = generate_stats(percentualActivations=percentualCAMActivationsCorrected, classes=classes)
         _, summarizedPercCAMActivationsFixed, _ = generate_stats(percentualActivations=percentualCAMActivationsFixed, classes=classes)
 
-        numSamplesOriginal = len(imgNamesOriginal)
         numSamplesCorrect = len(imgNamesCorrect)
         numSamplesIncorrect = len(imgNamesIncorrect)
 
@@ -674,39 +716,53 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
     # pipelineCfg (get_pipeline_cfg)
     # segDevice, dataClasses (prepareSegmentation)
     # camDevice, dataClasses (prepareCams)
+
+    imgNames, transformedSegmentations, cams, classes = prepare_generate_stats(classes=classes, imgRoot=imgRoot, segData=segData, camData=camData, 
+                                                                                segCheckpoint=segCheckpoint, segConfig=segConfig, method=method, annfile=annfile, 
+                                                                                vitLike=vitLike, useGPU=useGPU, **kwargs)
+    numSamples = len(imgNames)
+    sharedStats = accumulate_statistics(imgNames=imgNames, classes=classes, cams=cams, segmentations=transformedSegmentations, percentualArea=True)
+
     fileName = baseName + "_" + date.today().strftime("%d_%m_%Y")
     generate_statistic(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                         method=method, vitLike=vitLike, filename=fileName,
-                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                        saveAdditional=False, saveFigureFormat='.pdf',
+                        numSamples=numSamples, sharedStats=sharedStats, **kwargs)
     fileName = baseName + "_ShowPropArea_" + date.today().strftime("%d_%m_%Y")
     generate_statistic_prop(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                             method=method, vitLike=vitLike, showPropPercent=True, filename=fileName,
-                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                            saveAdditional=False, saveFigureFormat='.pdf', 
+                            numSamples=numSamples, sharedStats=sharedStats, **kwargs)
     fileName = baseName + "_normalized_PropArea_" + date.today().strftime("%d_%m_%Y")
     generate_statistic_prop_normalized(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                                         method=method, vitLike=vitLike, showPercent=True, filename=fileName,
-                                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                                        saveAdditional=False, saveFigureFormat='.pdf', 
+                                        numSamples=numSamples, sharedStats=sharedStats, **kwargs)
     fileName = baseName + "_Abs_Mean_Std_Total_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                                             method=method, vitLike=vitLike, filename=fileName,
-                                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                                            saveAdditional=False, saveFigureFormat='.pdf', 
+                                            numSamples=numSamples, sharedStats=sharedStats, pregenImgNames=imgNames, **kwargs)
     fileName = baseName + "_Perc_Mean_Std_Total_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_mean_variance_total(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                             camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                             segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                                             method=method, vitLike=vitLike, usePercScale=True, filename=fileName,
-                                            saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                                            saveAdditional=False, saveFigureFormat='.pdf', 
+                                            numSamples=numSamples, sharedStats=sharedStats, pregenImgNames=imgNames, **kwargs)
     fileName = baseName + "_wrongClassified_" + date.today().strftime("%d_%m_%Y")
     generate_statistics_missclassified(classes=classes, saveDir=saveDir, imgRoot=imgRoot, annfile=annfile,
                                         camConfig=classifierConfig, camCheckpoint=classifierCheckpoint, camData=camData,
                                         segConfig=segConfig, segCheckpoint=segCheckpoint, segData=segData, 
                                         method=method, vitLike=vitLike, filename=fileName,
-                                        saveAdditional=False, saveFigureFormat='.pdf', **kwargs)
+                                        saveAdditional=False, saveFigureFormat='.pdf', 
+                                        numSamples=numSamples, sharedStats=sharedStats, preGenAllImgNames=imgNames, 
+                                        preGenAllTransformedSegs=transformedSegmentations, **kwargs)

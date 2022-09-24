@@ -41,6 +41,162 @@ def accumulate_single(cam, segmentation, classes, percentualArea=False):
 
     return totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, segmentPercentualArea
 
+# def accumulate_single_together(cams, segmentation, classes, percentualArea=False):
+#     """Generate intersections stastic both absolute and percentual for a single instance.
+#     This function allows for specifying multiple cams for which the stats are accumulated over,
+#     therefore reducing the generation of masks and similar operations.
+
+#     :param cams: List of CAM Activations. Single instance can be specified. Each element must match shape of segmentation. (h,w)
+#     :type cams: np.ndarray | list(np.ndarray)
+#     :param segmentation: Segmentation Mask. Must match shape of cam. (h,w)
+#     :type segmentation: np.ndarray
+#     :param classes: Classes of the segmentation used for calculating proportion of category to entire area.
+#     :type classes: List like object
+#     :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
+#     :type percentualArea: boolean
+
+#     :return: Tuple containing (totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, segmentPercentualArea)
+#     """
+#     if isinstance(cams, np.ndarray):
+#         print('Only single CAM Instance specified. Calling accumulate_single.')
+#         return accumulate_single(cams, segmentation, classes, percentualArea)
+
+#     width = segmentation.shape[1]
+#     height = segmentation.shape[0]
+#     segmentCount = len(classes)
+#     binaryMasks = generateUnaryMasks(segmentation, width, height, segmentCount)
+
+#     segmentArea = None
+#     segmentPercentualArea = None
+#     if percentualArea:
+#         segmentArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classes))])
+#         segmentPercentualArea = segmentArea / np.prod(segmentation.shape)
+
+#     results = [None] * len(cams)
+
+#     for i, cam in enumerate(cams):
+#         assert cam.shape == segmentation.shape, f"cam.shape {cam.shape} does not "\
+#             f"match segmentation.shape {segmentation.shape}"
+#         assert len(cam.shape)==2,f"Expected shape (h,w) "\
+#             f"but got cam.shape:{cam.shape} and segmentation.shape:{segmentation.shape}"
+#         segmentedCAM = [cam*mask for mask in binaryMasks]
+#         totalCAMActivation = cam.sum()
+#         segmentedCAMActivation = np.sum(segmentedCAM, axis=(1,2))
+#         percentualSegmentedCAMActivation = np.divide(segmentedCAMActivation, totalCAMActivation, out=np.zeros_like(segmentedCAMActivation), where=totalCAMActivation!=0)
+
+#         results[i] = totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation
+
+#     return results, segmentArea, segmentPercentualArea
+
+def accumulate_statistics_together(allImgNames, imgNamesList, camsList, segmentations, classes, percentualArea=False):
+    """Accumulates all intersections and totalCAMActivations for the given imgNames.
+    Here only the individual datapoints are gathered and are not immediatly interpretable by themselves without further computations.
+    Returns accumulated data both for absolut and percentual statistics.
+
+    :param allImgNames: List of all imgNames that occur in any subset of imgNames.
+    :type imgNames: list or tuple
+    :param imgNames: List of imgNames. Keys into the cams and segmentations
+    :type imgNames: list or tuple
+    :param camsList: CAMs stored in a dictionary keyed by the imgNames
+    :type camsList: dict
+    :param segmentations: Segmentations stored in a dictionary keyed by the imgNames
+    :type segmentations: dict
+    :param classes: Classes of the segmentation used for calculating proportion of category to entire area.
+    :type classes: List like object
+    :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
+    :type percentualArea: boolean
+
+    :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (segmentAreas, percentualSegmentAreas))
+    """
+    if isinstance(camsList, dict):
+        print('Dictionary passed for cams. Calling accumulate_statistics by proxy.')
+        return accumulate_statistics(imgNamesList, camsList, segmentations, classes, percentualArea)
+        
+    print('Creating mapping of all imgNames')
+    imgNameContainList=[[name in nameList for name in allImgNames] for nameList in imgNamesList]
+    #imgNameContainList = [[name in allImgNames for name in nameList] for nameList in imgNamesList]
+    classArray = np.array(classes)
+    segmentCount = len(classArray)
+    assert len(camsList)==len(imgNamesList), f'Length of lists of cams {len(camsList)} does not match lenght of list of imgNames {len(imgNamesList)}'
+
+    noSamplesList = [len(imgNameList) for imgNameList in imgNamesList]
+    listCounter = [0]*len(camsList)
+    totalCAMActivations = [[None]*noSamples for noSamples in noSamplesList]
+    segmentedCAMActivations = [[None]*noSamples for noSamples in noSamplesList]
+    percentualSegmentedCAMActivations = [[None]*noSamples for noSamples in noSamplesList]
+    segmentAreas = [[None]*noSamples for noSamples in noSamplesList]
+    percentualSegmentAreas = [[None]*noSamples for noSamples in noSamplesList]
+
+    for i, name in enumerate(allImgNames):
+        binaryMask = generateUnaryMasks(segmentations[name], width=segmentations[name].shape[1], height=segmentations[name].shape[0], segmentCount=segmentCount)
+        for j,ls in enumerate(imgNameContainList):
+            if ls[i]==True:
+                cam = camsList[j][name]
+                segmentedCAMActivation = np.sum([cam*mask for mask in binaryMask], axis=(1,2))
+                totalCAMActivation = cam.sum()
+                percentualSegmentedCAMActivation = np.divide(segmentedCAMActivation, totalCAMActivation, out=np.zeros_like(segmentedCAMActivation), where=totalCAMActivation!=0)
+                segmentArea = None
+                segmentPercentualArea = None
+                if percentualArea:
+                    segmentation = segmentations[name]
+                    segmentArea = np.array([segmentation[segmentation==c].size for c in np.arange(len(classArray))])
+                    segmentPercentualArea = segmentArea / np.prod(segmentation.shape)
+                    segmentAreas[j][listCounter[j]] = segmentArea
+                    percentualSegmentAreas[j][listCounter[j]] = segmentPercentualArea
+                totalCAMActivations[j][listCounter[j]] = totalCAMActivation
+                segmentedCAMActivations[j][listCounter[j]] = segmentedCAMActivation
+                percentualSegmentedCAMActivations[j][listCounter[j]] = percentualSegmentedCAMActivation
+                listCounter[j] += 1
+
+    if percentualArea:
+        return [(np.array(totalCAMActivations[i]), np.array(segmentedCAMActivations[i]), 
+                np.array(percentualSegmentedCAMActivations[i]), np.array(segmentAreas[i]), np.array(percentualSegmentAreas[i])) for i in range(len(imgNamesList))]
+    else:
+        return [(np.array(totalCAMActivations[i]), np.array(segmentedCAMActivations[i]), np.array(percentualSegmentedCAMActivations[i])) for i in range(len(imgNamesList))]
+
+# def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea=False):
+#     """Accumulates all intersections and totalCAMActivations for the given imgNames.
+#     Here only the individual datapoints are gathered and are not immediatly interpretable by themselves without further computations.
+#     Returns accumulated data both for absolut and percentual statistics.
+
+#     :param imgNames: List of imgNames. Keys into the cams and segmentations
+#     :type imgNames: list or tuple
+#     :param cams: CAMs stored in a dictionary keyed by the imgNames
+#     :type cams: dict
+#     :param segmentations: Segmentations stored in a dictionary keyed by the imgNames
+#     :type segmentations: dict
+#     :param classes: Classes of the segmentation used for calculating proportion of category to entire area.
+#     :type classes: List like object
+#     :param percentualArea: (default false) Flag whether to calcuate the percentualArea of each category with respect to the segmentation
+#     :type percentualArea: boolean
+
+#     :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (segmentAreas, percentualSegmentAreas))
+#     """
+#     print('Accumulating Statistics for given imgNames.')
+#     totalCAMActivations = []
+#     segmentedCAMActivations = []
+#     percentualSegmentedCAMActivations = []
+#     segmentAreas = []
+#     percentualSegmentAreas = []
+#     classArray = np.array(classes)
+
+#     for name in imgNames:
+#         totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, percentualSegmentArea = accumulate_single(
+#             cams[name], segmentations[name], classArray, percentualArea=percentualArea)
+#         totalCAMActivations.append(totalCAMActivation)
+#         segmentedCAMActivations.append(segmentedCAMActivation)
+#         percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
+#         if percentualArea:
+#             segmentAreas.append(segmentArea)
+#             percentualSegmentAreas.append(percentualSegmentArea)
+
+#     results = [np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)]
+#     if percentualArea:
+#         results.append(np.array(segmentAreas))
+#         results.append(np.array(percentualSegmentAreas))
+    
+#     return results
+
 def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea=False):
     """Accumulates all intersections and totalCAMActivations for the given imgNames.
     Here only the individual datapoints are gathered and are not immediatly interpretable by themselves without further computations.
@@ -60,22 +216,23 @@ def accumulate_statistics(imgNames, cams, segmentations, classes, percentualArea
     :return: Tuple containing (totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, (segmentAreas, percentualSegmentAreas))
     """
     print('Accumulating Statistics for given imgNames.')
-    totalCAMActivations = []
-    segmentedCAMActivations = []
-    percentualSegmentedCAMActivations = []
-    segmentAreas = []
-    percentualSegmentAreas = []
+    noSamples = len(imgNames)
+    totalCAMActivations = [None] * noSamples
+    segmentedCAMActivations = [None] * noSamples
+    percentualSegmentedCAMActivations = [None] * noSamples
+    segmentAreas = [None] * noSamples
+    percentualSegmentAreas = [None] * noSamples
     classArray = np.array(classes)
 
-    for name in imgNames:
+    for i, name in enumerate(imgNames):
         totalCAMActivation, segmentedCAMActivation, percentualSegmentedCAMActivation, segmentArea, percentualSegmentArea = accumulate_single(
             cams[name], segmentations[name], classArray, percentualArea=percentualArea)
-        totalCAMActivations.append(totalCAMActivation)
-        segmentedCAMActivations.append(segmentedCAMActivation)
-        percentualSegmentedCAMActivations.append(percentualSegmentedCAMActivation)
+        totalCAMActivations[i]=totalCAMActivation
+        segmentedCAMActivations[i]=segmentedCAMActivation
+        percentualSegmentedCAMActivations[i]=percentualSegmentedCAMActivation
         if percentualArea:
-            segmentAreas.append(segmentArea)
-            percentualSegmentAreas.append(percentualSegmentArea)
+            segmentAreas[i]=segmentArea
+            percentualSegmentAreas[i]=percentualSegmentArea
 
     results = [np.array(totalCAMActivations), np.array(segmentedCAMActivations), np.array(percentualSegmentedCAMActivations)]
     if percentualArea:
