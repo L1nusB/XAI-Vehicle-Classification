@@ -40,14 +40,14 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
         print(f'Using given results from file {results_file}')
         assert set(EXCELCOLNAMESSTANDARD.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESSTANDARD.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
-        summarizedSegmentedCAMActivations = loadedResults['RawActivations']
-        summarizedPercSegmentedCAMActivations = loadedResults['PercActivations']
+        summarizedSegmentedCAMActivations = loadedResults['summarizedSegmentedCAMActivations']
+        summarizedPercSegmentedCAMActivations = loadedResults['summarizedPercSegmentedCAMActivations']
         totalActivation = loadedResults['totalActivation'][0] # Since totalActivation is only a single value and only the first is relevant.
+        numSamples = loadedResults['numSamples'][0]
 
         dominantMask = get_top_k(summarizedSegmentedCAMActivations)
         dominantMaskPercentual = get_top_k(summarizedPercSegmentedCAMActivations)
 
-        x_label_text = f'No. samples:unknown (Data from file)'
     else:
         if sharedStats is not None:
             totalCAMActivations, segmentedCAMActivations, percentualSegmentedCAMActivations, _, percentualSegmentAreas = sharedStats
@@ -64,7 +64,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
 
 
 
-        x_label_text = f'No.Samples:{numSamples}'
+    x_label_text = f'No.Samples:{numSamples}'
 
     fig = plt.figure(figsize=(15,5),constrained_layout=True)
     grid = fig.add_gridspec(ncols=2, nrows=1)
@@ -110,7 +110,8 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
     saveDic = {
         'RawActivations':summarizedSegmentedCAMActivations,
         'PercActivations' : summarizedPercSegmentedCAMActivations,
-        'totalActivation' : [totalActivation]
+        'totalActivation' : [totalActivation],
+        'numSamples': [numSamples],
     }
     save_excel_auto_name(saveDic, save_dir=saveDir, fileNamePrefix=fileNamePrefix, segments=classArray, fileName=filename, **kwargs)
 

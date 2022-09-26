@@ -135,7 +135,8 @@ DATASETWRAPPERSBLURRED = {
 EXCELCOLNAMESSTANDARD = {
     'summarizedSegmentedCAMActivations':'RawActivations',
     'summarizedPercSegmentedCAMActivations':'PercActivations',
-    'totalActivation':'totalActivation'
+    'totalActivation':'totalActivation',
+    'numSamples':'numSamples'
 }
 
 EXCELCOLNAMESPROPORTIONAL = {
