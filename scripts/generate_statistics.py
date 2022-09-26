@@ -145,8 +145,8 @@ def generate_statistic_prop(classes=None, saveDir='', fileNamePrefix="", showPro
         print(f'Using given results from file {results_file}')
         assert set(EXCELCOLNAMESPROPORTIONAL.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESPROPORTIONAL.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
-        summarizedPercSegmentedCAMActivations = loadedResults['PercActivations']
-        summarizedPercSegmentAreas = loadedResults['PercSegmentAreas']
+        summarizedPercSegmentedCAMActivations = loadedResults['summarizedPercSegmentedCAMActivations']
+        summarizedPercSegmentAreas = loadedResults['summarizedPercSegmentAreas']
 
         dominantMaskPercentual = get_top_k(summarizedPercSegmentedCAMActivations)
 
@@ -378,14 +378,14 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         print(f'Using given results from file {results_file}')
         assert set(EXCELCOLNAMESMEANSTDTOTAL.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMEANSTDTOTAL.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
-        summarizedPercSegmentCAMActivations = loadedResults['PercActivations']
-        stdPercSegmentCAMActivations = loadedResults['PercActivationsStd']
-        summarizedSegmentCAMActivations = loadedResults['RawActivations']
-        stdSegmentCAMActivations = loadedResults['RawActivationsStd']
-        summarizedPercSegmentAreas = loadedResults['PercSegmentAreas']
-        stdPercSegmentAreas = loadedResults['PercSegmentAreasStd']
-        summarizedSegmentAreas = loadedResults['RawSegmentAreas']
-        stdSegmentAreas = loadedResults['RawSegmentAreasStd']
+        summarizedPercSegmentCAMActivations = loadedResults['summarizedPercSegmentCAMActivations']
+        stdPercSegmentCAMActivations = loadedResults['stdPercSegmentCAMActivations']
+        summarizedSegmentCAMActivations = loadedResults['summarizedSegmentCAMActivations']
+        stdSegmentCAMActivations = loadedResults['stdSegmentCAMActivations']
+        summarizedPercSegmentAreas = loadedResults['summarizedPercSegmentAreas']
+        stdPercSegmentAreas = loadedResults['stdPercSegmentAreas']
+        summarizedSegmentAreas = loadedResults['summarizedSegmentAreas']
+        stdSegmentAreas = loadedResults['stdSegmentAreas']
         totalMean = loadedResults['totalMean'][0]
         totalStd = loadedResults['totalStd'][0]
 
@@ -455,24 +455,26 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
         ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
         ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
-    ax2 = fig.add_subplot(grid[4,0])
-    ax2.set_title('Total CAM Stats')
+    if results_file == "":
 
-    totalMean = totalCAMStats[1]
-    totalStd = totalCAMStats[2]
-    plot_bar(ax=ax2, x_ticks=[0], data=[totalMean], format='.2f', barcolor='tab:blue', baryerr=[totalStd], barcapsize=4, barwidth=0.2, addText=False, barecolor='r')
-    ax2.text(0.3, totalMean, f'\u03BC={totalMean:.2f} \n \u03C3={totalStd:.2f}', ha='center', va='bottom')
-    plot_bar(ax=ax2, x_ticks=[1,2,3], data=totalCAMStats[4], format='.2f', barcolor='tab:orange')
-    plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + [imgNames[i] for i in totalCAMStats[3]] + [imgNames[i] for i in totalCAMStats[5]], data=totalCAMStats[6], format='.2f', barcolor='tab:green')
+        ax2 = fig.add_subplot(grid[4,0])
+        ax2.set_title('Total CAM Stats')
 
-    legendMap = {
-        'tab:blue':'Mean totalCAM',
-        'tab:orange':'Lowest 3 totalCAMs',
-        'tab:green':'Highest 3 totalCAMs',
-    }
-    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+        totalMean = totalMean if results_file else totalCAMStats[1]
+        totalStd = totalStd if results_file else totalCAMStats[2]
+        plot_bar(ax=ax2, x_ticks=[0], data=[totalMean], format='.2f', barcolor='tab:blue', baryerr=[totalStd], barcapsize=4, barwidth=0.2, addText=False, barecolor='r')
+        ax2.text(0.3, totalMean, f'\u03BC={totalMean:.2f} \n \u03C3={totalStd:.2f}', ha='center', va='bottom')
+        plot_bar(ax=ax2, x_ticks=[1,2,3], data=totalCAMStats[4], format='.2f', barcolor='tab:orange')
+        plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + [imgNames[i] for i in totalCAMStats[3]] + [imgNames[i] for i in totalCAMStats[5]], data=totalCAMStats[6], format='.2f', barcolor='tab:green')
 
-    ax2.legend(handles=handles, bbox_to_anchor=(1,1.04), loc="lower right")
+        legendMap = {
+            'tab:blue':'Mean totalCAM',
+            'tab:orange':'Lowest 3 totalCAMs',
+            'tab:green':'Highest 3 totalCAMs',
+        }
+        handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+
+        ax2.legend(handles=handles, bbox_to_anchor=(1,1.04), loc="lower right")
     plt.show()
 
     # Here one has to ensure filename is set since we can not guaranteed infer the name from other parameters.
