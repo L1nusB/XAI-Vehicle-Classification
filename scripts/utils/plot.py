@@ -127,7 +127,8 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
 
 
-def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1'):
+def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1',
+                     show_ylabel=True, ax=None, hide_legend=False):
     """Plots the Activations of multiple models into one graph for comparison.
 
     Args:
@@ -136,8 +137,16 @@ def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index
         y_index (str): Column name for the data
         hue_index (str): Column name to differentiate between models
         palette (str): Name of the palette to be used.
+        ax (Axis): If given this axis will be used for plotting.
+        hide_legend (bool): Hide the legend.
     """
-    _, ax = plt.subplots(figsize=(10,5))
-    ax = sns.barplot(data=df, x=x_index, y=y_index, hue=hue_index, palette=sns.color_palette(palette))
+    if ax is None:
+        _, ax = plt.subplots(figsize=(10,5))
+    ax = sns.barplot(data=df, x=x_index, y=y_index, hue=hue_index, palette=sns.color_palette(palette), ax=ax)
+    #sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
+    if hide_legend:
+        ax.legend_.remove()
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-    ax.set(xlabel=None, ylabel=None)
+    ax.set(xlabel=None)
+    if show_ylabel == False:
+        ax.set(ylabel=None)

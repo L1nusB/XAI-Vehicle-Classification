@@ -1,3 +1,4 @@
+from types import new_class
 import warnings
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -770,7 +771,9 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
                                         numSamples=numSamples, sharedStats=sharedStats, preGenAllImgNames=imgNames, 
                                         preGenAllTransformedSegs=transformedSegmentations, **kwargs)
 
-def generate_model_comparison(*paths, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1', models=['ResNet', 'SwinBase', 'SwinSmall']):
+def generate_model_comparison(*paths, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1', 
+                                models=['ResNet', 'SwinBase', 'SwinSmall'], show_ylabel=True, fileExtension='.pdf',
+                                fileName='modelComparison', save_dir='./', save=True, n_plots=1, hide_legend_subsequent=True):
     """Plots a comparison between the models specified by models parameter from the excel files given through paths.
 
     Args:
@@ -779,6 +782,27 @@ def generate_model_comparison(*paths, x_index='segments', y_index='Activations',
         hue_index (str): Column name to differentiate between models
         palette (str): Name of the palette to be used.
         models (list, optional): name of models. Defaults to ['ResNet', 'SwinBase', 'SwinSmall'].
+        show_ylabel (bool): Show label on y-axis
+        n_plots (int, default 1): If changed multiple subplots are created for each subset of paths. 
+            Paths must then be given as lists.
+        hide_legend_subsequent (bool, default True): Hide the legend after the first plot.
     """
-    df = prepare_model_comparison_dataframe(paths, models)
-    plot_compare_models(df, x_index, y_index, hue_index, palette)
+    fig = plt.figure(figsize=(8,5),constrained_layout=True)
+    grid = fig.add_gridspec(nrows=n_plots)
+    if n_plots != 1:
+        assert len(paths) == n_plots, f'Specified n_plots {n_plots} does not match amount of given paths (lists of paths) {len(paths)}'
+        for i,p in enumerate(paths):
+            ax = fig.add_subplot(grid[i,0])
+            df = prepare_model_comparison_dataframe(p, models)
+            plot_compare_models(df, x_index, y_index, hue_index, palette, show_ylabel=show_ylabel, ax=ax, hide_legend=(i>0 and hide_legend_subsequent))
+    else:
+        ax = fig.add_subplot(grid[0,0])
+        if isinstance(paths[0], list):
+            assert len(paths) == 1, f'If n_plots is 1 only a single list or individual parameters may be passed.'
+            # In case a list is still passed for a single plot
+            df = prepare_model_comparison_dataframe(paths[0], models)
+        else:
+            df = prepare_model_comparison_dataframe(paths, models)
+        plot_compare_models(df, x_index, y_index, hue_index, palette, show_ylabel=show_ylabel, ax=ax)
+    if save:
+        save_result_figure_data(figure=fig, saveAdditional=False, fileExtension=fileExtension, fileName=fileName, save_dir=save_dir)
