@@ -128,7 +128,7 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
 
 
 def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1',
-                     show_ylabel=True, ax=None, hide_legend=False):
+                     show_ylabel=True, ax=None, hide_legend=False, add_text=False, **kwargs):
     """Plots the Activations of multiple models into one graph for comparison.
 
     Args:
@@ -143,6 +143,11 @@ def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index
     if ax is None:
         _, ax = plt.subplots(figsize=(10,5))
     ax = sns.barplot(data=df, x=x_index, y=y_index, hue=hue_index, palette=sns.color_palette(palette), ax=ax)
+    if add_text:
+        for patch in ax.patches:
+            ax.text(patch.get_x()+patch.get_width()/2.0, patch.get_height() + ax.get_ylim()[1]/70, f'{patch.get_height():.1%}', 
+                ha='center', va='bottom', rotation=90, **kwargs)
+    ax.set_ylim(top=ax.get_ylim()[1] * 1.05)
     #sns.move_legend(ax, "upper left", bbox_to_anchor=(1, 1))
     if hide_legend:
         ax.legend_.remove()

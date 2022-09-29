@@ -235,22 +235,22 @@ def prepare_generate_stats(classes=None, **kwargs):
 
     return imgNames, transformedSegmentations, cams, classes
 
-def prepare_model_comparison_dataframe(datapaths,models=['ResNet', 'SwinBase', 'SwinSmall']):
-    """Creates a dataframe containing the data for all models that are specified by concatenating the 
+def prepare_model_comparison_dataframe(datapaths,types=['ResNet', 'SwinBase', 'SwinSmall'], dataColumn='PercActivations', newColumn='Activations', diffColName='Model'):
+    """Creates a dataframe containing the data for all types that are specified by concatenating the 
     provided data.
 
     Args:
         datapaths (list): List of Paths to excel files containing the data.
-        models (list, optional): name of models. Defaults to ['ResNet', 'SwinBase', 'SwinSmall'].
+        types (list, optional): name of types. Defaults to ['ResNet', 'SwinBase', 'SwinSmall'].
     """
-    assert len(datapaths)==len(models), f'Incompatible length of provided list: {len(datapaths)}!={len(models)}'
+    assert len(datapaths)==len(types), f'Incompatible length of provided list: {len(datapaths)}!={len(types)}'
     dfFull = pandas.DataFrame()
-    for path, model in zip(datapaths, models):
+    for path, model in zip(datapaths, types):
         assert path[-5:]=='.xlsx', f'{path} is no excel file'
         assert os.path.isfile(path), f'No such file {path}'
         df = pandas.read_excel(path, index_col=0)
         dfNew = pandas.DataFrame(df['segments'].values, columns=['segments'])
-        dfNew['Activations'] = df['PercActivations']
-        dfNew['Model'] = model
+        dfNew[newColumn] = df[dataColumn]
+        dfNew[diffColName] = model
         dfFull = pandas.concat((dfFull, dfNew))
     return dfFull
