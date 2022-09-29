@@ -1,5 +1,6 @@
-import matplotlib.ticker as mticker
+import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 
 def highlight_dominants(bars, dominantMask, color='red'):
@@ -124,3 +125,19 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
     else:
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(x_ticks, rotation=45, ha="right")
+
+
+def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1'):
+    """Plots the Activations of multiple models into one graph for comparison.
+
+    Args:
+        df (pandas.DataFrame): Dataframe with all data
+        x_index (str): Column name for the x-tick labels
+        y_index (str): Column name for the data
+        hue_index (str): Column name to differentiate between models
+        palette (str): Name of the palette to be used.
+    """
+    _, ax = plt.subplots(figsize=(10,5))
+    ax = sns.barplot(data=df, x=x_index, y=y_index, hue=hue_index, palette=sns.color_palette(palette))
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
+    ax.set(xlabel=None, ylabel=None)

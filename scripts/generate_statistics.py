@@ -7,9 +7,9 @@ import copy
 from datetime import date
 
 from .utils.io import get_samples, save_result_figure_data, save_excel_auto_name, load_results_excel
-from .utils.prepareData import prepareInput, prepare_generate_stats
+from .utils.prepareData import prepareInput, prepare_generate_stats, prepare_model_comparison_dataframe
 from .utils.calculations import generate_stats, accumulate_statistics, get_area_normalized_stats, get_top_k, accumulate_statistics_together
-from .utils.plot import plot_bar, plot_errorbar
+from .utils.plot import plot_bar, plot_errorbar, plot_compare_models
 from .utils.model import get_wrongly_classified
 from .utils.preprocessing import load_classes
 
@@ -43,7 +43,7 @@ def generate_statistic(classes=None, saveDir='', fileNamePrefix="" , results_fil
         summarizedSegmentedCAMActivations = loadedResults['summarizedSegmentedCAMActivations']
         summarizedPercSegmentedCAMActivations = loadedResults['summarizedPercSegmentedCAMActivations']
         totalActivation = loadedResults['totalActivation'][0] # Since totalActivation is only a single value and only the first is relevant.
-        numSamples = loadedResults['numSamples'][0]
+        numSamples = (int)(loadedResults['numSamples'][0])
 
         dominantMask = get_top_k(summarizedSegmentedCAMActivations)
         dominantMaskPercentual = get_top_k(summarizedPercSegmentedCAMActivations)
@@ -769,3 +769,16 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
                                         saveAdditional=False, saveFigureFormat='.pdf', 
                                         numSamples=numSamples, sharedStats=sharedStats, preGenAllImgNames=imgNames, 
                                         preGenAllTransformedSegs=transformedSegmentations, **kwargs)
+
+def generate_model_comparison(*paths, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1', models=['ResNet', 'SwinBase', 'SwinSmall']):
+    """Plots a comparison between the models specified by models parameter from the excel files given through paths.
+
+    Args:
+        x_index (str): Column name for the x-tick labels
+        y_index (str): Column name for the data
+        hue_index (str): Column name to differentiate between models
+        palette (str): Name of the palette to be used.
+        models (list, optional): name of models. Defaults to ['ResNet', 'SwinBase', 'SwinSmall'].
+    """
+    df = prepare_model_comparison_dataframe(paths, models)
+    plot_compare_models(df, x_index, y_index, hue_index, palette)
