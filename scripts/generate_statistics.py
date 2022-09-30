@@ -353,7 +353,8 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
     
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False, results_file='', columnMap=EXCELCOLNAMESMEANSTDTOTAL,
-                                            saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0, pregenImgNames=None, **kwargs):
+                                            saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0, pregenImgNames=None, 
+                                            plotActivations=True, plotSegments=True, plotTotal=True,**kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -430,36 +431,38 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
     fig = plt.figure(figsize=(15,25), constrained_layout=True)
     grid = fig.add_gridspec(ncols=1, nrows=5)
 
+    if plotActivations:
+        ax0 = fig.add_subplot(grid[0:2,0])
+        ax0.xaxis.set_label_position('top')
+        ax0.set_xlabel(x_label_text)
 
-    ax0 = fig.add_subplot(grid[0:2,0])
-    ax0.xaxis.set_label_position('top')
-    ax0.set_xlabel(x_label_text)
+        if usePercScale:
+            ax0.set_title('Percentual Mean and Standard Deviation of Each Segment Category')
+            plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedPercSegmentCAMActivations, stdData=stdPercSegmentCAMActivations)
+        else:
+            ax0.set_title('Absolute Mean and Standard Deviation of Each Segment Category')
+            plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedSegmentCAMActivations, stdData=stdSegmentCAMActivations)
 
-    if usePercScale:
-        ax0.set_title('Percentual Mean and Standard Deviation of Each Segment Category')
-        plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedPercSegmentCAMActivations, stdData=stdPercSegmentCAMActivations)
-    else:
-        ax0.set_title('Absolute Mean and Standard Deviation of Each Segment Category')
-        plot_errorbar(ax=ax0, x_ticks=classArray, meanData=summarizedSegmentCAMActivations, stdData=stdSegmentCAMActivations)
+        if 'dataClasses' in kwargs:
+            ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
-    
-    ax1 = fig.add_subplot(grid[2:4,0])
-    ax1.xaxis.set_label_position('top')
-    ax1.set_xlabel(x_label_text)
+    if plotSegments:
+        ax1 = fig.add_subplot(grid[2:4,0])
+        ax1.xaxis.set_label_position('top')
+        ax1.set_xlabel(x_label_text)
 
-    if usePercScale:
-        ax1.set_title('Percentual Mean and Standard Deviation of Area of Segments')
-        plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedPercSegmentAreas, stdData=stdPercSegmentAreas)
-    else:
-        ax1.set_title('Absolute Mean and Standard Deviation of Area of Segments')
-        plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedSegmentAreas, stdData=stdSegmentAreas)
+        if usePercScale:
+            ax1.set_title('Percentual Mean and Standard Deviation of Area of Segments')
+            plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedPercSegmentAreas, stdData=stdPercSegmentAreas)
+        else:
+            ax1.set_title('Absolute Mean and Standard Deviation of Area of Segments')
+            plot_errorbar(ax=ax1, x_ticks=classArray, meanData=summarizedSegmentAreas, stdData=stdSegmentAreas)
 
 
-    if 'dataClasses' in kwargs:
-        ax0.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
-        ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
+        if 'dataClasses' in kwargs:
+            ax1.set_xlabel(','.join(kwargs['dataClasses']), fontsize='x-large')
 
-    if results_file == "":
+    if results_file == "" and plotTotal:
 
         ax2 = fig.add_subplot(grid[4,0])
         ax2.set_title('Total CAM Stats')
