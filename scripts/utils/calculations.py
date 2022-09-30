@@ -523,3 +523,21 @@ def get_top_k(arr,k=3):
     rawMask = heapq.nlargest(k,arr)
     mask = arr >= np.min(rawMask)
     return mask
+
+def get_top_k_pandas(df, filter_val, filter_col='type', index_col='segments', val_col='vals',  k=3, lowest=False):
+    """Gets the top k elements in the given DataFrame which have filter_val in the column
+    filter_col. The return value is a list of the corresponding entries in the column index_col
+
+    Args:
+        df (pandas.DataFrame): DataFrame to be filtered
+        filter_val (str): Name of filter value in column filter_col to be considered
+        filter_col (str, optional): Name of column to be filtered by. Defaults to 'type'.
+        val_col (str, optional): Name of column containing values that are sorted. Defaults to 'vals'
+        index_col (str, optional): Name of column that contains results list names. Defaults to 'segments'.
+        k (int, optional): Number of largest values. Defaults to 3.
+        lowest (bool, optional): Get top k lowest values. Otherwise top k largest will be returned. Defaults to False
+
+    Returns:
+        list: List of top k results
+    """
+    return list(df.loc[df[filter_col]==filter_val].sort_values(val_col, ascending=lowest)[:3][index_col])

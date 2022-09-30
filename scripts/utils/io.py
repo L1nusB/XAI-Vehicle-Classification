@@ -518,3 +518,21 @@ def load_results_excel(path, columnMap, index_col=0, sort=False, categoriesKey='
         else:
             raise ValueError(f'Unsupported type for columnMap: {type(columnMap)}. Allowed is dict,list, str')
     return categories, results
+
+def load_result_excel_pandas_longform(path, value_vars, index_col=0, id_vars='segments', var_name='type', value_name='vals'):
+    """Loads the specified excel table and converts it into long form data using pd.melt with the given parameters.
+
+    Args:
+        path (str): Path to excel file.
+        value_vars (list|tuple|np.ndarray): Names of columns that are reformatted into long form and useable as hue/color
+        index_col (int, optional): Parameter for read_excel. What column to use for index. Defaults to 0.
+        id_vars (str, optional): Name of columns retained as indices -> Used for x parameter. Defaults to 'segments'.
+        var_name (str, optional): Name of the columns the reformatted columns are under -> name of hue/color column. Defaults to 'type'.
+        value_name (str, optional): Name of the columns the values of the reformatted columns are under -> used for y parameter. Defaults to 'vals'.
+
+    Returns:
+        pandas.DataFrame: Dataframe with loaded data in long-form
+    """
+    df = pandas.read_excel(path, index_col=index_col)
+    df = df.melt(id_vars=id_vars, value_vars=value_vars, var_name=var_name, value_name=value_name)
+    return df

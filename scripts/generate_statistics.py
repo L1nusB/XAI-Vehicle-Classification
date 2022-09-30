@@ -261,7 +261,10 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
         dominantMaskRelImportance = get_top_k(relImportance)
         dominantMaskRescaledActivations = get_top_k(rescaledSummarizedPercActivions)
 
-        x_label_text = f'No. samples:unknown (Data from file)'
+        if numSamples != 0:
+            x_label_text = f'No. samples: {numSamples}'
+        else:
+            x_label_text = f'No. samples:unknown (Data from file)'
     else:
         if sharedStats is not None:
             _, _, percentualSegmentedCAMActivations, _, percentualSegmentAreas = sharedStats
@@ -510,6 +513,7 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         print(f'Using given results from file {results_file}')
         assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
+        print(loadedResults)
         summarizedPercCAMActivationsOriginal = loadedResults['summarizedPercCAMActivationsOriginal']
         summarizedPercCAMActivationsCorrect = loadedResults['summarizedPercCAMActivationsCorrect']
         summarizedPercCAMActivationsIncorrect = loadedResults['summarizedPercCAMActivationsIncorrect']
@@ -770,52 +774,3 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
                                         saveAdditional=False, saveFigureFormat='.pdf', 
                                         numSamples=numSamples, sharedStats=sharedStats, preGenAllImgNames=imgNames, 
                                         preGenAllTransformedSegs=transformedSegmentations, **kwargs)
-
-def generate_model_comparison(*paths, x_index='segments', y_index='Activations', hue_index='Model',
-                                types=['ResNet', 'SwinBase', 'SwinSmall'], fileExtension='.pdf',
-                                fileName='modelComparison', save_dir='./', save=True, n_plots=1, hide_legend_subsequent=True,
-                                dataColumnName='PercActivations', title='', **kwargs):
-    """Plots a comparison between the models specified by models parameter from the excel files given through paths.
-
-    Args:
-        x_index (str): Column name for the x-tick labels
-        y_index (str): Column name for the data
-        hue_index (str): Column name to differentiate between models
-        palette (str): Name of the palette to be used.
-        types (list, optional): name of models or otherwise differentiating type. Defaults to ['ResNet', 'SwinBase', 'SwinSmall'].
-        show_ylabel (bool): Show label on y-axis
-        n_plots (int, default 1): If changed multiple subplots are created for each subset of paths. 
-            Paths must then be given as lists.
-        hide_legend_subsequent (bool, default True): Hide the legend after the first plot.
-
-        kwargs:
-        add_text: Add Text of bar heights.
-        fontsize: Size of text
-        show_ylabel: Show y-label in graph
-        palette: Palette to draw the plot with
-    """
-    fig = plt.figure(figsize=(8,5),constrained_layout=True)
-    grid = fig.add_gridspec(nrows=n_plots)
-    if n_plots != 1:
-        assert len(paths) == n_plots, f'Specified n_plots {n_plots} does not match amount of given paths (lists of paths) {len(paths)}'
-        if isinstance(title, str):
-            plotTitle = title
-        else:
-            assert isinstance(title, list) and len(title) == n_plots, f'Incorrect number of titles given: Expected where {n_plots} but given were {len(title)}'
-        for i,p in enumerate(paths):
-            if isinstance(title, list):
-                plotTitle = title[i]
-            ax = fig.add_subplot(grid[i,0])
-            df = prepare_model_comparison_dataframe(p, types, newColumn=y_index, dataColumn=dataColumnName, diffColName=hue_index)
-            plot_compare_models(df, x_index, y_index, hue_index, ax=ax, hide_legend=(i>0 and hide_legend_subsequent), title=plotTitle, **kwargs)
-    else:
-        ax = fig.add_subplot(grid[0,0])
-        if isinstance(paths[0], list):
-            assert len(paths) == 1, f'If n_plots is 1 only a single list or individual parameters may be passed.'
-            # In case a list is still passed for a single plot
-            df = prepare_model_comparison_dataframe(paths[0], types, newColumn=y_index, dataColumn=dataColumnName, diffColName=hue_index)
-        else:
-            df = prepare_model_comparison_dataframe(paths, types, newColumn=y_index, dataColumn=dataColumnName, diffColName=hue_index)
-        plot_compare_models(df, x_index, y_index, hue_index, ax=ax, **kwargs)
-    if save:
-        save_result_figure_data(figure=fig, saveAdditional=False, fileExtension=fileExtension, fileName=fileName, save_dir=save_dir)
