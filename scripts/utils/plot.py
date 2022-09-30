@@ -128,7 +128,7 @@ def plot_errorbar(ax, x_ticks, meanData, stdData, x_tick_labels=None, addText=Tr
 
 
 def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index='Model', palette='Set1',
-                     show_ylabel=True, ax=None, hide_legend=False, add_text=False, **kwargs):
+                     show_ylabel=True, ax=None, hide_legend=False, add_text=False, title='', **kwargs):
     """Plots the Activations of multiple models into one graph for comparison.
 
     Args:
@@ -139,6 +139,7 @@ def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index
         palette (str): Name of the palette to be used.
         ax (Axis): If given this axis will be used for plotting.
         hide_legend (bool): Hide the legend.
+        titel (str): If specified the x axis label will be set and moved on top of graph
     """
     if ax is None:
         _, ax = plt.subplots(figsize=(10,5))
@@ -152,6 +153,10 @@ def plot_compare_models(df, x_index='segments', y_index='Activations', hue_index
     if hide_legend:
         ax.legend_.remove()
     ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right")
-    ax.set(xlabel=None)
+    if title:
+        ax.set(xlabel=title)
+        ax.xaxis.set_label_position('top') 
+    else:
+        ax.set(xlabel=None)
     if show_ylabel == False:
         ax.set(ylabel=None)

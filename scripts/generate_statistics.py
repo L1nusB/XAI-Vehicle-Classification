@@ -774,7 +774,7 @@ def generate_statistic_collection(imgRoot, classifierConfig, classifierCheckpoin
 def generate_model_comparison(*paths, x_index='segments', y_index='Activations', hue_index='Model',
                                 types=['ResNet', 'SwinBase', 'SwinSmall'], fileExtension='.pdf',
                                 fileName='modelComparison', save_dir='./', save=True, n_plots=1, hide_legend_subsequent=True,
-                                dataColumnName='PercActivations', **kwargs):
+                                dataColumnName='PercActivations', title='', **kwargs):
     """Plots a comparison between the models specified by models parameter from the excel files given through paths.
 
     Args:
@@ -798,10 +798,16 @@ def generate_model_comparison(*paths, x_index='segments', y_index='Activations',
     grid = fig.add_gridspec(nrows=n_plots)
     if n_plots != 1:
         assert len(paths) == n_plots, f'Specified n_plots {n_plots} does not match amount of given paths (lists of paths) {len(paths)}'
+        if isinstance(title, str):
+            plotTitle = title
+        else:
+            assert isinstance(title, list) and len(title) == n_plots, f'Incorrect number of titles given: Expected where {n_plots} but given were {len(title)}'
         for i,p in enumerate(paths):
+            if isinstance(title, list):
+                plotTitle = title[i]
             ax = fig.add_subplot(grid[i,0])
             df = prepare_model_comparison_dataframe(p, types, newColumn=y_index, dataColumn=dataColumnName, diffColName=hue_index)
-            plot_compare_models(df, x_index, y_index, hue_index, ax=ax, hide_legend=(i>0 and hide_legend_subsequent), **kwargs)
+            plot_compare_models(df, x_index, y_index, hue_index, ax=ax, hide_legend=(i>0 and hide_legend_subsequent), title=plotTitle, **kwargs)
     else:
         ax = fig.add_subplot(grid[0,0])
         if isinstance(paths[0], list):
