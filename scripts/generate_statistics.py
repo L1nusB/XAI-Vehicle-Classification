@@ -354,7 +354,8 @@ def generate_statistic_prop_normalized(classes=None, saveDir='',fileNamePrefix="
 
 def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePrefix="", usePercScale=False, results_file='', columnMap=EXCELCOLNAMESMEANSTDTOTAL,
                                             saveFigureFormat='.jpg', filename='', sharedStats=None, numSamples=0, pregenImgNames=None, 
-                                            plotActivations=True, plotSegments=True, plotTotal=True,**kwargs):
+                                            plotActivations=True, plotSegments=True, plotTotal=True, remove_x_tick_labels=False, reduce_names=False,
+                                            **kwargs):
     """Generates a plot showing the mean and variance of the activations within each segment category
     as well as in the totalCAM.
 
@@ -469,13 +470,27 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
         totalMean = totalMean if results_file else totalCAMStats[1]
         totalStd = totalStd if results_file else totalCAMStats[2]
+
+        if reduce_names:
+            low_img_names = ["_".join(imgNames[i].split('_')[:-1]) for i in totalCAMStats[3]]
+            high_img_names = ["_".join(imgNames[i].split('_')[:-1]) for i in totalCAMStats[5]]
+        else:
+            low_img_names = [imgNames[i] for i in totalCAMStats[3]]
+            high_img_names = [imgNames[i] for i in totalCAMStats[5]]
+
         plot_bar(ax=ax2, x_ticks=[0], data=[totalMean], format='.2f', barcolor='tab:blue', baryerr=[totalStd], barcapsize=4, barwidth=0.2, addText=False, barecolor='r')
         ax2.text(0.3, totalMean, f'\u03BC={totalMean:.2f} \n \u03C3={totalStd:.2f}', ha='center', va='bottom')
         plot_bar(ax=ax2, x_ticks=[1,2,3], data=totalCAMStats[4], format='.2f', barcolor='tab:orange')
-        plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + [imgNames[i] for i in totalCAMStats[3]] + [imgNames[i] for i in totalCAMStats[5]], data=totalCAMStats[6], format='.2f', barcolor='tab:green')
+        plot_bar(ax=ax2, x_ticks=[4,5,6], x_tick_labels=['Mean + Variance'] + low_img_names + high_img_names, data=totalCAMStats[6], format='.2f', barcolor='tab:green')
+
+        if remove_x_tick_labels:
+            ax2.tick_params(
+                axis='x',
+                labelbottom=False,
+            )
 
         legendMap = {
-            'tab:blue':'Mean totalCAM',
+            'tab:blue':'totalCAM',
             'tab:orange':'Lowest 3 totalCAMs',
             'tab:green':'Highest 3 totalCAMs',
         }
@@ -507,7 +522,8 @@ def generate_statistics_mean_variance_total(classes=None, saveDir='',fileNamePre
 
 def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam", camConfig="", camCheckpoint="", saveDir='', fileNamePrefix="", classes=None,
                                         annfileCorrect="", annfileIncorrect="", results_file='', columnMap=EXCELCOLNAMESMISSCLASSIFIED, filename='',
-                                        saveFigureFormat='.jpg',sharedStats=None, numSamples=0,preGenAllImgNames=None, preGenAllTransformedSegs=None,**kwargs):
+                                        saveFigureFormat='.jpg',sharedStats=None, numSamples=0,preGenAllImgNames=None, preGenAllTransformedSegs=None,
+                                        plotFinalCompare=True, num_samples_correct=None, num_samples_incorrect=None,plotCorrected=True,**kwargs):
     """
     Generates plots showing the activations for only the correctly classified samples for the given dataset,
     A plot showing the activations of the wrongly classified samples.
@@ -516,7 +532,6 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         print(f'Using given results from file {results_file}')
         assert set(EXCELCOLNAMESMISSCLASSIFIED.keys()).issubset(set(columnMap.keys())), f'Not all required keys in columnMap. Required are: {",".join(list(EXCELCOLNAMESMISSCLASSIFIED.keys()))}'
         classArray, loadedResults = load_results_excel(results_file, columnMap)
-        print(loadedResults)
         summarizedPercCAMActivationsOriginal = loadedResults['summarizedPercCAMActivationsOriginal']
         summarizedPercCAMActivationsCorrect = loadedResults['summarizedPercCAMActivationsCorrect']
         summarizedPercCAMActivationsIncorrect = loadedResults['summarizedPercCAMActivationsIncorrect']
@@ -527,9 +542,18 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
         dominantMaskPercIncorret = get_top_k(summarizedPercCAMActivationsIncorrect)
         dominantMaskPercCorrected = get_top_k(summarizedPercCAMActivationsCorrected)
 
-        x_label_text_original = f'No. samples:unknown (Data from file)'
-        x_label_text_correct = f'No. samples:unknown (Data from file)'
-        x_label_text_incorrect = f'No. samples:unknown (Data from file)'
+        if numSamples != 0:
+            x_label_text_original = f'No. samples:{numSamples}'
+        else:
+            x_label_text_original = f'No. samples:unknown (Data from file)'
+        if num_samples_correct is not None:
+            x_label_text_correct = f'No. samples:{num_samples_correct}'
+        else:
+            x_label_text_correct = f'No. samples:unknown (Data from file)'
+        if num_samples_incorrect is not None:
+            x_label_text_incorrect = f'No. samples:{num_samples_incorrect}'
+        else:
+            x_label_text_incorrect = f'No. samples:unknown (Data from file)'
     else:
         assert os.path.isdir(imgRoot), f'imgRoot does not lead to a directory {imgRoot}'
         assert os.path.isfile(annfile), f'No such file {annfile}'
@@ -614,8 +638,6 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
 
     axCorrect = fig.add_subplot(grid[0,0]) # Only correct
     axIncorrect = fig.add_subplot(grid[0,1]) # Only incorrect
-    axCorrected = fig.add_subplot(grid[0,2]) # Only corrected
-    axCompare = fig.add_subplot(grid[1,:]) # Compare original and fixed
 
     axCorrect.xaxis.set_label_position('top')
     axCorrect.set_xlabel(x_label_text_correct)
@@ -631,45 +653,50 @@ def generate_statistics_missclassified(imgRoot="", annfile="", method="gradcam",
     plot_bar(ax=axIncorrect, x_ticks=classArray, data=summarizedPercCAMActivationsIncorrect, dominantMask=dominantMaskPercIncorret, 
             textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
 
-    axCorrected.xaxis.set_label_position('top')
-    axCorrected.set_xlabel(x_label_text_incorrect)
-    axCorrected.set_title('Wrongly classified corrected average CAM Activations')
+    if plotCorrected:
+        axCorrected = fig.add_subplot(grid[0,2]) # Only corrected
+        axCorrected.xaxis.set_label_position('top')
+        axCorrected.set_xlabel(x_label_text_incorrect)
+        axCorrected.set_title('Wrongly classified corrected average CAM Activations')
 
-    plot_bar(ax=axCorrected, x_ticks=classArray, data=summarizedPercCAMActivationsCorrected, dominantMask=dominantMaskPercCorrected, 
-            textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
+        plot_bar(ax=axCorrected, x_ticks=classArray, data=summarizedPercCAMActivationsCorrected, dominantMask=dominantMaskPercCorrected, 
+                textadjust_ypos=True, format='.1%', textrotation=90, increase_ylim_scale=1.2)
 
-    axCompare.xaxis.set_label_position('top')
-    axCompare.set_xlabel(x_label_text_original)
-    axCompare.set_title('Original and fixed classification average CAM Activations')
+    if plotFinalCompare:
+        axCompare = fig.add_subplot(grid[1,:]) # Compare original and fixed
+        axCompare.xaxis.set_label_position('top')
+        axCompare.set_xlabel(x_label_text_original)
+        axCompare.set_title('Original and fixed classification average CAM Activations')
 
-    barwidth = 0.4
-    bars = axCompare.bar(np.arange(classArray.size), summarizedPercCAMActivationsOriginal, width=barwidth)
-    axCompare.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
+        barwidth = 0.4
+        bars = axCompare.bar(np.arange(classArray.size), summarizedPercCAMActivationsOriginal, width=barwidth)
+        axCompare.set_xticks([tick+barwidth/2 for tick in range(classArray.size)], classArray)
 
-    # Format orginal data
-    plot_bar(ax=axCompare, bars=bars, x_tick_labels=classArray, format='.1%', textadjust_ypos=True,
-        textrotation=90, keep_x_ticks=True, hightlightDominant=False)
+        # Format orginal data
+        plot_bar(ax=axCompare, bars=bars, x_tick_labels=classArray, format='.1%', textadjust_ypos=True,
+            textrotation=90, keep_x_ticks=True, hightlightDominant=False)
 
-    # Plot Fixed activation
-    plot_bar(ax=axCompare, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercCAMActivationsFixed, 
-        barwidth=barwidth, barcolor='g', addText=True, hightlightDominant=False,
-        textadjust_ypos=True, format='.1%', textrotation=90, keep_x_ticks=True, increase_ylim_scale=1.2)
+        # Plot Fixed activation
+        plot_bar(ax=axCompare, x_ticks=np.arange(classArray.size)+barwidth, x_tick_labels=classArray, data=summarizedPercCAMActivationsFixed, 
+            barwidth=barwidth, barcolor='g', addText=True, hightlightDominant=False,
+            textadjust_ypos=True, format='.1%', textrotation=90, keep_x_ticks=True, increase_ylim_scale=1.2)
+        legendMapCompare = {
+            'tab:blue':'Original CAM Activations',
+            'tab:green':'Fixed CAM Activations'
+        }
+        handlesCompare = [Patch(color=k, label=v) for k,v in legendMapCompare.items()]
+        axCompare.legend(handles=handlesCompare)
 
     legendMap = {
         'tab:blue':'CAM Activations',
         'tab:red':'Top CAM Activations'
     }
-    legendMapCompare = {
-        'tab:blue':'Original CAM Activations',
-        'tab:green':'Fixed CAM Activations'
-    }
     handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
-    handlesCompare = [Patch(color=k, label=v) for k,v in legendMapCompare.items()]
 
     axCorrect.legend(handles=handles)
     axIncorrect.legend(handles=handles)
-    axCorrected.legend(handles=handles)
-    axCompare.legend(handles=handlesCompare)
+    if plotCorrected:
+        axCorrected.legend(handles=handles)
 
     plt.show()
     

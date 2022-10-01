@@ -156,3 +156,46 @@ def generate_normalized(result_file, file_name='normalized', save_dir='./', n_sa
             sns.move_legend(ax1, "upper right", bbox_to_anchor=(1, 1.1))
 
     save_result_figure_data(figure=fig, save_dir=save_dir, fileExtension='.pdf', fileName=file_name)
+
+def generate_wrongly_classified_consolidated(result_file, file_name='wronglyClassified', save_dir='./', n_samples=None, show_perc=True, y_axis_scale=1.2,
+                                            include_corrected=True, move_legend=False, palette='Set1'):
+    assert os.path.isfile(result_file), f'No such file {result_file}'
+
+    fig, ax = plt.subplots(1,1)
+    col_names = list(EXCELCOLNAMESMISSCLASSIFIED.values())
+    col_names.remove('PercActivationsFixed')
+    col_names.remove('PercActivationsOriginal')
+    if include_corrected == False:
+        col_names.remove('PercActivationsCorrected')
+    
+    df = load_result_excel_pandas_longform(result_file, value_vars=col_names)
+    ax = sns.barplot(data=df, x='segments', y='vals', hue='type', ax=ax, palette=sns.color_palette(palette))
+    x_ticklabels = df['segments'].unique()
+    ax.set_xticklabels(x_ticklabels, rotation=45, ha="right")
+    fontsize = 'x-small' if include_corrected else 'small'
+    for i,patch in enumerate(ax.patches):
+        if show_perc:
+            ax.text(patch.get_x()+patch.get_width()/2.0 + 0.05, patch.get_height() + ax.get_ylim()[1]/70, f'{patch.get_height():.1%}', 
+                ha='center', va='bottom', rotation=90, fontsize=fontsize)
+
+    ax.set(ylabel=None, xlabel=None)
+    ax.set_ylim(top=ax.get_ylim()[1] * y_axis_scale)
+    ax.legend_.set_title('')
+    legendMap = {
+        sns.color_palette(palette)[0] : 'Correct Activations',
+        sns.color_palette(palette)[1] : 'Incorrect Activations',
+    }
+    if n_samples is not None:
+        legendMap[sns.color_palette(palette)[0]] = legendMap[sns.color_palette(palette)[0]] + f" ({n_samples[0]})"
+        legendMap[sns.color_palette(palette)[1]] = legendMap[sns.color_palette(palette)[1]] + f" ({n_samples[1]})"
+    if include_corrected:
+        legendMap[sns.color_palette(palette)[2]] = 'Corrected Activations'
+        if n_samples is not None:
+            legendMap[sns.color_palette(palette)[2]] = legendMap[sns.color_palette(palette)[2]] + f"({n_samples[1]})"
+
+
+    handles = [Patch(color=k, label=v) for k,v in legendMap.items()]
+    ax.legend(handles=handles)
+    if move_legend:
+        sns.move_legend(ax, "upper right", bbox_to_anchor=(1, 1.25))
+    save_result_figure_data(figure=fig, save_dir=save_dir, fileExtension='.pdf', fileName=file_name)
