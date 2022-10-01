@@ -158,7 +158,7 @@ def generate_normalized(result_file, file_name='normalized', save_dir='./', n_sa
     save_result_figure_data(figure=fig, save_dir=save_dir, fileExtension='.pdf', fileName=file_name)
 
 def generate_wrongly_classified_consolidated(result_file, file_name='wronglyClassified', save_dir='./', n_samples=None, show_perc=True, y_axis_scale=1.2,
-                                            include_corrected=True, move_legend=False, palette='Set1'):
+                                            include_corrected=True, move_legend=False, palette='Set1', title='', model='', dataset=''):
     assert os.path.isfile(result_file), f'No such file {result_file}'
 
     fig, ax = plt.subplots(1,1)
@@ -178,7 +178,12 @@ def generate_wrongly_classified_consolidated(result_file, file_name='wronglyClas
             ax.text(patch.get_x()+patch.get_width()/2.0 + 0.05, patch.get_height() + ax.get_ylim()[1]/70, f'{patch.get_height():.1%}', 
                 ha='center', va='bottom', rotation=90, fontsize=fontsize)
 
-    ax.set(ylabel=None, xlabel=None)
+    ax.set(ylabel=None)
+    ax.xaxis.set_label_position('top')
+    ax.set_xlabel(title)
+    ax.text(1,1.02, model,horizontalalignment='right',verticalalignment='center',transform = ax.transAxes)
+    ax.text(0,1.02, dataset,horizontalalignment='left',verticalalignment='center',transform = ax.transAxes)
+
     ax.set_ylim(top=ax.get_ylim()[1] * y_axis_scale)
     ax.legend_.set_title('')
     legendMap = {
